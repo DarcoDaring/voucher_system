@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load voucher_tags %}
+{% load voucher_extras %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Voucher List</h2>
+
+    <!-- ACTION BAR -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="btn-group" role="group">
+            {% if user.groups.all.0.name == 'Accountants' %}
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createVoucherModal">
+                Create Voucher
+            </button>
+            {% endif %}
+
+            <button class="btn btn-outline-warning filter-btn active" data-status="PENDING">Pending</button>
+            <button class="btn btn-outline-success filter-btn" data-status="APPROVED">Approved</button>
+            <button class="btn btn-outline-danger filter-btn" data-status="REJECTED">Rejected</button>
+        </div>
+        <div class="input-group" style="width: 300px;">
+            <span class="input-group-text">Search</span>
+            <input type="text" id="searchInput" class="form-control"
+                   placeholder="Pay To or Particulars..." autocomplete="off">
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle" id="voucherTable">
+            <thead class="table-primary">
+                <tr>
+                    <th>Voucher Number</th>
+                    <th>Pay To</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="voucher-tbody">
+                {% for voucher in vouchers %}
+               <tr class="voucher-row"
+    data-voucher-id="{{ voucher.id }}"
+    data-status="{{ voucher.status }}"
+    data-pay-to="{{ voucher.pay_to|lower }}"
+    data-voucher-number="{{ voucher.voucher_number|lower }}"
+    data-particulars="{% for p in voucher.particulars.all %}{{ p.description|lower }}{% if not forloop.last %} {% endif %}{% endfor %}">
+
+                    <td><strong>{{ voucher.voucher_number }}</strong></td>
+
+                    <td>{{ voucher.name_title }} {{ voucher.pay_to }}</td>
+
+                    <td>
+                        {% if voucher.particulars.exists %}
+                            <strong>{{ voucher.particulars.all|sum_particulars|floatformat:2 }}</strong><br>
+                            <small class="text-muted">
+                                ({{ voucher.particulars.all|length }} item{{ voucher.particulars.all|length|pluralize }})
+                            </small>
+                        {% else %}
+                            <em class="text-muted">No particulars</em>
+                        {% endif %}
+                    </td>
+
+                    <!-- STATUS -->
+                    <td class="status-cell">
+                        <a href="#" class="status-link"
+                           data-bs-toggle="modal"
+                           data-bs-target="#approvalModal{{ voucher.id }}">
+                            {% if voucher.status == 'PENDING' %}
+                                <span class="badge bg-warning text-dark">
+                                    Pending ({{ voucher.approved_count|default:0 }}/{{ voucher.required_approvers|length }})
+                                </span>
+                            {% elif voucher.status == 'APPROVED' %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif voucher.status == 'REJECTED' %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Unknown</span>
+                            {% endif %}
+                        </a>
+                    </td>
+
+                    <td>{{ voucher.created_by.username }}</td>
+
+                   <!-- ACTIONS -->
+<td class="action-cell">
+    <a href="{% url 'voucher_detail' voucher.id %}" class="btn btn-info btn-sm">View</a>
+
+    <!-- PENDING VOUCHERS: Show "Waiting for..." to EVERYONE -->
+    {% if voucher.status == 'PENDING' %}
+        <div class="text-muted small mt-2">
+            Waiting for <strong>{{ voucher.waiting_for_username|default:"next approver" }}</strong>
+        </div>
+
+        <!-- Only Admin Staff & Superuser can approve/reject -->
+        {% if user.is_superuser or user.groups.all.0.name == 'Admin Staff' %}
+            {% if voucher.user_approval %}
+                {% if voucher.user_approval.status == 'APPROVED' %}
+                    <span class="badge bg-success ms-2">Approved</span>
+                {% elif voucher.user_approval.status == 'REJECTED' %}
+                    <span class="badge bg-danger ms-2">Rejected</span>
+                {% endif %}
+            {% else %}
+                {% if voucher.can_approve %}
+                    <div class="mt-2">
+                        <button class="btn btn-success btn-sm approve-btn"
+                                data-id="{{ voucher.id }}" data-status="APPROVED">Approve</button>
+                        <button class="btn btn-danger btn-sm approve-btn ms-2"
+                                data-id="{{ voucher.id }}" data-status="REJECTED">Reject</button>
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
+    <!-- FINAL STATUS: Approved or Rejected -->
+    {% if voucher.status == 'APPROVED' %}
+        <span class="badge bg-success fs-6 ms-2">Approved</span>
+    {% elif voucher.status == 'REJECTED' %}
+        <span class="badge bg-danger fs-6 ms-2">Rejected</span>
+    {% endif %}
+
+    
+                {% endfor %}
+
+                <!-- NO PENDING MESSAGE -->
+                <tr id="no-pending-row" class="d-none">
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <em>No pending vouchers.</em>
+                    </td>
+                </tr>
+
+                <!-- REUSABLE "NO VOUCHERS" ROW (FIXED DUPLICATE BUG) -->
+                <tr id="no-vouchers-dynamic" class="d-none">
+                    <td colspan="6" class="text-center text-muted py-4">No vouchers found.</td>
+                </tr>
+
+                <!-- NO VOUCHERS AT ALL -->
+                {% if not vouchers %}
+                <tr id="no-vouchers-row">
+                    <td colspan="6" class="text-center text-muted py-4">No vouchers found.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- APPROVAL MODALS -->
+    {% for voucher in vouchers %}
+    <div class="modal fade" id="approvalModal{{ voucher.id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Approval Details - {{ voucher.voucher_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-success">Approved ({{ voucher.approved_count|default:0 }})</h6>
+                            <ul class="list-group" id="approved-list-{{ voucher.id }}">
+                                {% for approval in voucher.approvals.all %}
+                                    {% if approval.status == 'APPROVED' %}
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>{{ approval.approver.username }}</span>
+                                            <small class="text-muted">{{ approval.approved_at|date:"d M H:i" }}</small>
+                                        </li>
+                                    {% endif %}
+                                {% empty %}
+                                    <li class="list-group-item text-muted">None</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-danger">Rejected ({{ voucher.rejected_count|default:0 }})</h6>
+                            <ul class="list-group" id="rejected-list-{{ voucher.id }}">
+                                {% for approval in voucher.approvals.all %}
+                                    {% if approval.status == 'REJECTED' %}
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>{{ approval.approver.username }}</span>
+                                            <small class="text-muted">{{ approval.approved_at|date:"d M H:i" }}</small>
+                                        </li>
+                                    {% endif %}
+                                {% empty %}
+                                    <li class="list-group-item text-muted">None</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-secondary">
+                                Pending (<span id="pending-count-{{ voucher.id }}">{{ voucher.required_approvers|length|sub:voucher.approved_count|default:0 }}</span>)
+                            </h6>
+                            <ul class="list-group" id="pending-list-{{ voucher.id }}">
+                                {% for item in voucher.pending_approvers %}
+                                    {% if not item.has_approved %}
+                                        <li class="list-group-item">{{ item.name }}</li>
+                                    {% endif %}
+                                {% empty %}
+                                    <li class="list-group-item text-muted">No one required</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- REJECTION REASON BOX (ONLY IF REJECTED) -->
+                    {% if voucher.status == 'REJECTED' %}
+                        {% with reject=voucher.approvals|first_rejected %}
+                            {% if reject.rejection_reason %}
+                                <div class="mt-4 p-3 bg-light border rounded">
+                                    <h6 class="text-danger mb-2">
+                                        Rejection Reason
+                                    </h6>
+                                    <p class="mb-0 text-danger fw-medium">
+                                        "{{ reject.rejection_reason }}"
+                                    </p>
+                                    <small class="text-muted">
+                                        by {{ reject.approver.username }} on {{ reject.approved_at|date:"d M Y, h:i A" }}
+                                    </small>
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const tbody = document.getElementById('voucher-tbody');
+    const noPendingRow = document.getElementById('no-pending-row');
+    const dynamicEmptyRow = document.getElementById('no-vouchers-dynamic');  // ← NEW: single reusable row
+
+    // === HELPER: UPDATE EMPTY STATES (FIXED - NO MORE DUPLICATES) ===
+    function updateEmptyStates() {
+        const visibleRows = Array.from(document.querySelectorAll('.voucher-row'))
+                              .filter(r => r.style.display !== 'none');
+
+        noPendingRow.classList.add('d-none');
+        if (dynamicEmptyRow) dynamicEmptyRow.classList.add('d-none');
+
+        if (visibleRows.length === 0) {
+            const activeStatus = document.querySelector('.filter-btn.active').dataset.status;
+            if (activeStatus === 'PENDING') {
+                noPendingRow.classList.remove('d-none');
+            } else if (dynamicEmptyRow) {
+                dynamicEmptyRow.classList.remove('d-none');
+            }
+        }
+    }
+
+    // === DEFAULT: SHOW ONLY PENDING ON LOAD ===
+    document.querySelectorAll('.voucher-row').forEach(row => {
+        row.style.display = (row.dataset.status === 'PENDING') ? '' : 'none';
+    });
+    updateEmptyStates();
+
+    // === FILTER BUTTONS ===
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const status = this.dataset.status;
+
+            document.querySelectorAll('.voucher-row').forEach(row => {
+                row.style.display = (row.dataset.status === status) ? '' : 'none';
+            });
+
+            updateEmptyStates();
+        });
+    });
+
+    // === SEARCH: CLEAR RETURNS TO CURRENT FILTER ===
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        const activeStatus = document.querySelector('.filter-btn.active').dataset.status;
+
+        document.querySelectorAll('.voucher-row').forEach(row => {
+            const matchesSearch = q === '' ||
+    row.dataset.payTo.includes(q) ||
+    row.dataset.voucherNumber.includes(q) ||
+    row.dataset.particulars.includes(q);
+            const matchesFilter = row.dataset.status === activeStatus;
+
+            row.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
+        });
+
+        updateEmptyStates();
+    });
+
+    // === LIVE APPROVE / REJECT ===
+    document.querySelectorAll('.approve-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const status = this.dataset.status;
+            const isApprove = status === 'APPROVED';
+            const row = this.closest('tr');
+            const actionCell = row.querySelector('.action-cell');
+
+            let payload = { status };
+            if (status === 'REJECTED') {
+                const reason = prompt('Please provide a reason for rejection:');
+                if (!reason || reason.trim() === '') {
+                    alert('Rejection reason is required.');
+                    return;
+                }
+                payload.rejection_reason = reason.trim();
+            }
+
+            row.querySelectorAll('.approve-btn').forEach(b => {
+                b.disabled = true;
+                b.style.opacity = '0.6';
+            });
+
+            fetch(`/api/vouchers/${id}/approve/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.can_approve === false) {
+                    row.querySelectorAll('.approve-btn').forEach(b => b.remove());
+                    const waitMsg = document.createElement('div');
+                    waitMsg.className = 'text-muted small';
+                    waitMsg.innerHTML = `Waiting for <strong>${data.waiting_for}</strong>`;
+                    actionCell.insertBefore(waitMsg, actionCell.querySelector('.btn-info').nextSibling);
+                    return;
+                }
+
+                this.textContent = isApprove ? 'Approved' : 'Rejected';
+                this.className = isApprove ? 'btn btn-success btn-sm' : 'btn btn-danger btn-sm';
+                this.disabled = true;
+
+                const other = row.querySelector(`.approve-btn[data-status="${isApprove ? 'REJECTED' : 'APPROVED'}"]`);
+                if (other) other.style.display = 'none';
+
+                const badge = row.querySelector('.status-cell .badge');
+                if (data.status === 'APPROVED') {
+                    badge.outerHTML = '<span class="badge bg-success">Approved</span>';
+                    row.dataset.status = 'APPROVED';
+                } else if (data.status === 'REJECTED') {
+                    badge.outerHTML = '<span class="badge bg-danger">Rejected</span>';
+                    row.dataset.status = 'REJECTED';
+                } else {
+                    badge.outerHTML = `<span class="badge bg-warning text-dark">Pending (${data.approved_count}/${data.required_approvers.length})</span>`;
+                    row.dataset.status = 'PENDING';
+                }
+
+                const modal = document.getElementById(`approvalModal${id}`);
+                if (modal) {
+                    const approvedList = modal.querySelector(`#approved-list-${id}`);
+                    approvedList.innerHTML = '';
+                    data.approvals.filter(a => a.status === 'APPROVED').forEach(a => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between';
+                        li.innerHTML = `<span>${a.approver}</span><small class="text-muted">${a.approved_at}</small>`;
+                        approvedList.appendChild(li);
+                    });
+                    if (approvedList.children.length === 0) {
+                        approvedList.innerHTML = '<li class="list-group-item text-muted">None</li>';
+                    }
+
+                    const rejectedList = modal.querySelector(`#rejected-list-${id}`);
+                    rejectedList.innerHTML = '';
+                    data.approvals.filter(a => a.status === 'REJECTED').forEach(a => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between';
+                        li.innerHTML = `<span>${a.approver}</span><small class="text-muted">${a.approved_at}</small>`;
+                        rejectedList.appendChild(li);
+                    });
+                    if (rejectedList.children.length === 0) {
+                        rejectedList.innerHTML = '<li class="list-group-item text-muted">None</li>';
+                    }
+
+                    const pendingList = modal.querySelector(`#pending-list-${id}`);
+                    pendingList.innerHTML = '';
+                    const approvedUsernames = data.approvals.filter(a => a.status === 'APPROVED').map(a => a.approver);
+                    data.required_approvers.forEach(name => {
+                        if (!approvedUsernames.includes(name)) {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item';
+                            li.textContent = name;
+                            pendingList.appendChild(li);
+                        }
+                    });
+                    if (pendingList.children.length === 0) {
+                        pendingList.innerHTML = '<li class="list-group-item text-muted">No one required</li>';
+                    }
+
+                    modal.querySelector(`#pending-count-${id}`).textContent = data.required_approvers.length - data.approved_count;
+
+                    const reasonBox = modal.querySelector('.border.rounded.bg-light');
+                    if (data.status === 'REJECTED') {
+                        const firstReject = data.approvals.find(a => a.status === 'REJECTED');
+                        if (firstReject?.rejection_reason) {
+                            if (!reasonBox) {
+                                const box = document.createElement('div');
+                                box.className = 'mt-4 p-3 bg-light border rounded';
+                                box.innerHTML = `
+                                    <h6 class="text-danger mb-2">Rejection Reason</h6>
+                                    <p class="mb-0 text-danger fw-medium">"${firstReject.rejection_reason}"</p>
+                                    <small class="text-muted">by ${firstReject.approver} on ${firstReject.approved_at}</small>
+                                `;
+                                modal.querySelector('.modal-body').appendChild(box);
+                            } else {
+                                reasonBox.querySelector('p').textContent = `"${firstReject.rejection_reason}"`;
+                                reasonBox.querySelector('small').textContent = `by ${firstReject.approver} on ${firstReject.approved_at}`;
+                            }
+                        }
+                    } else if (reasonBox) {
+                        reasonBox.remove();
+                    }
+                }
+
+                // FIXED VISIBILITY LOGIC + FLASH EFFECT
+                const activeStatus = document.querySelector('.filter-btn.active').dataset.status;
+
+                if (activeStatus === 'PENDING') {
+                    row.style.display = '';
+                } else {
+                    row.style.display = (row.dataset.status === activeStatus) ? '' : 'none';
+                }
+
+                row.style.transition = 'background-color 0.8s';
+                if (data.status === 'APPROVED') {
+                    row.style.backgroundColor = '#d4edda';
+                } else if (data.status === 'REJECTED') {
+                    row.style.backgroundColor = '#f8d7da';
+                } else {
+                    row.style.backgroundColor = '#fff3cd';
+                }
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 1600);
+
+                updateEmptyStates();
+            })
+            .catch(() => {
+                alert('Approval failed.');
+                row.querySelectorAll('.approve-btn').forEach(b => {
+                    b.disabled = false;
+                    b.style.opacity = '1';
+                });
+            });
+        });
+    });
+
+});
+</script>
+{% endblock %}

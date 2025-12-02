@@ -1,0 +1,847 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load voucher_tags %}
+{% load voucher_extras %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- TIGHT & CLEAN CONTAINER -->
+    <div class="mx-auto" style="max-width: 800px;">
+        <div class="card shadow-sm border-0 rounded-4">
+
+            <!-- HEADER (ONLY VOUCHER NUMBER) -->
+            <div class="card-header bg-primary text-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">Voucher {{ voucher.voucher_number }}</h5>
+                    <div class="text-end">
+                        <!-- COMPANY INFO REMOVED FROM SCREEN VIEW -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+
+                <!-- 1. DATE + PAYMENT TYPE + CHEQUE INFO (ALL ON LEFT) -->
+                <div class="mb-4 pb-2 border-bottom">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <!-- LEFT: Voucher Date + Payment Type + Cheque Info -->
+                        <div>
+                            <!-- Voucher Date -->
+                            <div>
+                                <strong class="text-muted small d-block">Voucher Date</strong>
+                                <p class="mb-0 fs-4 fw-bold text-dark">{{ voucher.voucher_date|date:"d M Y" }}</p>
+                            </div>
+
+                            <!-- Payment Type + Cheque Details (Same Line, Same Style) -->
+                            <div class="mt-2">
+                                <span class="text-muted">
+                                    <strong class="text-dark">Payment Type:</strong>
+                                    {% if voucher.payment_type == 'CASH' %}Cash
+                                    {% elif voucher.payment_type == 'CHEQUE' %}Cheque
+                                    {% elif voucher.payment_type == 'PETTY_CASH' %}Petty Cash
+                                    {% endif %}
+                                </span>
+
+                                <!-- CHEQUE: Show No, Date, Account in same format -->
+                                {% if voucher.payment_type == 'CHEQUE' and voucher.cheque_number %}
+                                    <span class="ms-3 text-muted">
+                                        <strong class="text-dark">Cheque No:</strong> {{ voucher.cheque_number }}
+                                    </span>
+                                    {% if voucher.cheque_date %}
+                                        <span class="ms-3 text-muted">
+                                            <strong class="text-dark">Date:</strong> {{ voucher.cheque_date|date:"d M Y" }}
+                                        </span>
+                                    {% endif %}
+                                    {% if voucher.account_details %}
+                                        <span class="ms-3 text-muted">
+                                            <strong class="text-dark">Account:</strong> {{ voucher.account_details }}
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+
+                            <!-- CHEQUE ATTACHMENTS - MULTIPLE (REPLACES OLD SINGLE FIELD) -->
+                            {% if voucher.cheque_attachments.exists %}
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center gap-3 flex-wrap">
+                                    <strong class="text-primary">Cheque Attachment{{ voucher.cheque_attachments.count|pluralize }}</strong>
+                                    {% for att in voucher.cheque_attachments.all %}
+    {% with ext=att.file.name|lower|split:"."|last %}
+        {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+            <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
+                                                            data-url="{{ att.file.url }}"
+                                                            data-filename="{{ att.file.name|filename }}">
+                                                        View
+                                                    </button>
+        {% else %}
+            <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary me-2 mb-2">
+                Open File
+            </a>
+        {% endif %}
+    {% endwith %}
+{% endfor %}
+                                    {% if voucher.cheque_attachments.count > 3 %}
+                                        <span class="badge bg-light text-dark border small">
+                                            +{{ voucher.cheque_attachments.count|add:"-3" }} more
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% elif voucher.payment_type == 'CHEQUE' %}
+                            <small class="text-warning d-block">Warning: Cheque attachment missing</small>
+                            {% endif %}
+
+                            <!-- RIGHT: EMPTY -->
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. PAY TO -->
+                <div class="mb-4">
+                    <strong class="text-muted small d-block">Pay To</strong>
+                    <h4 class="text-primary fw-bold mb-0">{{ voucher.name_title }} {{ voucher.pay_to }}</h4>
+                </div>
+
+                <!-- MAIN ATTACHMENTS - MULTIPLE (REPLACES OLD SINGLE voucher.attachment) -->
+                {% if voucher.main_attachments.exists %}
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <strong class="text-success me-2">Main Attachment{{ voucher.main_attachments.count|pluralize }}</strong>
+        {% for att in voucher.main_attachments.all %}
+            {% with ext=att.file.name|lower|split:"."|last %}
+                {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+                    <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
+                            data-url="{{ att.file.url }}"
+                            data-filename="{{ att.file.name|filename }}">
+                        View
+                    </button>
+                {% else %}
+                    <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        Open
+                    </a>
+                {% endif %}
+            {% endwith %}
+        {% endfor %}
+        {% if voucher.main_attachments.count > 5 %}
+            <span class="badge bg-light text-dark border small">
+                +{{ voucher.main_attachments.count|add:"-5" }} more
+            </span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+                <!-- 3. PARTICULARS - NOW SHOWS MULTIPLE ATTACHMENTS PER ROW -->
+                <div class="mb-4">
+                    <h6 class="text-success fw-bold mb-3">Particulars</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Attachment</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in voucher.particulars.all %}
+                                <tr>
+                                    <td class="fw-medium">{{ p.description }}</td>
+                                    <td>
+    {% if p.attachments.exists %}
+        <div class="d-flex flex-wrap gap-1">
+            {% for att in p.attachments.all %}
+                {% with ext=att.file.name|lower|split:"."|last %}
+                    {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+                        <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
+                                                            data-url="{{ att.file.url }}"
+                                                            data-filename="{{ att.file.name|filename }}">
+                                                        View
+                                                    </button>
+                    {% else %}
+                        <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            Open
+                        </a>
+                    {% endif %}
+                {% endwith %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <span class="text-muted">—</span>
+    {% endif %}
+</td>
+                                    <td class="text-end fw-bold text-success">₹{{ p.amount|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted">No particulars</td></tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-success">
+                                <tr>
+                                    <th colspan="2" class="text-end fw-bold">Total:</th>
+                                    <th class="text-end fs-5 text-primary">
+                                        ₹{{ voucher.particulars.all|sum_particulars|floatformat:2 }}
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 5. CREATED INFO -->
+                <div class="d-flex justify-content-between text-muted small mb-3">
+                    <div>
+                        <strong>Created By:</strong> 
+                        {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}
+                    </div>
+                    <div>
+                        <strong>Created At:</strong> 
+                        {{ voucher.created_at|date:"d M Y, h:i A" }}
+                    </div>
+                </div>
+
+                <!-- 6. STATUS + PROGRESS -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <strong>Status:</strong>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#approvalModal">
+                            {% if voucher.status == 'APPROVED' %}
+                                <span class="badge bg-success fs-6 px-4 py-2">APPROVED</span>
+                            {% elif voucher.status == 'REJECTED' %}
+                                <span class="badge bg-danger fs-6 px-4 py-2">REJECTED</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark fs-6 px-4 py-2">
+                                    PENDING ({{ voucher.approved_count }}/{{ voucher.required_approvers|length }})
+                                </span>
+                            {% endif %}
+                        </a>
+                    </div>
+
+                    
+                    </div>
+                  
+                </div>
+
+                <!-- ONLY SHOW "Waiting for" IF PENDING -->
+                {% if voucher.status == 'PENDING' and waiting_for_username %}
+                <div class="text-muted small">
+                    Waiting for <strong>{{ waiting_for_username }}</strong>
+                </div>
+                {% endif %}
+
+                <!-- 7. ACTION BUTTONS -->
+                <div class="d-grid d-md-flex gap-2 justify-content-center">
+                    <a href="{% url 'voucher_list' %}" class="btn btn-secondary px-5">Back to List</a>
+
+                    <!-- EDIT BUTTON (ONLY FOR ACCOUNTANT + PENDING + NO APPROVALS YET) -->
+                    {% if user.groups.all.0.name == 'Accountants' and voucher.status == 'PENDING' and voucher.approvals.count == 0 %}
+                        <button type="button" class="btn btn-warning px-5" id="editVoucherBtn">
+                            Edit
+                        </button>
+                    {% elif user.groups.all.0.name == 'Accountants' and voucher.approvals.count > 0 %}
+                        <button type="button" class="btn btn-secondary px-5" disabled>
+                            Edit
+                        </button>
+                    {% endif %}
+                        
+                    {% if user.groups.all.0.name == 'Admin Staff' and voucher.status == 'PENDING' %}
+                        {% if not user_approval and can_approve %}
+                            <button class="btn btn-success px-5 approve-btn" data-id="{{ voucher.id }}" data-status="APPROVED">Approve</button>
+                            <button class="btn btn-danger px-5 approve-btn" data-id="{{ voucher.id }}" data-status="REJECTED">Reject</button>
+                        {% endif %}
+                    {% endif %}
+
+                    <!-- PRINT BUTTON -->
+                    {% if voucher.status == 'APPROVED' %}
+                        <button type="button" onclick="printVoucher()" class="btn btn-info px-5">
+                            Print Voucher
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ATTACHMENT PREVIEW MODAL -->
+<div class="modal fade" id="attachmentPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attachmentFileName">Attachment Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="min-height: 60vh; position: relative;">
+                <iframe id="attachmentIframe" class="w-100 h-100 d-none" style="border:none;" frameborder="0"></iframe>
+                <div id="imagePreview" class="d-none w-100 h-100 d-flex align-items-center justify-content-center bg-light">
+                    <img id="previewImage" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview">
+                </div>
+                <div id="fallbackMessage" class="d-none w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4 text-center text-muted">
+                    <p class="mb-3">Preview not available for this file type.</p>
+                    <a id="downloadLink" href="#" target="_blank" class="btn btn-secondary">Download File</a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- APPROVAL MODAL -->
+<div class="modal fade" id="approvalModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Approval Details - {{ voucher.voucher_number }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6 class="text-success">Approved ({{ voucher.approved_count|default:0 }})</h6>
+                        <ul class="list-group" id="approved-list">
+                            {% for approval in voucher.approvals.all %}
+                                {% if approval.status == 'APPROVED' %}
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>{{ approval.approver.username }}</span>
+                                        <small class="text-muted">{{ approval.approved_at|date:"d M H:i" }}</small>
+                                    </li>
+                                {% endif %}
+                            {% empty %}
+                                <li class="list-group-item text-muted">None</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-danger">Rejected ({{ voucher.rejected_count|default:0 }})</h6>
+                        <ul class="list-group" id="rejected-list">
+                            {% for approval in voucher.approvals.all %}
+                                {% if approval.status == 'REJECTED' %}
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>{{ approval.approver.username }}</span>
+                                        <small class="text-muted">{{ approval.approved_at|date:"d M H:i" }}</small>
+                                    </li>
+                                {% endif %}
+                            {% empty %}
+                                <li class="list-group-item text-muted">None</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-secondary">
+                            Pending (<span id="pending-count">{{ voucher.required_approvers|length|sub:voucher.approved_count|default:0 }}</span>)
+                        </h6>
+                        <ul class="list-group" id="pending-list">
+                            {% for item in pending_approvers %}
+                                {% if not item.has_approved %}
+                                    <li class="list-group-item">{{ item.name }}</li>
+                                {% endif %}
+                            {% empty %}
+                                <li class="list-group-item text-muted">No one required</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- REJECTION REASON BOX (SEPARATE) -->
+                {% if voucher.status == 'REJECTED' %}
+                    {% with reject=voucher.approvals|first_rejected %}
+                        {% if reject.rejection_reason %}
+                            <div class="mt-4 p-3 bg-light border rounded">
+                                <h6 class="text-danger mb-2">Rejection Reason</h6>
+                                <p class="mb-0 text-danger fw-medium">"{{ reject.rejection_reason }}"</p>
+                                <small class="text-muted">
+                                    by {{ reject.approver.username }} on {{ reject.approved_at|date:"d M Y, h:i A" }}
+                                </small>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== PRINT-ONLY SECTION (FINAL UPDATE) ==================== -->
+<div id="print-section">
+    <style type="text/css">
+        @media print {
+            @page { margin: 0.5in; }
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+            .signature-img { max-height: 80px; margin: 8px 0; }
+            .signature-block { text-align: center; width: 30%; min-width: 160px; }
+        }
+        #print-section { display: none; }
+        @media screen { #print-section { display: none; } }
+    </style>
+
+    <div style="padding: 40px; font-family: Arial, sans-serif; max-width: 800px; margin: auto;">
+        <!-- TOP SECTION: LEFT (Voucher Info) + RIGHT (Company Info) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px;">
+            <!-- LEFT: Payment Voucher + Details -->
+            <div style="flex: 1;">
+                <h4 style="margin: margin: 0 0 8px 0; font-weight: bold; text-transform: uppercase; font-size: 18px;">Payment Voucher</h4>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Voucher No:</strong> {{ voucher.voucher_number }}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Voucher Date:</strong> {{ voucher.voucher_date|date:"d M Y" }}</p>
+                <p style="margin: 4px 0; font-size: 13px;">
+                    <strong>Payment Type:</strong>
+                    {% if voucher.payment_type == 'CASH' %}Cash
+                    {% elif voucher.payment_type == 'CHEQUE' %}Cheque
+                    {% elif voucher.payment_type == 'PETTY_CASH' %}Petty Cash
+                    {% endif %}
+                </p>
+                {% if voucher.payment_type == 'CHEQUE' and voucher.cheque_number %}
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Cheque No:</strong> {{ voucher.cheque_number }}</p>
+                    {% if voucher.cheque_date %}
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Cheque Date:</strong> {{ voucher.cheque_date|date:"d M Y" }}</p>
+                    {% endif %}
+                    {% if voucher.account_details %}
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Account:</strong> {{ voucher.account_details }}</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- RIGHT: Company Logo + Address (Aligned with heading) -->
+            <div style="flex: 1; text-align: right; display: flex; flex-direction: column; justify-content: flex-start; min-height: 60px;">
+                {% if company.logo %}
+                    <div style="margin-bottom: 8px;">
+                        <img src="{{ company.logo.url }}" alt="Company Logo" style="max-height: 60px; object-fit: contain;">
+                    </div>
+                {% endif %}
+
+                {% if company.address %}
+                    {% with addr=company.address|linebreaksbr %}
+                        {% with line1=addr|cut:"<br/>"|cut:"<br />"|cut:"<br>"|cut:"</p>"|cut:"<p>"|striptags|truncatechars:200 %}
+                            {% with line2=addr|cut:line1|cut:"<br/>"|cut:"<br />"|cut:"<br>"|striptags|truncatechars:200 %}
+                                {% if line1 %}
+                                    <p style="margin: 2px 0; font-size: 13px;">{{ line1|safe }}</p>
+                                {% endif %}
+                                {% if line2 and line2 != line1 %}
+                                    <p style="margin: 2px 0; font-size: 13px;">{{ line2|safe }}</p>
+                                {% endif %}
+                            {% endwith %}
+                        {% endwith %}
+                    {% endwith %}
+                {% endif %}
+
+                {% if company.gst_no or company.pan_no or company.email or company.phone %}
+                    <p style="margin: 5px 0 0 0; font-size: 11px;">
+                        {% if company.gst_no %}GST: {{ company.gst_no }}{% endif %}
+                        {% if company.gst_no and company.pan_no %} | {% endif %}
+                        {% if company.pan_no %}PAN: {{ company.pan_no }}{% endif %}
+                    </p>
+                    {% if company.email %}
+                        <p style="margin: 0; font-size: 11px;">Email: {{ company.email }}</p>
+                    {% endif %}
+                    {% if company.phone %}
+                        <p style="margin: 0; font-size: 11px;">Phone: {{ company.phone }}</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- PAYEE & AMOUNT -->
+        <div style="display: flex; justify-content: space-between; margin: 20px 0; font-size: 14px;">
+            <div>
+                <strong>Pay To:</strong> {{ voucher.name_title }} {{ voucher.pay_to }}
+            </div>
+            <div style="text-align: right;">
+                <strong>Amount:</strong> ₹{{ voucher.particulars.all|sum_particulars|floatformat:2 }}
+            </div>
+        </div>
+
+        <!-- PARTICULARS TABLE -->
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
+            <thead>
+                <tr style="background-color: #f8f9fa; border-bottom: 2px solid #000;">
+                    <th style="padding: 10px; text-align: left; border: 1px solid #ddd; width: 5%;">#</th>
+                    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Particulars</th>
+                    <th style="padding: 10px; text-align: right; border: 1px solid #ddd; width: 20%;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in voucher.particulars.all %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px; border: 1px solid #ddd;">{{ forloop.counter }}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{{ p.description }}</td>
+                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ p.amount|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr style="background-color: #e9ecef; font-weight: bold;">
+                    <td colspan="2" style="padding: 10px; text-align: right; border: 1px solid #ddd;">Total:</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">
+                        ₹{{ voucher.particulars.all|sum_particulars|floatformat:2 }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- CREATED BY: JUST BELOW PARTICULARS -->
+        <div style="margin-top: 15px; font-size: 13px; text-align: right;">
+            <strong>Created by:</strong> {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}
+        </div>
+
+        <!-- APPROVAL SIGNATURES -->
+        <div style="margin-top: 50px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-around;">
+                {% for approval in voucher.approvals.all %}
+                    {% if approval.status == 'APPROVED' %}
+                    <div class="signature-block">
+                        <div style="font-size: 13px;">
+                            <strong>{{ approval.approver.get_full_name|default:approval.approver.username }}</strong><br>
+                            <small>{{ approval.approver.userprofile.designation.name }}</small>
+                        </div>
+                        {% if approval.approver.userprofile.signature %}
+                            <img src="{{ approval.approver.userprofile.signature.url }}" class="signature-img" alt="Signature">
+                        {% else %}
+                            <div style="height: 40px; display: flex; align-items: center; justify-content: center; font-style: italic; color: #999;">
+                                (No signature)
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% empty %}
+                    <p style="text-align: center; color: #999; width: 100%;">No approvals recorded.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- FOOTER: NO "Generated on" TEXT -->
+        <div style="text-align: center; margin-top: 60px;">
+            <hr style="border-top: 1px dashed #ccc;">
+        </div>
+    </div>
+
+    <!-- PRE-LOAD SIGNATURE IMAGES -->
+    <div id="preload-signatures" style="position: absolute; left: -9999px; top: -9999px;">
+        {% for approval in voucher.approvals.all %}
+            {% if approval.status == 'APPROVED' and approval.approver.userprofile.signature %}
+                <img src="{{ approval.approver.userprofile.signature.url }}" onload="this.onload=null;">
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ==================== FIX: PASS voucher_list_url VIA data-url ==================== -->
+<div id="voucher-list-url" data-url="{% url 'voucher_list' %}" style="display: none;"></div>
+
+<script>
+/* Pre-load signatures */
+document.addEventListener('DOMContentLoaded', function () {
+    const preload = document.getElementById('preload-signatures');
+    if (preload) {
+        const imgs = preload.querySelectorAll('img');
+        imgs.forEach(img => {
+            if (!img.complete) img.onload = () => {};
+        });
+    }
+});
+
+function printVoucher() {
+    window.print();
+}
+
+// SAFE DATA — NO TemplateSyntaxError
+const VOUCHER_EDIT_DATA = {
+    id: {{ voucher.id|safe }},
+    voucher_date: "{{ voucher.voucher_date|date:'Y-m-d'|default:'' }}",
+    payment_type: "{{ voucher.payment_type|default:'' }}",
+    name_title: "{{ voucher.name_title|escapejs }}",
+    pay_to: "{{ voucher.pay_to|escapejs }}",
+    cheque_number: "{{ voucher.cheque_number|default:''|escapejs }}",
+    cheque_date: "{{ voucher.cheque_date|date:'Y-m-d'|default:'' }}",
+    account_details: "{{ voucher.account_details|default:''|escapejs }}",
+
+    // ✅ FIX: ADD THIS
+    main_attachments: [
+        {% for att in voucher.main_attachments.all %}
+            "{{ att.file.name|filename|escapejs }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+
+    cheque_attachments: [
+        {% for att in voucher.cheque_attachments.all %}
+            "{{ att.file.name|filename|escapejs }}"{% if not forloop.last %},{% endif %}
+        {% empty %}
+        {% endfor %}
+    ],
+
+    particulars: [
+        {% for p in voucher.particulars.all %}
+        {
+            description: "{{ p.description|escapejs }}",
+            amount: {{ p.amount|floatformat:2|default:0 }},
+            files: [
+                {% for att in p.attachments.all %}
+                    "{{ att.file.name|filename|escapejs }}"{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+};
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const listUrl = document.getElementById('voucher-list-url').dataset.url || '/vouchers/';
+
+    // === APPROVE/REJECT ===
+    document.querySelectorAll('.approve-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const status = this.dataset.status;
+
+            let reason = null;
+            if (status === 'REJECTED') {
+                reason = prompt('Please provide a reason for rejection:');
+                if (!reason || reason.trim() === '') {
+                    alert('Rejection reason is required.');
+                    return;
+                }
+                reason = reason.trim();
+            }
+
+            document.querySelectorAll('.approve-btn').forEach(b => b.disabled = true);
+
+            const payload = { status };
+            if (status === 'REJECTED') payload.rejection_reason = reason;
+
+            fetch(`/api/vouchers/${id}/approve/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+            .then(data => {
+                if (data.status === 'APPROVED' || data.status === 'REJECTED') {
+                    window.location.href = listUrl;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Action failed. Try again.');
+                document.querySelectorAll('.approve-btn').forEach(b => b.disabled = false);
+            });
+        });
+    });
+
+    // === ATTACHMENT PREVIEW (Images now work perfectly) ===
+    document.querySelectorAll('.view-attachment-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const url = this.dataset.url;
+            const filename = this.dataset.filename || 'Attachment';
+
+            document.getElementById('attachmentFileName').textContent = filename;
+            document.getElementById('downloadLink').href = url;
+
+            const iframe = document.getElementById('attachmentIframe');
+            const imagePreview = document.getElementById('imagePreview');
+            const previewImage = document.getElementById('previewImage');
+            const fallback = document.getElementById('fallbackMessage');
+
+            iframe.src = '';
+            iframe.classList.add('d-none');
+            imagePreview.classList.add('d-none');
+            fallback.classList.add('d-none');
+
+            const ext = filename.split('.').pop().toLowerCase();
+
+            if (['jpg','jpeg','png','gif','webp','bmp','svg','tif','tiff'].includes(ext)) {
+                previewImage.src = url + '?t=' + Date.now();
+                imagePreview.classList.remove('d-none');
+            } 
+            else if (['pdf','doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) {
+                iframe.src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                iframe.classList.remove('d-none');
+            } 
+            else {
+                fallback.classList.remove('d-none');
+            }
+
+            new bootstrap.Modal(document.getElementById('attachmentPreviewModal')).show();
+        });
+    });
+
+    // === EDIT BUTTON – FINAL 100% WORKING VERSION ===
+const editBtn = document.getElementById('editVoucherBtn');
+if (editBtn) {
+    editBtn.addEventListener('click', function () {
+        const createModal = document.getElementById('createVoucherModal');
+        if (!createModal) {
+            alert("Edit modal not found!");
+            return;
+        }
+
+        createModal.querySelector('.modal-title').textContent = 'Edit Voucher {{ voucher.voucher_number }}';
+        const bsModal = new bootstrap.Modal(createModal);
+        bsModal.show();
+
+        createModal.addEventListener('shown.bs.modal', function handler() {
+            const form = createModal.querySelector('form');
+            const tbody = form.querySelector('#particularsTable tbody');
+            tbody.innerHTML = '';
+
+            // === BASIC FIELDS ===
+            form.querySelector('[name="voucher_date"]').value = VOUCHER_EDIT_DATA.voucher_date;
+            form.querySelector('[name="payment_type"]').value = VOUCHER_EDIT_DATA.payment_type;
+            form.querySelector('[name="name_title"]').value = VOUCHER_EDIT_DATA.name_title;
+            form.querySelector('[name="pay_to"]').value = VOUCHER_EDIT_DATA.pay_to;
+            // === CHEQUE FIELDS – NOW 100% PRE-LOADED ON EDIT ===
+            const chequeFields = document.querySelectorAll('#chequeNumberField, #chequeDateField, #accountDetailsField, #chequeAttachmentField');
+            const chequeNumber = form.querySelector('[name="cheque_number"]');
+            const chequeDate = form.querySelector('[name="cheque_date"]');
+            const accountDetails = form.querySelector('[name="account_details"]');
+
+           if (VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
+    chequeFields.forEach(field => field.style.display = '');
+
+    if (chequeNumber) chequeNumber.value = VOUCHER_EDIT_DATA.cheque_number || '';
+    if (chequeDate) chequeDate.value = VOUCHER_EDIT_DATA.cheque_date || '';
+    if (accountDetails) {
+        accountDetails.value = VOUCHER_EDIT_DATA.account_details || '';
+        accountDetails.dispatchEvent(new Event('change'));
+        accountDetails.required = true;   // <-- IMPORTANT FIX
+    }
+
+    // Show current cheque files
+    const fileInput = form.querySelector('[name="cheque_attachments"]');
+    if (fileInput && VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
+        const currentText = VOUCHER_EDIT_DATA.cheque_attachments.join(', ');
+        const preview = `
+            <div class="mt-1">
+                <small class="text-muted">Current files: ${currentText}</small>
+            </div>`;
+        fileInput.insertAdjacentHTML('afterend', preview);
+    }
+
+} else {
+    chequeFields.forEach(field => field.style.display = 'none');
+
+    if (chequeNumber) chequeNumber.value = '';
+    if (chequeDate) chequeDate.value = '';
+
+    if (accountDetails) {
+        accountDetails.value = '';
+        accountDetails.required = false;   // <-- IMPORTANT FIX
+    }
+}
+
+            // === REBUILD PARTICULARS ROWS ===
+tbody.innerHTML = ''; // Clear first
+VOUCHER_EDIT_DATA.particulars.forEach((p, i) => {
+    const filesList = p.files.length > 0
+        ? `<small class="text-muted d-block mt-1">Current: ${p.files.join(', ')}</small>`
+        : '';
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <input type="text" class="form-control form-control-sm" name="particulars[${i}][description]" value="${p.description}" required>
+        </td>
+        <td>
+            <input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${i}][amount]" value="${p.amount}" required>
+        </td>
+        <td>
+            <input type="file" class="form-control form-control-sm" name="particular_attachment_${i}" multiple accept="image/*,.pdf,.doc,.docx">
+            ${filesList}
+            <div class="mt-1 text-muted small particular-file-list"></div>
+        </td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
+        </td>
+    `;
+    tbody.appendChild(row);
+});
+                        // === MAIN ATTACHMENTS – Clean display + replace old ones ===
+            const mainFileInput = form.querySelector('[name="main_attachments"]');
+            if (mainFileInput) {
+                // Show current files (if any)
+                if (VOUCHER_EDIT_DATA.main_attachments && VOUCHER_EDIT_DATA.main_attachments.length > 0) {
+                    const current = VOUCHER_EDIT_DATA.main_attachments.join(', ');
+                    mainFileInput.insertAdjacentHTML('afterend', `
+                        <div class="mt-1"><small class="text-muted">Current: ${current}</small></div>
+                    `);
+                }
+                // This is the key: clear the file input so old files don't stay selected
+                mainFileInput.value = '';
+            }
+
+            // === CHEQUE ATTACHMENTS – Clean display + replace old ones ===
+            const chequeFileInput = form.querySelector('[name="cheque_attachments"]');
+            if (chequeFileInput && VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
+                if (VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
+                    const current = VOUCHER_EDIT_DATA.cheque_attachments.join(', ');
+                    chequeFileInput.insertAdjacentHTML('afterend', `
+                        <div class="mt-1"><small class="text-muted">Current: ${current}</small></div>
+                    `);
+                }
+                chequeFileInput.value = '';  // clears the browser's "X files selected"
+            }
+
+            // === PARTICULAR ATTACHMENTS – Clear old selection ===
+            document.querySelectorAll('input[name^="particular_attachment_"]').forEach(input => {
+                input.value = '';
+            });
+
+            // === FORM SUBMIT ===
+            form.onsubmit = function(e) {
+                e.preventDefault();
+                const fd = new FormData(form);
+                fd.append('voucher_id', VOUCHER_EDIT_DATA.id);
+
+                const apiUrl = "{% url 'voucher_create_api' %}";
+
+fetch(apiUrl, {
+    method: 'POST',
+    body: fd,
+    headers: { 'X-CSRFToken': csrf }
+})
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        alert('Voucher updated successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (d.message || JSON.stringify(d)));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Update failed. Check console.');
+                });
+            };
+
+            form.querySelector('button[type="submit"]').textContent = 'Update Voucher';
+            createModal.removeEventListener('shown.bs.modal', handler);
+        });
+    });
+}
+    // Remove row button
+    document.addEventListener('click', e => {
+        if (e.target && e.target.classList.contains('remove-row')) {
+            e.target.closest('tr').remove();
+        }
+    });
+});
+
+// Disable Ctrl + P & right-click (your existing code)
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'p') { e.preventDefault(); } });
+document.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+
+<style>
+@media screen { #print-section { display: none !important; } }
+@media print { #print-section { display: block !important; } }
+</style>
+{% endblock %}
