@@ -1243,7 +1243,10 @@ toggleChequeFields();
                         <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
                     </tr>`;
                     index = 1;
-                    document.getElementById('successOkBtn').onclick = () => location.reload();
+                    document.getElementById('successOkBtn').onclick = () => {
+    // Force full navigation to voucher list (this triggers fresh load with new voucher)
+    window.location.href = "{% url 'voucher_list' %}";
+};
                     
                 })
                 
