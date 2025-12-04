@@ -138,7 +138,7 @@ class VoucherListView(LoginRequiredMixin, ListView):
                         designation=level.designation,
                         user__groups__name='Admin Staff'
                     ).values_list('user__username', flat=True)
-                    all_approved = all(u in approved_usernames for u in level_users)
+                    all_approved = any(u in approved_usernames for u in level_users)  # Now "complete" if ANY approved
                     some_approved = any(u in approved_usernames for u in level_users)
                     level_data.append({
                         'designation': level.designation,
@@ -147,9 +147,12 @@ class VoucherListView(LoginRequiredMixin, ListView):
                         'is_next': False
                     })
                 for lvl in level_data:
-                    if not lvl['all_approved']:
+                    if not lvl['all_approved']:  # i.e., no one has approved yet in this level
                         lvl['is_next'] = True
                         break
+                else:
+                    # All levels have at least one approval → approved
+                    pass
                 voucher.approval_levels = level_data
             else:
                 level_data = [
@@ -278,7 +281,7 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
                     designation=level.designation,
                     user__groups__name='Admin Staff'
                 ).values_list('user__username', flat=True)
-                all_approved = all(u in approved_usernames for u in level_users)
+                all_approved = any(u in approved_usernames for u in level_users)  # Now "complete" if ANY approved
                 some_approved = any(u in approved_usernames for u in level_users)
                 level_data.append({
                     'designation': level.designation,
@@ -286,10 +289,13 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
                     'some_approved': some_approved,
                     'is_next': False
                 })
-            for lvl in level_data:
-                if not lvl['all_approved']:
-                    lvl['is_next'] = True
-                    break
+                for lvl in level_data:
+                    if not lvl['all_approved']:  # i.e., no one has approved yet in this level
+                        lvl['is_next'] = True
+                        break
+                else:
+                    # All levels have at least one approval → approved
+                    pass
             context['approval_levels'] = level_data
         else:
             snapshot = voucher.required_approvers_snapshot or []
@@ -680,9 +686,15 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
                     if prev_level:
                         prev_users = UserProfile.objects.filter(
                             designation=prev_level.designation,
-                            user__groups__name='Admin Staff'
+                            user__groups__name='Admin Staff',
+                            user__is_active=True
                         ).values_list('user__username', flat=True)
-                        if not all(u in approved_usernames for u in prev_users):
+
+                        # Now: Only ONE approval needed from previous level
+                        has_any_approval = any(
+                            username in approved_usernames for username in prev_users
+                        )
+                        if not has_any_approval:
                             can_approve = False
                             waiting_for = prev_level.designation.name
 

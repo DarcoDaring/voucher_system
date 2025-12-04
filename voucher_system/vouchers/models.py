@@ -125,22 +125,44 @@ class Voucher(models.Model):
             return self._get_current_required_approvers()
 
     def _update_status_if_all_approved(self):
-        required = self.required_approvers
-        if not required:
+        # If any rejection → REJECTED
+        if self.approvals.filter(status='REJECTED').exists():
+            self.status = 'REJECTED'
+            self.save(update_fields=['status'])
+            return
+
+        # Get active approval levels
+        levels = ApprovalLevel.objects.filter(is_active=True).order_by('order')
+        if not levels.exists():
             self.status = 'APPROVED'
             self.save(update_fields=['status'])
             return
 
-        approved_count = self.approvals.filter(status='APPROVED').count()
-        has_rejection = self.approvals.filter(status='REJECTED').exists()
+        approved_usernames = set(
+            self.approvals.filter(status='APPROVED')
+                .values_list('approver__username', flat=True)
+        )
 
-        if has_rejection:
-            self.status = 'REJECTED'
-        elif approved_count == len(required):
-            self.status = 'APPROVED'
-        else:
-            self.status = 'PENDING'
+        # Check: for each active level, is AT LEAST ONE user from that designation approved?
+        for level in levels:
+            level_users = UserProfile.objects.filter(
+                designation=level.designation,
+                user__groups__name='Admin Staff',
+                user__is_active=True
+            ).values_list('user__username', flat=True)
 
+            # If no users in this designation → skip (shouldn't happen)
+            if not level_users:
+                continue
+
+            # If NONE of the users in this level have approved → not done yet
+            if not any(username in approved_usernames for username in level_users):
+                self.status = 'PENDING'
+                self.save(update_fields=['status'])
+                return
+
+        # All levels have at least one approval → APPROVED
+        self.status = 'APPROVED'
         self.save(update_fields=['status'])
 
     def clean(self):

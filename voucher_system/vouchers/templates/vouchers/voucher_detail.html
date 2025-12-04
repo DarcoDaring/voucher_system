@@ -788,6 +788,7 @@ VOUCHER_EDIT_DATA.particulars.forEach((p, i) => {
                 fd.append('voucher_id', VOUCHER_EDIT_DATA.id);
 
                 const apiUrl = "{% url 'voucher_create_api' %}";
+                
 
 fetch(apiUrl, {
     method: 'POST',
