@@ -1,1 +1,1 @@
-web: gunicorn voucher_system.wsgi --log-file -
+web: gunicorn PaymentVoucher.wsgi --log-file -
