@@ -14,16 +14,13 @@
                 <!-- MAIN BUTTONS -->
                 <div class="mb-5 d-flex justify-content-center gap-3 flex-wrap">
                     <a href="{% url 'voucher_list' %}" class="btn btn-primary btn-lg px-5 shadow-sm">
-                        View Vouchers
+                         Vouchers
+                    </a>
+                    <a href="{% url 'function' %}" class="btn btn-primary btn-lg px-5 shadow-sm">
+                         Functions
                     </a>
 
-                    {% if user.groups.all.0.name == 'Accountants' or user.groups.all.0.name == 'Admin Staff' or user.is_superuser %}
-                        <button class="btn btn-success btn-lg px-5 shadow-sm"
-                                data-bs-toggle="modal"
-                                data-bs-target="#createVoucherModal">
-                            Create Voucher
-                        </button>
-                    {% endif %}
+                    
                 </div>
 
                 <!-- SUPERUSER-ONLY CONTROL PANEL -->

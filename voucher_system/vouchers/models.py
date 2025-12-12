@@ -321,3 +321,102 @@ class ParticularAttachment(models.Model):
 
     def __str__(self):
         return os.path.basename(self.file.name)
+    
+#create fucntion
+
+class FunctionBooking(models.Model):
+    function_number = models.CharField(max_length=20, unique=True, blank=True)
+    function_date = models.DateField()
+    time_from = models.TimeField()
+    time_to = models.TimeField()
+    function_name = models.CharField(max_length=200)
+    booked_by = models.CharField(max_length=200, help_text="Name of person/company who booked")
+    contact_number = models.CharField(max_length=10)
+    address = models.TextField(max_length=500)
+    no_of_pax = models.IntegerField()
+    
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='function_bookings')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.function_number} - {self.function_name}"
+    
+    def save(self, *args, **kwargs):
+        if not self.function_number:
+            last_function = FunctionBooking.objects.order_by('-id').first()
+            if last_function and last_function.function_number.startswith('FN'):
+                num = int(last_function.function_number[2:]) + 1
+                self.function_number = f'FN{num:04d}'
+            else:
+                self.function_number = 'FN0001'
+        super().save(*args, **kwargs)
+
+
+class FunctionBooking(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending Confirmation'),
+        ('CONFIRMED', 'Function Confirmed'),
+        ('CANCELLED', 'Cancelled'),
+    )
+    
+    function_number = models.CharField(max_length=20, unique=True, blank=True)
+    function_date = models.DateField()
+    time_from = models.TimeField()
+    time_to = models.TimeField()
+    function_name = models.CharField(max_length=200)
+    booked_by = models.CharField(max_length=200, help_text="Name of person/company who booked")
+    contact_number = models.CharField(max_length=10)
+    address = models.TextField(max_length=500)
+    no_of_pax = models.IntegerField()
+    
+    # NEW FIELDS FOR CONFIRMATION
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='PENDING',
+        help_text="Function confirmation status"
+    )
+    advance_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+        help_text="Advance payment amount"
+    )
+    confirmed_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='confirmed_functions',
+        help_text="User who confirmed the function"
+    )
+    confirmed_at = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Timestamp when function was confirmed"
+    )
+    
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='function_bookings')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.function_number} - {self.function_name}"
+    
+    def save(self, *args, **kwargs):
+        if not self.function_number:
+            last_function = FunctionBooking.objects.order_by('-id').first()
+            if last_function and last_function.function_number.startswith('FN'):
+                num = int(last_function.function_number[2:]) + 1
+                self.function_number = f'FN{num:04d}'
+            else:
+                self.function_number = 'FN0001'
+        super().save(*args, **kwargs)

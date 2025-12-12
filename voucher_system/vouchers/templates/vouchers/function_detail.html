@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ function.function_name }} - Function Details{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-0">
+                <i class="bi bi-calendar-event me-2"></i>Function Details
+            </h2>
+            <p class="text-muted mb-0">{{ function.function_number }}</p>
+        </div>
+        <div>
+            <a href="{% url 'function' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left me-2"></i>Back to Calendar
+            </a>
+            {% if is_admin_staff or user.is_superuser %}
+            <button class="btn btn-danger" onclick="deleteFunction()">
+                <i class="bi bi-trash me-2"></i>Delete
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Badge -->
+    <div class="mb-4">
+        {% if function.status == 'CONFIRMED' %}
+            <span class="badge bg-success fs-6 px-4 py-2">
+                <i class="bi bi-check-circle me-2"></i>Function Confirmed
+            </span>
+        {% elif function.status == 'CANCELLED' %}
+            <span class="badge bg-danger fs-6 px-4 py-2">
+                <i class="bi bi-x-circle me-2"></i>Cancelled
+            </span>
+        {% else %}
+            <span class="badge bg-warning text-dark fs-6 px-4 py-2">
+                <i class="bi bi-clock-history me-2"></i>Pending Confirmation
+            </span>
+        {% endif %}
+    </div>
+
+    <!-- Function Information Card -->
+    <div class="card border-0 shadow-lg">
+        <div class="card-header bg-primary text-white py-3">
+            <h4 class="mb-0 fw-bold">
+                <i class="bi bi-info-circle me-2"></i>{{ function.function_name }}
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <!-- Left Column -->
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">FUNCTION NUMBER</label>
+                        <p class="fs-5 fw-bold text-primary mb-0">{{ function.function_number }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">FUNCTION NAME</label>
+                        <p class="fs-5 mb-0">{{ function.function_name }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">BOOKED BY</label>
+                        <p class="fs-5 mb-0">{{ function.booked_by }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">CONTACT NUMBER</label>
+                        <p class="fs-5 mb-0">
+                            <i class="bi bi-telephone text-primary me-2"></i>{{ function.contact_number }}
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">NUMBER OF PAX</label>
+                        <p class="fs-5 mb-0">
+                            <i class="bi bi-people text-success me-2"></i>{{ function.no_of_pax }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">FUNCTION DATE</label>
+                        <p class="fs-5 mb-0">
+                            <i class="bi bi-calendar3 text-warning me-2"></i>{{ function.function_date|date:"d M Y" }}
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">TIME</label>
+                        <p class="fs-5 mb-0">
+                            <i class="bi bi-clock text-info me-2"></i>{{ function.time_from|time:"H:i" }} - {{ function.time_to|time:"H:i" }}
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">ADDRESS</label>
+                        <p class="fs-5 mb-0" style="white-space: pre-line;">{{ function.address }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">CREATED BY</label>
+                        <p class="fs-5 mb-0">{{ function.created_by.username }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold mb-1">CREATED AT</label>
+                        <p class="fs-5 mb-0">{{ function.created_at|date:"d M Y, H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confirmation Details (if confirmed) -->
+            {% if function.status == 'CONFIRMED' %}
+            <hr class="my-4">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card bg-success bg-opacity-10 border-success">
+                        <div class="card-body">
+                            <label class="text-muted small fw-semibold mb-1">ADVANCE AMOUNT PAID</label>
+                            <p class="fs-4 fw-bold text-success mb-0">₹{{ function.advance_amount|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info bg-opacity-10 border-info">
+                        <div class="card-body">
+                            <label class="text-muted small fw-semibold mb-1">CONFIRMED BY</label>
+                            <p class="fs-5 fw-bold text-info mb-0">{{ function.confirmed_by.username }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-primary bg-opacity-10 border-primary">
+                        <div class="card-body">
+                            <label class="text-muted small fw-semibold mb-1">CONFIRMED AT</label>
+                            <p class="fs-6 fw-bold text-primary mb-0">{{ function.confirmed_at|date:"d M Y, H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Confirm Function Button (only for pending functions) -->
+    {% if function.status == 'PENDING' and is_admin_staff or user.is_superuser %}
+    <div class="text-center mt-4">
+        <button class="btn btn-success btn-lg px-5 py-3" onclick="showConfirmModal()">
+            <i class="bi bi-check-circle me-2"></i>Confirm Function
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Event Status Badge -->
+    <div class="text-center mt-4">
+        {% now "Y-m-d" as today %}
+        {% if function.function_date|date:"Y-m-d" < today %}
+            <span class="badge bg-secondary fs-6 px-4 py-2">
+                <i class="bi bi-check-circle me-2"></i>Event Completed
+            </span>
+        {% elif function.function_date|date:"Y-m-d" == today %}
+            <span class="badge bg-warning text-dark fs-6 px-4 py-2">
+                <i class="bi bi-clock-history me-2"></i>Event Today
+            </span>
+        {% else %}
+            <span class="badge bg-info fs-6 px-4 py-2">
+                <i class="bi bi-calendar-check me-2"></i>Upcoming Event
+            </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CONFIRMATION MODAL -->
+<div class="modal fade" id="confirmFunctionModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold" id="confirmModalLabel">
+                    <i class="bi bi-check-circle me-2"></i>Confirm Function Booking
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Please review the function details and enter the advance payment amount to confirm.
+                </div>
+
+                <!-- Function Summary -->
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-primary mb-3">Function Details Summary</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Function Number</small>
+                                <strong>{{ function.function_number }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Function Name</small>
+                                <strong>{{ function.function_name }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Date</small>
+                                <strong>{{ function.function_date|date:"d M Y" }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Time</small>
+                                <strong>{{ function.time_from|time:"H:i" }} - {{ function.time_to|time:"H:i" }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Booked By</small>
+                                <strong>{{ function.booked_by }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Contact</small>
+                                <strong>{{ function.contact_number }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Number of Pax</small>
+                                <strong>{{ function.no_of_pax }}</strong>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block">Address</small>
+                                <strong style="white-space: pre-line;">{{ function.address }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advance Payment Form -->
+                <form id="confirmFunctionForm">
+                    <div class="mb-4">
+                        <label for="advance_amount" class="form-label fw-semibold">
+                            Advance Payment Amount <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-success text-white">₹</span>
+                            <input type="number" 
+                                   class="form-control form-control-lg" 
+                                   id="advance_amount" 
+                                   name="advance_amount"
+                                   placeholder="Enter advance amount" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                        </div>
+                        <small class="text-muted">Enter the advance payment amount received from the customer</small>
+                    </div>
+
+                    <div id="confirmError" class="alert alert-danger d-none"></div>
+                    <div id="confirmSuccess" class="alert alert-success d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success px-5" onclick="confirmFunction()">
+                    <i class="bi bi-check-circle me-2"></i>Confirm Booking
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: none;
+}
+
+label.small {
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.btn {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.input-group-text {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+</style>
+
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+}
+
+function showConfirmModal() {
+    const modal = new bootstrap.Modal(document.getElementById('confirmFunctionModal'));
+    modal.show();
+    
+    // Clear previous values
+    document.getElementById('advance_amount').value = '';
+    document.getElementById('confirmError').classList.add('d-none');
+    document.getElementById('confirmSuccess').classList.add('d-none');
+}
+
+function confirmFunction() {
+    const form = document.getElementById('confirmFunctionForm');
+    const errorDiv = document.getElementById('confirmError');
+    const successDiv = document.getElementById('confirmSuccess');
+    const advanceAmount = document.getElementById('advance_amount').value;
+    
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+    
+    // Validate
+    if (!advanceAmount || parseFloat(advanceAmount) < 0) {
+        errorDiv.textContent = 'Please enter a valid advance amount';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Disable button
+    const confirmBtn = event.target;
+    const originalHTML = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Confirming...';
+    
+    // Send confirmation request
+    fetch(`/api/functions/{{ function.id }}/confirm/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            advance_amount: advanceAmount
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            successDiv.textContent = data.message;
+            successDiv.classList.remove('d-none');
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            errorDiv.textContent = data.error || 'Failed to confirm function';
+            errorDiv.classList.remove('d-none');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = originalHTML;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalHTML;
+    });
+}
+
+function deleteFunction() {
+    if (!confirm('Are you sure you want to delete this function? This action cannot be undone.')) {
+        return;
+    }
+
+    fetch(`/api/functions/{{ function.id }}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = "{% url 'function' %}";
+        } else {
+            alert(data.error || 'Failed to delete function');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Network error. Please try again.');
+    });
+}
+</script>
+
+{% endblock %}

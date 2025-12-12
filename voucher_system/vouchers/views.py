@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import (
     Voucher, Particular, VoucherApproval, Designation,
     ApprovalLevel, UserProfile, AccountDetail, CompanyDetail,
-    MainAttachment, ChequeAttachment, ParticularAttachment
+    MainAttachment, ChequeAttachment, ParticularAttachment, FunctionBooking
 )
 from .serializers import VoucherSerializer, VoucherApprovalSerializer, AccountDetailSerializer
 from django.contrib.auth.models import User, Group
@@ -22,7 +22,7 @@ from django.db.models import F
 from decimal import Decimal, InvalidOperation
 import time
 from datetime import datetime
-
+from django.utils import timezone
 
 # === MIXINS ===
 class AccountantRequiredMixin(LoginRequiredMixin):
@@ -1014,3 +1014,209 @@ class CompanyDetailAPI(APIView):
             'message': 'Company details saved successfully.',
             'company': serializer.data
         })
+
+# Add this view to views.py
+
+class FunctionDetailsView(LoginRequiredMixin, TemplateView):
+    template_name = 'vouchers/function.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        context['can_create_function'] = user.is_authenticated
+        context['is_admin_staff'] = user.is_authenticated and (
+            user.groups.filter(name='Admin Staff').exists() or user.is_superuser
+        )
+        
+        return context
+    
+# Add to views.py
+
+class FunctionGenerateNumberAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        last_function = FunctionBooking.objects.order_by('-id').first()
+        if last_function and last_function.function_number.startswith('FN'):
+            num = int(last_function.function_number[2:]) + 1
+            function_number = f'FN{num:04d}'
+        else:
+            function_number = 'FN0001'
+        
+        return Response({'function_number': function_number})
+
+#f=create function
+class FunctionCreateAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            function_number = request.data.get('function_number')
+            function_date = request.data.get('function_date')
+            time_from = request.data.get('time_from')
+            time_to = request.data.get('time_to')
+            function_name = request.data.get('function_name', '').strip()
+            booked_by = request.data.get('booked_by', '').strip()
+            contact_number = request.data.get('contact_number', '').strip()
+            address = request.data.get('address', '').strip()
+            no_of_pax = request.data.get('no_of_pax')
+            
+            if not all([function_date, time_from, time_to, function_name, contact_number, address, no_of_pax]):
+                return Response({'error': 'All fields are required'}, status=400)
+            
+            function = FunctionBooking.objects.create(
+                function_date=function_date,
+                time_from=time_from,
+                time_to=time_to,
+                function_name=function_name,
+                booked_by=booked_by,
+                contact_number=contact_number,
+                address=address,
+                no_of_pax=no_of_pax,
+                created_by=request.user
+            )
+            
+            return Response({
+                'success': True,
+                'function': {
+                    'id': function.id,
+                    'function_number': function.function_number,
+                    'booked_by': function.booked_by
+                }
+            }, status=201)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+        
+
+class FunctionBookedDatesAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get all distinct function dates in YYYY-MM-DD format
+        booked_dates = FunctionBooking.objects.values_list('function_date', flat=True).distinct()
+        dates = [d.strftime('%Y-%m-%d') for d in booked_dates]
+        return Response({'booked_dates': dates})
+    
+
+
+
+class FunctionListByDateAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        date_str = request.GET.get('date')
+        if not date_str:
+            return Response({'error': 'Date parameter required'}, status=400)
+        
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            functions = FunctionBooking.objects.filter(function_date=date).order_by('time_from')
+            
+            today = datetime.now().date()
+            
+            data = [{
+                'id': f.id,
+                'function_number': f.function_number,
+                'function_name': f.function_name,
+                'function_date': f.function_date.strftime('%Y-%m-%d'),  # Added this line
+                'time_from': f.time_from.strftime('%H:%M'),
+                'time_to': f.time_to.strftime('%H:%M'),
+                'booked_by': f.booked_by,
+                'no_of_pax': f.no_of_pax,
+                'status': f.status,
+                'advance_amount': str(f.advance_amount) if f.advance_amount else None,
+                'is_completed': f.function_date < today
+            } for f in functions]
+            
+            return Response({'functions': data})
+        except ValueError:
+            return Response({'error': 'Invalid date format'}, status=400)
+
+
+class FunctionDetailView(LoginRequiredMixin, DetailView):
+    model = FunctionBooking
+    template_name = 'vouchers/function_detail.html'
+    context_object_name = 'function'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context['is_admin_staff'] = user.is_authenticated and (
+            user.groups.filter(name='Admin Staff').exists() or user.is_superuser
+        )
+        return context
+
+
+class FunctionDeleteAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, pk):
+        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
+            return Response({'error': 'Permission denied'}, status=403)
+        
+        try:
+            function = FunctionBooking.objects.get(pk=pk)
+            function_number = function.function_number
+            function.delete()
+            return Response({
+                'success': True,
+                'message': f'Function {function_number} deleted successfully'
+            })
+        except FunctionBooking.DoesNotExist:
+            return Response({'error': 'Function not found'}, status=404)
+        
+class FunctionConfirmAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        """Confirm a function with advance payment"""
+        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
+            return Response({'error': 'Permission denied'}, status=403)
+        
+        try:
+            function = FunctionBooking.objects.get(pk=pk)
+            
+            # Check if already confirmed
+            if function.status == 'CONFIRMED':
+                return Response({'error': 'Function is already confirmed'}, status=400)
+            
+            # Get advance amount
+            advance_amount = request.data.get('advance_amount')
+            if not advance_amount:
+                return Response({'error': 'Advance amount is required'}, status=400)
+            
+            try:
+                advance_amount = Decimal(str(advance_amount))
+                if advance_amount < 0:
+                    return Response({'error': 'Advance amount must be positive'}, status=400)
+            except (InvalidOperation, ValueError):
+                return Response({'error': 'Invalid advance amount'}, status=400)
+            
+            # Update function status
+            function.status = 'CONFIRMED'
+            function.advance_amount = advance_amount
+            function.confirmed_by = request.user
+            function.confirmed_at = timezone.now()
+            function.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Function {function.function_number} confirmed successfully!',
+                'function': {
+                    'id': function.id,
+                    'function_number': function.function_number,
+                    'status': function.status,
+                    'advance_amount': str(function.advance_amount),
+                    'confirmed_by': function.confirmed_by.username,
+                    'confirmed_at': function.confirmed_at.strftime('%d %b %Y, %H:%M')
+                }
+            })
+            
+        except FunctionBooking.DoesNotExist:
+            return Response({'error': 'Function not found'}, status=404)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=500)
