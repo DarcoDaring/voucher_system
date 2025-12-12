@@ -826,6 +826,97 @@ fetch(apiUrl, {
 // Disable Ctrl + P & right-click (your existing code)
 document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'p') { e.preventDefault(); } });
 document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Show Confirmation Modal
+function showConfirmModal() {
+    const modal = new bootstrap.Modal(document.getElementById('confirmFunctionModal'));
+    document.getElementById('advance_amount').value = '';
+    document.getElementById('confirmFormError').classList.add('d-none');
+    document.getElementById('confirmFormSuccess').classList.add('d-none');
+    modal.show();
+}
+
+// Confirm Function Form Submission
+document.getElementById('confirmFunctionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('confirmFormError');
+    const successDiv = document.getElementById('confirmFormSuccess');
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+    
+    const advanceAmount = document.getElementById('advance_amount').value;
+    
+    if (!advanceAmount || parseFloat(advanceAmount) < 0) {
+        errorDiv.textContent = 'Please enter a valid advance amount';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Confirming...';
+    
+    fetch(`/api/functions/{{ function.id }}/confirm/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            advance_amount: advanceAmount
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            successDiv.textContent = data.message;
+            successDiv.classList.remove('d-none');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            errorDiv.textContent = data.error || 'Failed to confirm function';
+            errorDiv.classList.remove('d-none');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
+    });
+});
+
+// Delete Function
+function deleteFunction() {
+    if (!confirm('Are you sure you want to delete this function? This action cannot be undone.')) {
+        return;
+    }
+    
+    fetch(`/api/functions/{{ function.id }}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = '{% url "function" %}';
+        } else {
+            alert(data.error || 'Failed to delete function');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Network error. Please try again.');
+    });
+}
 </script>
 
 <style>

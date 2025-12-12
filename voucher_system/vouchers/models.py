@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 import os
-
+from decimal import Decimal, InvalidOperation
 
 class Designation(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -322,40 +322,7 @@ class ParticularAttachment(models.Model):
     def __str__(self):
         return os.path.basename(self.file.name)
     
-#create fucntion
-
-class FunctionBooking(models.Model):
-    function_number = models.CharField(max_length=20, unique=True, blank=True)
-    function_date = models.DateField()
-    time_from = models.TimeField()
-    time_to = models.TimeField()
-    function_name = models.CharField(max_length=200)
-    booked_by = models.CharField(max_length=200, help_text="Name of person/company who booked")
-    contact_number = models.CharField(max_length=10)
-    address = models.TextField(max_length=500)
-    no_of_pax = models.IntegerField()
-    
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='function_bookings')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"{self.function_number} - {self.function_name}"
-    
-    def save(self, *args, **kwargs):
-        if not self.function_number:
-            last_function = FunctionBooking.objects.order_by('-id').first()
-            if last_function and last_function.function_number.startswith('FN'):
-                num = int(last_function.function_number[2:]) + 1
-                self.function_number = f'FN{num:04d}'
-            else:
-                self.function_number = 'FN0001'
-        super().save(*args, **kwargs)
-
-
+#Create FunctionBooking 
 class FunctionBooking(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending Confirmation'),
@@ -363,23 +330,72 @@ class FunctionBooking(models.Model):
         ('CANCELLED', 'Cancelled'),
     )
     
+    GST_CHOICES = (
+        ('INCLUDING', 'Including GST'),
+        ('EXCLUDING', 'Excluding GST'),
+    )
+    
+    LOCATION_CHOICES = (
+        ('Banquet', 'Banquet'),
+        ('Restaurant', 'Restaurant'),
+        ('Family Room', 'Family Room'),
+        ('Outdoor', 'Outdoor'),
+    )
+    
     function_number = models.CharField(max_length=20, unique=True, blank=True)
     function_date = models.DateField()
     time_from = models.TimeField()
     time_to = models.TimeField()
     function_name = models.CharField(max_length=200)
     booked_by = models.CharField(max_length=200, help_text="Name of person/company who booked")
-    contact_number = models.CharField(max_length=10)
-    address = models.TextField(max_length=500)
-    no_of_pax = models.IntegerField()
     
-    # NEW FIELDS FOR CONFIRMATION
+    # Multiple contact numbers (stored as JSON array)
+    contact_numbers = models.JSONField(default=list, help_text="List of contact numbers")
+    
+    address = models.TextField(max_length=500)
+    
+    # Menu items (stored as JSON array)
+    menu_items = models.JSONField(default=list, help_text="List of menu items")
+    
+    no_of_pax = models.IntegerField()
+    rate_per_pax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # GST option
+    gst_option = models.CharField(max_length=20, choices=GST_CHOICES, default='INCLUDING')
+    
+    # Hall rent (optional)
+    hall_rent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=0)
+    
+    # Extra charges (stored as JSON array of {description, rate})
+    extra_charges = models.JSONField(default=list, help_text="List of extra charges with description and rate")
+    
+    # Calculated total amount
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # NEW FIELDS
+    location = models.CharField(
+        max_length=50, 
+        choices=LOCATION_CHOICES, 
+        null=True, 
+        blank=True,
+        help_text="Location where the function will be held"
+    )
+    
+    due_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+        help_text="Remaining amount to be paid (Total - Advance)"
+    )
+    
     status = models.CharField(
         max_length=20, 
         choices=STATUS_CHOICES, 
         default='PENDING',
         help_text="Function confirmation status"
     )
+    
     advance_amount = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
@@ -387,6 +403,7 @@ class FunctionBooking(models.Model):
         blank=True,
         help_text="Advance payment amount"
     )
+    
     confirmed_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 
@@ -395,6 +412,7 @@ class FunctionBooking(models.Model):
         related_name='confirmed_functions',
         help_text="User who confirmed the function"
     )
+    
     confirmed_at = models.DateTimeField(
         null=True, 
         blank=True,
@@ -419,4 +437,25 @@ class FunctionBooking(models.Model):
                 self.function_number = f'FN{num:04d}'
             else:
                 self.function_number = 'FN0001'
+        
+        # Calculate total amount
+        self.calculate_total_amount()
         super().save(*args, **kwargs)
+    
+    def calculate_total_amount(self):
+        """Calculate total amount based on pax, rate, GST, hall rent and extra charges"""
+        base_amount = Decimal(self.no_of_pax) * Decimal(self.rate_per_pax)
+        
+        # Apply GST
+        if self.gst_option == 'INCLUDING':
+            amount_with_gst = base_amount * Decimal('1.05')  # Add 5% GST
+        else:
+            amount_with_gst = base_amount
+        
+        # Add hall rent
+        hall_rent = Decimal(self.hall_rent or 0)
+        
+        # Add extra charges
+        extra_total = sum(Decimal(charge.get('rate', 0)) for charge in self.extra_charges)
+        
+        self.total_amount = amount_with_gst + hall_rent + extra_total

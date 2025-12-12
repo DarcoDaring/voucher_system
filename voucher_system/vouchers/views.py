@@ -1052,18 +1052,34 @@ class FunctionCreateAPI(APIView):
     
     def post(self, request):
         try:
-            function_number = request.data.get('function_number')
+            import json
+            
             function_date = request.data.get('function_date')
             time_from = request.data.get('time_from')
             time_to = request.data.get('time_to')
             function_name = request.data.get('function_name', '').strip()
             booked_by = request.data.get('booked_by', '').strip()
-            contact_number = request.data.get('contact_number', '').strip()
-            address = request.data.get('address', '').strip()
-            no_of_pax = request.data.get('no_of_pax')
             
-            if not all([function_date, time_from, time_to, function_name, contact_number, address, no_of_pax]):
-                return Response({'error': 'All fields are required'}, status=400)
+            # Parse contact numbers (array)
+            contact_numbers = json.loads(request.data.get('contact_numbers', '[]'))
+            if not contact_numbers:
+                return Response({'error': 'At least one contact number is required'}, status=400)
+            
+            address = request.data.get('address', '').strip()
+            
+            # Parse menu items (array)
+            menu_items = json.loads(request.data.get('menu_items', '[]'))
+            
+            no_of_pax = request.data.get('no_of_pax')
+            rate_per_pax = request.data.get('rate_per_pax', 0)
+            gst_option = request.data.get('gst_option', 'INCLUDING')
+            hall_rent = request.data.get('hall_rent', 0) or 0
+            
+            # Parse extra charges (array of objects)
+            extra_charges = json.loads(request.data.get('extra_charges', '[]'))
+            
+            if not all([function_date, time_from, time_to, function_name, address, no_of_pax, rate_per_pax]):
+                return Response({'error': 'All required fields must be filled'}, status=400)
             
             function = FunctionBooking.objects.create(
                 function_date=function_date,
@@ -1071,9 +1087,14 @@ class FunctionCreateAPI(APIView):
                 time_to=time_to,
                 function_name=function_name,
                 booked_by=booked_by,
-                contact_number=contact_number,
+                contact_numbers=contact_numbers,
                 address=address,
+                menu_items=menu_items,
                 no_of_pax=no_of_pax,
+                rate_per_pax=rate_per_pax,
+                gst_option=gst_option,
+                hall_rent=hall_rent,
+                extra_charges=extra_charges,
                 created_by=request.user
             )
             
@@ -1082,14 +1103,16 @@ class FunctionCreateAPI(APIView):
                 'function': {
                     'id': function.id,
                     'function_number': function.function_number,
-                    'booked_by': function.booked_by
+                    'booked_by': function.booked_by,
+                    'total_amount': str(function.total_amount)
                 }
             }, status=201)
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({'error': str(e)}, status=500)
         
-
 class FunctionBookedDatesAPI(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1120,11 +1143,13 @@ class FunctionListByDateAPI(APIView):
                 'id': f.id,
                 'function_number': f.function_number,
                 'function_name': f.function_name,
-                'function_date': f.function_date.strftime('%Y-%m-%d'),  # Added this line
+                'function_date': f.function_date.strftime('%Y-%m-%d'),
                 'time_from': f.time_from.strftime('%H:%M'),
                 'time_to': f.time_to.strftime('%H:%M'),
                 'booked_by': f.booked_by,
+                'contact_numbers': f.contact_numbers,
                 'no_of_pax': f.no_of_pax,
+                'total_amount': str(f.total_amount),
                 'status': f.status,
                 'advance_amount': str(f.advance_amount) if f.advance_amount else None,
                 'is_completed': f.function_date < today
@@ -1171,7 +1196,7 @@ class FunctionConfirmAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, pk):
-        """Confirm a function with advance payment"""
+        """Confirm a function with advance payment, due amount, and location"""
         if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
             return Response({'error': 'Permission denied'}, status=403)
         
@@ -1182,21 +1207,44 @@ class FunctionConfirmAPI(APIView):
             if function.status == 'CONFIRMED':
                 return Response({'error': 'Function is already confirmed'}, status=400)
             
-            # Get advance amount
+            # Get form data
             advance_amount = request.data.get('advance_amount')
+            due_amount = request.data.get('due_amount')
+            location = request.data.get('location')
+            
+            # Validation
             if not advance_amount:
                 return Response({'error': 'Advance amount is required'}, status=400)
             
+            if not location:
+                return Response({'error': 'Location is required'}, status=400)
+            
+            if location not in ['Banquet', 'Restaurant', 'Family Room', 'Outdoor']:
+                return Response({'error': 'Invalid location selected'}, status=400)
+            
             try:
                 advance_amount = Decimal(str(advance_amount))
+                due_amount = Decimal(str(due_amount))
+                
                 if advance_amount < 0:
                     return Response({'error': 'Advance amount must be positive'}, status=400)
+                
+                if advance_amount > function.total_amount:
+                    return Response({'error': 'Advance amount cannot exceed total amount'}, status=400)
+                
+                # Verify due amount calculation
+                calculated_due = function.total_amount - advance_amount
+                if abs(calculated_due - due_amount) > Decimal('0.01'):  # Allow small rounding errors
+                    return Response({'error': 'Due amount calculation mismatch'}, status=400)
+                
             except (InvalidOperation, ValueError):
-                return Response({'error': 'Invalid advance amount'}, status=400)
+                return Response({'error': 'Invalid amount format'}, status=400)
             
             # Update function status
             function.status = 'CONFIRMED'
             function.advance_amount = advance_amount
+            function.due_amount = due_amount
+            function.location = location
             function.confirmed_by = request.user
             function.confirmed_at = timezone.now()
             function.save()
@@ -1208,9 +1256,65 @@ class FunctionConfirmAPI(APIView):
                     'id': function.id,
                     'function_number': function.function_number,
                     'status': function.status,
+                    'location': function.location,
+                    'total_amount': str(function.total_amount),
                     'advance_amount': str(function.advance_amount),
+                    'due_amount': str(function.due_amount),
                     'confirmed_by': function.confirmed_by.username,
                     'confirmed_at': function.confirmed_at.strftime('%d %b %Y, %H:%M')
+                }
+            })
+            
+        except FunctionBooking.DoesNotExist:
+            return Response({'error': 'Function not found'}, status=404)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=500)
+        
+class FunctionUpdateAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
+            return Response({'error': 'Permission denied'}, status=403)
+        
+        try:
+            import json
+            function = FunctionBooking.objects.get(pk=pk)
+            
+            function.function_date = request.data.get('function_date', function.function_date)
+            function.time_from = request.data.get('time_from', function.time_from)
+            function.time_to = request.data.get('time_to', function.time_to)
+            function.function_name = request.data.get('function_name', function.function_name).strip()
+            function.booked_by = request.data.get('booked_by', function.booked_by).strip()
+            
+            contact_numbers = json.loads(request.data.get('contact_numbers', '[]'))
+            if contact_numbers:
+                function.contact_numbers = contact_numbers
+            
+            function.address = request.data.get('address', function.address).strip()
+            
+            menu_items = json.loads(request.data.get('menu_items', '[]'))
+            function.menu_items = menu_items
+            
+            function.no_of_pax = request.data.get('no_of_pax', function.no_of_pax)
+            function.rate_per_pax = request.data.get('rate_per_pax', function.rate_per_pax)
+            function.gst_option = request.data.get('gst_option', function.gst_option)
+            function.hall_rent = request.data.get('hall_rent', function.hall_rent) or 0
+            
+            extra_charges = json.loads(request.data.get('extra_charges', '[]'))
+            function.extra_charges = extra_charges
+            
+            function.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Function {function.function_number} updated successfully',
+                'function': {
+                    'id': function.id,
+                    'function_number': function.function_number,
+                    'total_amount': str(function.total_amount)
                 }
             })
             

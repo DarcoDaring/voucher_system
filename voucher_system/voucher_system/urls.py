@@ -11,7 +11,7 @@ from vouchers.views import (
     DesignationCreateAPI, ApprovalControlAPI,
     UserCreateAPI, UserUpdateAPI, VoucherDeleteAPI,  
     AccountDetailListAPI, AccountDetailCreateAPI, AccountDetailDeleteAPI,
-    CompanyDetailAPI, FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI, FunctionDetailView,FunctionDeleteAPI 
+    CompanyDetailAPI, FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI, FunctionDetailView,FunctionDeleteAPI,FunctionUpdateAPI 
 )
 
 urlpatterns = [
@@ -52,4 +52,5 @@ urlpatterns = [
     path('api/functions/generate-number/', views.FunctionGenerateNumberAPI.as_view(), name='function_generate_number'),
     path('api/functions/create/', views.FunctionCreateAPI.as_view(), name='function_create_api'),
     path('api/functions/booked-dates/', FunctionBookedDatesAPI.as_view(), name='function-booked-dates'),path('api/functions/<int:pk>/confirm/', views.FunctionConfirmAPI.as_view(), name='function_confirm'),
+    path('api/functions/<int:pk>/update/', FunctionUpdateAPI.as_view(), name='function-update'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
