@@ -1,0 +1,497 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print - Function Prospectus</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        @page {
+            margin: 0.3in;
+            size: A4;
+        }
+
+        body {
+            font-size: 13px;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Force page break after first page */
+        .page-break {
+            page-break-after: always;
+        }
+
+        /* ---------- HEADER ---------- */
+        .header-logo img {
+            max-height: 100px;
+            display: block;
+            margin: 0 auto 6px auto;
+        }
+
+        .company-info-line {
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .company-info-line span {
+            margin-right: 12px;
+            white-space: nowrap;
+        }
+
+        /* ---------- MAIN CONTENT BOX ---------- */
+        .print-box {
+            border: 1px solid #000;
+            padding: 14px 18px;
+        }
+
+        /* ---------- GRID ROWS ---------- */
+        .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+
+
+        /* ---------- PAX ROW ---------- */
+        .pax-row {
+            display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+        }
+
+        
+
+        /* ---------- MENU ---------- */
+        .menu-heading {
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .menu-card {
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            padding: 8px;
+            min-height: 95px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .menu-content {
+            flex-grow: 1;
+            font-size: 13px;
+        }
+
+        /* ---------- PAYMENT ---------- */
+        .payment-box {
+            border: 1px solid #000;
+            margin-top: 8px;
+        }
+
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .payment-grid div {
+            padding: 8px 0;
+            border-right: 1px solid #000;
+        }
+
+        .payment-grid div:last-child {
+            border-right: none;
+        }
+
+        hr {
+            margin: 8px 0;
+            border-top: 1px solid #000;
+        }
+
+        .page-title {
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 10px 0;
+        }
+        .charges-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    font-size: 13px;
+}
+
+.charges-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    font-size: 13px;
+    border: 1px solid #000;          /* outer border */
+}
+
+.charges-table td {
+    padding: 6px 8px;
+    vertical-align: top;
+    border: 1px solid #000;          /* column + row borders */
+}
+
+.charges-table td:first-child {
+    width: 70%;
+}
+
+.charges-table .amount {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.pax-box {
+    float: right;
+    border: 1px solid #000;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #f8f9fa;   /* optional */
+    white-space: nowrap;
+}
+
+    </style>
+</head>
+<body onload="window.print()">
+
+<div class="container-fluid px-2">
+
+    <!-- ====================== PAGE 1: FULL PROSPECTUS ====================== -->
+    {% if company %}
+    <div class="text-center">
+        {% if company.logo %}
+        <div class="header-logo">
+            <img src="{{ company.logo.url }}">
+        </div>
+        {% endif %}
+
+        <div class="company-info-line">
+            {% if company.address %}<span>{{ company.address|striptags|cut:"\n" }}</span>{% endif %}
+            {% if company.email %}<span>{{ company.email }}</span>{% endif %}
+            {% if company.phone %}<span>{{ company.phone }}</span>{% endif %}
+            {% if company.gst_no %}<span>GST: {{ company.gst_no }}</span>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <div class="page-title">
+        <h4>Function Prospectus</h4>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
+        <div><strong>Function No:</strong> {{ function.function_number }}</div>
+        
+        
+    </div>
+    <div class="payment-box">
+       <div class="payment-grid">
+            <div>
+                <strong>Function Date: {{ function.function_date|date:"d M Y" }}</strong>
+            </div>
+                <div>
+                    <strong>
+                        Time: {{ function.time_from|time:"h:i A" }} - {{ function.time_to|time:"h:i A" }}
+                    </strong>
+                </div>
+                    <div>
+                        <strong>Venue: {{ function.location }}</strong>
+                    </div>
+        </div>
+
+    </div>
+    <div class="print-box">
+        
+
+                    <div class="info-row">
+                        <div class="col-left">
+                        <strong>Function:</strong> {{ function.function_name }}
+                        <span class="pax-box">
+                            <strong>No of Pax:</strong> {{ function.no_of_pax }}
+                        </span>
+
+                    </div>
+
+            <div class="col-center"><strong>Booked By:</strong> {{ function.booked_by }}</div>
+            <div class="col-right">
+                <strong>Contact:</strong>
+                {% if function.contact_numbers %}
+                    {{ function.contact_numbers.0 }}
+                    {% if function.contact_numbers|length > 1 %}
+                        <div style="padding-left: 58px; line-height: 1.3;">
+                            {% for num in function.contact_numbers|slice:"1:" %}
+                                <div>{{ num }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <table class="charges-table">
+    <tbody>
+        <!-- Rate Per Pax -->
+        <tr>
+            <td><strong>Rate Per Pax</strong></td>
+            <td class="amount">₹{{ function.rate_per_pax|floatformat:2 }}</td>
+        </tr>
+
+        <!-- Hall Rent -->
+        {% if function.hall_rent %}
+        <tr>
+            <td><strong>Hall Rent</strong></td>
+            <td class="amount">₹{{ function.hall_rent|default_if_none:0|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+
+        <!-- Extra Charges (description + amount only) -->
+        {% if function.extra_charges %}
+            {% for charge in function.extra_charges %}
+            <tr>
+                <td>{{ charge.description }}</td>
+                <td class="amount">₹{{ charge.rate|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        {% endif %}
+    </tbody>
+</table>
+
+
+        <hr>
+
+        {% if function.menu_items %}
+        <div class="menu-heading">Menu</div>
+        <div class="menu-grid">
+            {% if function.menu_items.welcome_drink %}
+            <div class="menu-card">
+                <div class="menu-title">Welcome Drink</div>
+                <div class="menu-content">{{ function.menu_items.welcome_drink }}</div>
+            </div>
+            {% endif %}
+
+            {% if function.menu_items.starters %}
+            <div class="menu-card">
+                <div class="menu-title">Starters</div>
+                <div class="menu-content">{{ function.menu_items.starters }}</div>
+            </div>
+            {% endif %}
+
+            {% if function.menu_items.main_course %}
+            <div class="menu-card">
+                <div class="menu-title">Main Course</div>
+                <div class="menu-content">{{ function.menu_items.main_course }}</div>
+            </div>
+            {% endif %}
+
+            {% if function.menu_items.desserts %}
+            <div class="menu-card">
+                <div class="menu-title">Desserts</div>
+                <div class="menu-content">{{ function.menu_items.desserts }}</div>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        {% endif %}
+
+        
+    </div>
+
+    <!-- Payment Summary -->
+    <div class="payment-box">
+        <div class="payment-grid">
+            <div><strong>Total</strong><br>₹{{ function.total_amount|floatformat:2 }}</div>
+            <div><strong>Advance Paid</strong><br>₹{{ function.advance_amount|default:"0.00"|floatformat:2 }}</div>
+            <div><strong>Due</strong><br>₹{{ function.due_amount|default:function.total_amount|floatformat:2 }}</div>
+        </div>
+    </div>
+
+    <!-- Signatures -->
+    <div style="margin-top: 22px; font-size: 12px;">
+        <div style="display: flex; justify-content: space-between;">
+            <div style="text-align: left;">
+                <div><strong>Guest:</strong> {{ function.booked_by }}</div>
+                <div>(Sign here)</div>
+                
+            </div>
+            <div style="text-align: right;">
+                <div><strong>Created By:</strong> {{ request.user.username }}</div>
+                <div>{% now "d M Y" %}</div>
+                <div>(Sign here)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE BREAK -->
+    <div class="page-break"></div>
+
+    <!-- ====================== PAGE 2: KITCHEN / STAFF COPY ====================== -->
+    {% if company %}
+    <div class="text-center">
+        {% if company.logo %}
+        <div class="header-logo">
+            <img src="{{ company.logo.url }}">
+        </div>
+        {% endif %}
+
+        
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <div class="page-title">
+        <h4>Function Prospectus</h4>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
+        <div><strong>Function No:</strong> {{ function.function_number }}</div>
+        
+    </div>
+
+    
+
+        <div class="payment-box">
+       <div class="payment-grid">
+            <div>
+                <strong>Function Date: {{ function.function_date|date:"d M Y" }}</strong>
+            </div>
+                <div>
+                    <strong>
+                        Time: {{ function.time_from|time:"h:i A" }} - {{ function.time_to|time:"h:i A" }}
+                    </strong>
+                </div>
+                    <div>
+                        <strong>Venue: {{ function.location }}</strong>
+                    </div>
+        </div>
+
+    </div>
+    <div class="print-box">
+        
+
+                    <div class="info-row">
+                        <div class="col-left">
+                        <strong>Function:</strong> {{ function.function_name }}
+                        <span class="pax-box">
+    <strong>No of Pax:</strong> {{ function.no_of_pax }}
+</span>
+
+                    </div>
+
+            <div class="col-center"><strong>Booked By:</strong> {{ function.booked_by }}</div>
+            <div class="col-right">
+                <strong>Contact:</strong>
+                {% if function.contact_numbers %}
+                    {{ function.contact_numbers.0 }}
+                    {% if function.contact_numbers|length > 1 %}
+                        <div style="padding-left: 58px; line-height: 1.3;">
+                            {% for num in function.contact_numbers|slice:"1:" %}
+                                <div>{{ num }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <table class="charges-table">
+
+        <hr>
+
+        {% if function.menu_items %}
+        <div class="menu-heading">Menu</div>
+        <div class="menu-grid">
+            {% if function.menu_items.welcome_drink %}
+            <div class="menu-card">
+                <div class="menu-title">Welcome Drink</div>
+                <div class="menu-content">{{ function.menu_items.welcome_drink }}</div>
+            </div>
+            {% endif %}
+
+            {% if function.menu_items.starters %}
+            <div class="menu-card">
+                <div class="menu-title">Starters</div>
+                <div class="menu-content">{{ function.menu_items.starters }}</div>
+            </div>
+            {% endif %}
+
+            {% if function.menu_items.main_course %}
+            <div class="menu-card">
+                <div class="menu-title">Main Course</div>
+                <div class="menu-content">{{ function.menu_items.main_course }}</div>
+            </div>
+            {% endif %}
+
+            {% if function.menu_items.desserts %}
+            <div class="menu-card">
+                <div class="menu-title">Desserts</div>
+                <div class="menu-content">{{ function.menu_items.desserts }}</div>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        {% endif %}
+
+        {% if function.special_instructions %}
+        <div class="mb-3">
+            <strong>Special Instructions:</strong><br>
+            {{ function.special_instructions|linebreaksbr }}
+        </div>
+        {% endif %}
+
+        {% if function.food_pickup_time or function.food_service_time %}
+<div class="p-3 bg-light rounded mt-3 text-center">  <!-- Added text-center for inline/text centering -->
+    <strong class="text-dark fs-6 d-block">  <!-- d-block ensures the strong element can be centered properly -->
+        <i class="bi bi-clock-history me-2"></i>Food Timings
+    </strong>
+    <div class="mt-2 fs-5 fw-bold text-dark d-flex justify-content-center gap-4">  <!-- justify-content-center centers the flex items horizontally -->
+        {% if function.food_pickup_time %}
+        <div>Pickup Time: {{ function.food_pickup_time|time:"h:i A" }}</div>
+        {% endif %}
+        {% if function.food_service_time %}
+        <div>Service Time: {{ function.food_service_time|time:"h:i A" }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+    </div>
+    <!-- End of print-box -->
+</div>
+
+<script>
+    window.onload = function () {
+        window.print();
+    };
+    window.onafterprint = function () {
+        window.close();
+    };
+</script>
+
+</body>
+</html>

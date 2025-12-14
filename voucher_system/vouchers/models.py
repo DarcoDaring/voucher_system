@@ -323,6 +323,7 @@ class ParticularAttachment(models.Model):
         return os.path.basename(self.file.name)
     
 #Create FunctionBooking 
+
 class FunctionBooking(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending Confirmation'),
@@ -354,8 +355,11 @@ class FunctionBooking(models.Model):
     
     address = models.TextField(max_length=500)
     
-    # Menu items (stored as JSON array)
-    menu_items = models.JSONField(default=list, help_text="List of menu items")
+    # UPDATED: Menu items stored as JSON object with categories
+    menu_items = models.JSONField(
+        default=dict, 
+        help_text="Menu items categorized: {welcome_drink, starters, main_course, desserts}"
+    )
     
     no_of_pax = models.IntegerField()
     rate_per_pax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -366,21 +370,20 @@ class FunctionBooking(models.Model):
     # Hall rent (optional)
     hall_rent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=0)
     
+    # UPDATED: Location moved to creation time (not confirmation)
+    location = models.CharField(
+        max_length=50, 
+        choices=LOCATION_CHOICES, 
+        help_text="Location where the function will be held"
+    )
+    
     # Extra charges (stored as JSON array of {description, rate})
     extra_charges = models.JSONField(default=list, help_text="List of extra charges with description and rate")
     
     # Calculated total amount
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
-    # NEW FIELDS
-    location = models.CharField(
-        max_length=50, 
-        choices=LOCATION_CHOICES, 
-        null=True, 
-        blank=True,
-        help_text="Location where the function will be held"
-    )
-    
+    # Confirmation fields
     due_amount = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
@@ -402,6 +405,23 @@ class FunctionBooking(models.Model):
         null=True, 
         blank=True,
         help_text="Advance payment amount"
+    )
+    food_pickup_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time when food should be picked up"
+    )
+    
+    food_service_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time when food service should begin"
+    )
+    # NEW: Special instructions for confirmed functions
+    special_instructions = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Special instructions or notes for the function"
     )
     
     confirmed_by = models.ForeignKey(
@@ -437,10 +457,21 @@ class FunctionBooking(models.Model):
                 self.function_number = f'FN{num:04d}'
             else:
                 self.function_number = 'FN0001'
-        
-        # Calculate total amount
+
+        # Always recalculate total
         self.calculate_total_amount()
+
+        # ✅ ALWAYS recalculate due amount
+        total = Decimal(self.total_amount or 0)
+        advance = Decimal(self.advance_amount or 0)
+        self.due_amount = total - advance
+
+        # Prevent negative due
+        if self.due_amount < 0:
+            self.due_amount = Decimal('0.00')
+
         super().save(*args, **kwargs)
+
     
     def calculate_total_amount(self):
         """Calculate total amount based on pax, rate, GST, hall rent and extra charges"""
@@ -450,7 +481,7 @@ class FunctionBooking(models.Model):
         if self.gst_option == 'INCLUDING':
             amount_with_gst = base_amount * Decimal('1.05')  # Add 5% GST
         else:
-            amount_with_gst = base_amount
+            amount_with_gst = (base_amount*100)/105
         
         # Add hall rent
         hall_rent = Decimal(self.hall_rent or 0)

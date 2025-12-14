@@ -11,7 +11,9 @@ from vouchers.views import (
     DesignationCreateAPI, ApprovalControlAPI,
     UserCreateAPI, UserUpdateAPI, VoucherDeleteAPI,  
     AccountDetailListAPI, AccountDetailCreateAPI, AccountDetailDeleteAPI,
-    CompanyDetailAPI, FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI, FunctionDetailView,FunctionDeleteAPI,FunctionUpdateAPI 
+    CompanyDetailAPI, FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI,
+    FunctionDetailView,FunctionDeleteAPI,FunctionUpdateAPI,FunctionUpcomingEventsAPI,FunctionPendingByMonthAPI,
+    FunctionUpcomingCountAPI,FunctionCompletedCountAPI,FunctionCompletedAPI,FunctionListByMonthAPI,FunctionUpdateDetailsAPI
 )
 
 urlpatterns = [
@@ -53,4 +55,17 @@ urlpatterns = [
     path('api/functions/create/', views.FunctionCreateAPI.as_view(), name='function_create_api'),
     path('api/functions/booked-dates/', FunctionBookedDatesAPI.as_view(), name='function-booked-dates'),path('api/functions/<int:pk>/confirm/', views.FunctionConfirmAPI.as_view(), name='function_confirm'),
     path('api/functions/<int:pk>/update/', FunctionUpdateAPI.as_view(), name='function-update'),
+    path('function/<int:pk>/', views.FunctionDetailView.as_view(), name='function_detail'),
+    path('function/<int:pk>/print/', views.FunctionPrintView.as_view(), name='function_print'),
+    path('api/functions/upcoming/', FunctionUpcomingEventsAPI.as_view(), name='function_upcoming_events'),
+    path('api/functions/pending-by-month/', FunctionPendingByMonthAPI.as_view(), name='function_pending_by_month'),
+    path('api/functions/upcoming-count/', FunctionUpcomingCountAPI.as_view()),
+    path('api/functions/completed-count/', FunctionCompletedCountAPI.as_view()),
+    path('api/functions/completed/', FunctionCompletedAPI.as_view()),
+    path('api/functions/by-month/', FunctionListByMonthAPI.as_view(), name='function_list_by_month'),
+    path('api/functions/by-date/', FunctionListByDateAPI.as_view(), name='function_list_by_date'),
+    path('api/functions/booked-dates/', FunctionBookedDatesAPI.as_view(), name='function_booked_dates'),
+    path('api/functions/<int:pk>/update-details/', FunctionUpdateDetailsAPI.as_view(), name='function_update_details'),
+    
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

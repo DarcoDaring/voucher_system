@@ -1067,8 +1067,16 @@ class FunctionCreateAPI(APIView):
             
             address = request.data.get('address', '').strip()
             
-            # Parse menu items (array)
-            menu_items = json.loads(request.data.get('menu_items', '[]'))
+            # Parse menu items (now an object with categories)
+            menu_items = json.loads(request.data.get('menu_items', '{}'))
+            
+            # NEW: Location is now required during creation
+            location = request.data.get('location', '').strip()
+            if not location:
+                return Response({'error': 'Location is required'}, status=400)
+            
+            if location not in ['Banquet', 'Restaurant', 'Family Room', 'Outdoor']:
+                return Response({'error': 'Invalid location selected'}, status=400)
             
             no_of_pax = request.data.get('no_of_pax')
             rate_per_pax = request.data.get('rate_per_pax', 0)
@@ -1090,6 +1098,7 @@ class FunctionCreateAPI(APIView):
                 contact_numbers=contact_numbers,
                 address=address,
                 menu_items=menu_items,
+                location=location,  # NEW: Save location during creation
                 no_of_pax=no_of_pax,
                 rate_per_pax=rate_per_pax,
                 gst_option=gst_option,
@@ -1191,12 +1200,12 @@ class FunctionDeleteAPI(APIView):
             })
         except FunctionBooking.DoesNotExist:
             return Response({'error': 'Function not found'}, status=404)
-        
+ 
 class FunctionConfirmAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, pk):
-        """Confirm a function with advance payment, due amount, and location"""
+        """Confirm a function with advance payment, due amount, food times, and special instructions"""
         if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
             return Response({'error': 'Permission denied'}, status=403)
         
@@ -1210,17 +1219,13 @@ class FunctionConfirmAPI(APIView):
             # Get form data
             advance_amount = request.data.get('advance_amount')
             due_amount = request.data.get('due_amount')
-            location = request.data.get('location')
+            food_pickup_time = request.data.get('food_pickup_time')
+            food_service_time = request.data.get('food_service_time')
+            special_instructions = request.data.get('special_instructions', '').strip()
             
             # Validation
             if not advance_amount:
                 return Response({'error': 'Advance amount is required'}, status=400)
-            
-            if not location:
-                return Response({'error': 'Location is required'}, status=400)
-            
-            if location not in ['Banquet', 'Restaurant', 'Family Room', 'Outdoor']:
-                return Response({'error': 'Invalid location selected'}, status=400)
             
             try:
                 advance_amount = Decimal(str(advance_amount))
@@ -1234,7 +1239,7 @@ class FunctionConfirmAPI(APIView):
                 
                 # Verify due amount calculation
                 calculated_due = function.total_amount - advance_amount
-                if abs(calculated_due - due_amount) > Decimal('0.01'):  # Allow small rounding errors
+                if abs(calculated_due - due_amount) > Decimal('0.01'):
                     return Response({'error': 'Due amount calculation mismatch'}, status=400)
                 
             except (InvalidOperation, ValueError):
@@ -1244,7 +1249,9 @@ class FunctionConfirmAPI(APIView):
             function.status = 'CONFIRMED'
             function.advance_amount = advance_amount
             function.due_amount = due_amount
-            function.location = location
+            function.food_pickup_time = food_pickup_time if food_pickup_time else None
+            function.food_service_time = food_service_time if food_service_time else None
+            function.special_instructions = special_instructions
             function.confirmed_by = request.user
             function.confirmed_at = timezone.now()
             function.save()
@@ -1260,6 +1267,9 @@ class FunctionConfirmAPI(APIView):
                     'total_amount': str(function.total_amount),
                     'advance_amount': str(function.advance_amount),
                     'due_amount': str(function.due_amount),
+                    'food_pickup_time': function.food_pickup_time.strftime('%H:%M') if function.food_pickup_time else None,
+                    'food_service_time': function.food_service_time.strftime('%H:%M') if function.food_service_time else None,
+                    'special_instructions': function.special_instructions,
                     'confirmed_by': function.confirmed_by.username,
                     'confirmed_at': function.confirmed_at.strftime('%d %b %Y, %H:%M')
                 }
@@ -1271,7 +1281,7 @@ class FunctionConfirmAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': str(e)}, status=500)
-        
+       
 class FunctionUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -1295,8 +1305,16 @@ class FunctionUpdateAPI(APIView):
             
             function.address = request.data.get('address', function.address).strip()
             
-            menu_items = json.loads(request.data.get('menu_items', '[]'))
+            # Parse menu items (now an object)
+            menu_items = json.loads(request.data.get('menu_items', '{}'))
             function.menu_items = menu_items
+            
+            # NEW: Update location
+            location = request.data.get('location')
+            if location:
+                if location not in ['Banquet', 'Restaurant', 'Family Room', 'Outdoor']:
+                    return Response({'error': 'Invalid location selected'}, status=400)
+                function.location = location
             
             function.no_of_pax = request.data.get('no_of_pax', function.no_of_pax)
             function.rate_per_pax = request.data.get('rate_per_pax', function.rate_per_pax)
@@ -1323,4 +1341,238 @@ class FunctionUpdateAPI(APIView):
         except Exception as e:
             import traceback
             traceback.print_exc()
+            return Response({'error': str(e)}, status=500)\
+            
+
+class FunctionPrintView(LoginRequiredMixin, DetailView):
+    model = FunctionBooking
+    template_name = 'vouchers/function_print.html'
+    context_object_name = 'function'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context['company'] = CompanyDetail.load()
+        except:
+            context['company'] = None
+        return context
+    
+
+
+class FunctionUpcomingEventsAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get all confirmed upcoming functions"""
+        today = datetime.now().date()
+        
+        # Get confirmed functions that are today or in the future
+        functions = FunctionBooking.objects.filter(
+            status='CONFIRMED',
+            function_date__gte=today
+        ).order_by('function_date', 'time_from')
+        
+        data = [{
+            'id': f.id,
+            'function_number': f.function_number,
+            'function_name': f.function_name,
+            'function_date': f.function_date.strftime('%Y-%m-%d'),
+            'formatted_date': f.function_date.strftime('%d %b %Y'),
+            'time_from': f.time_from.strftime('%H:%M'),
+            'time_to': f.time_to.strftime('%H:%M'),
+            'booked_by': f.booked_by,
+            'location': f.location,
+            'no_of_pax': f.no_of_pax,
+            'total_amount': str(f.total_amount),
+            'advance_amount': str(f.advance_amount) if f.advance_amount else None,
+            'due_amount': str(f.due_amount) if f.due_amount else None,
+        } for f in functions]
+        
+        return Response({
+            'success': True,
+            'functions': data,
+            'count': len(data)
+        })
+
+class FunctionPendingByMonthAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        
+        # First day and last day of the month
+        start_date = datetime(year, month, 1).date()
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1).date()
+        else:
+            end_date = datetime(year, month + 1, 1).date()
+        
+        pending_functions = FunctionBooking.objects.filter(
+            function_date__gte=start_date,
+            function_date__lt=end_date,
+            status='PENDING'  # Assuming default status is 'PENDING' if not CONFIRMED
+        ).order_by('function_date', 'time_from')
+        
+        data = [{
+            'id': f.id,
+            'function_number': f.function_number,
+            'function_name': f.function_name,
+            'function_date': f.function_date.strftime('%Y-%m-%d'),
+            'formatted_date': f.function_date.strftime('%d %b %Y'),
+            'time_from': f.time_from.strftime('%H:%M'),
+            'time_to': f.time_to.strftime('%H:%M'),
+            'booked_by': f.booked_by,
+            'location': f.location,
+            'no_of_pax': f.no_of_pax,
+            'total_amount': str(f.total_amount),
+        } for f in pending_functions]
+        
+        return Response({
+            'success': True,
+            'functions': data,
+            'count': len(data)
+        })
+    
+
+class FunctionUpcomingCountAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Return the total count of confirmed upcoming functions (today and future)"""
+        today = datetime.now().date()
+
+        count = FunctionBooking.objects.filter(
+            status='CONFIRMED',
+            function_date__gte=today
+        ).count()
+
+        return Response({'count': count})
+    
+class FunctionCompletedCountAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = datetime.now().date()
+        count = FunctionBooking.objects.filter(
+            status='CONFIRMED',
+            function_date__lt=today  # past dates
+        ).count()
+        return Response({'count': count})
+
+
+class FunctionCompletedAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        today = datetime.now().date()
+        functions = FunctionBooking.objects.filter(
+            status='CONFIRMED',
+            function_date__lt=today
+        ).order_by('-function_date', 'time_from')  # newest first
+        
+        data = [{
+            'id': f.id,
+            'function_number': f.function_number,
+            'function_name': f.function_name,
+            'function_date': f.function_date.strftime('%Y-%m-%d'),
+            'formatted_date': f.function_date.strftime('%d %b %Y'),
+            'time_from': f.time_from.strftime('%H:%M'),
+            'time_to': f.time_to.strftime('%H:%M'),
+            'booked_by': f.booked_by,
+            'location': f.location,
+            'no_of_pax': f.no_of_pax,
+            'total_amount': str(f.total_amount),
+        } for f in functions]
+        
+        return Response({
+            'success': True,
+            'functions': data
+        })
+    
+
+class FunctionListByMonthAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get all functions for a specific month range"""
+        start_date_str = request.GET.get('start')
+        end_date_str = request.GET.get('end')
+        
+        if not start_date_str or not end_date_str:
+            return Response({'error': 'start and end date parameters required'}, status=400)
+        
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            
+            functions = FunctionBooking.objects.filter(
+                function_date__gte=start_date,
+                function_date__lte=end_date
+            ).order_by('function_date', 'time_from')
+            
+            data = [{
+                'id': f.id,
+                'function_number': f.function_number,
+                'function_name': f.function_name,
+                'function_date': f.function_date.strftime('%Y-%m-%d'),
+                'status': f.status,
+            } for f in functions]
+            
+            return Response({
+                'success': True,
+                'functions': data
+            })
+            
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+        except Exception as e:
             return Response({'error': str(e)}, status=500)
+        
+class FunctionUpdateDetailsAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
+            return Response({'error': 'Permission denied'}, status=403)
+
+        try:
+            function = FunctionBooking.objects.get(pk=pk)
+
+            food_pickup_time_str = request.data.get('food_pickup_time')
+            food_service_time_str = request.data.get('food_service_time')
+            special_instructions = request.data.get('special_instructions', '').strip()
+
+            def parse_time(time_str):
+                """Safely convert time string to time object or None"""
+                if not time_str or time_str in ('', None, 'null'):
+                    return None
+                try:
+                    return datetime.strptime(time_str, '%H:%M').time()
+                except ValueError:
+                    # Invalid format - treat as empty
+                    return None
+
+            function.food_pickup_time = parse_time(food_pickup_time_str)
+            function.food_service_time = parse_time(food_service_time_str)
+            function.special_instructions = special_instructions or None
+
+            function.save()
+
+            return Response({
+                'success': True,
+                'message': 'Function details updated successfully!',
+                'function': {
+                    'id': function.id,
+                    'food_pickup_time': function.food_pickup_time.strftime('%H:%M') if function.food_pickup_time else None,
+                    'food_service_time': function.food_service_time.strftime('%H:%M') if function.food_service_time else None,
+                    'special_instructions': function.special_instructions
+                }
+            })
+
+        except FunctionBooking.DoesNotExist:
+            return Response({'error': 'Function not found'}, status=404)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': 'An error occurred while saving details'}, status=500)

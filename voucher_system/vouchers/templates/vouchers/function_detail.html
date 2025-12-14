@@ -24,8 +24,14 @@
                 <i class="bi bi-trash me-2"></i>Delete
             </button>
             {% endif %}
+            {% if function.status == 'CONFIRMED' %}
+            <a href="{% url 'function_print' function.id %}" target="_blank" class="btn btn-info me-2">
+                <i class="bi bi-printer me-2"></i>Print
+            </a>
+        {% endif %}
         </div>
     </div>
+    
 
     <!-- Status Badge -->
     <div class="mb-4">
@@ -44,208 +50,311 @@
         {% endif %}
     </div>
 
-    <!-- Function Information Card -->
-    <div class="card border-0 shadow-lg">
-        <div class="card-header bg-primary text-white py-3">
-            <h4 class="mb-0 fw-bold">
-                <i class="bi bi-info-circle me-2"></i>{{ function.function_name }}
-            </h4>
+    <!-- UPDATED Function Detail Display Section -->
+<div class="card border-0 shadow-lg">
+    <div class="card-header bg-primary text-white py-3">
+        <h4 class="mb-0 fw-bold">
+            <i class="bi bi-info-circle me-2"></i>{{ function.function_name }}
+        </h4>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <!-- Location shown during creation -->
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">LOCATION</label>
+                    <p class="fs-5 fw-bold text-primary mb-0">
+                        <i class="bi bi-geo-alt me-2"></i>{{ function.location }}
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">FUNCTION NAME</label>
+                    <p class="fs-5 mb-0">{{ function.function_name }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">BOOKED BY</label>
+                    <p class="fs-5 mb-0">{{ function.booked_by }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">CONTACT NUMBERS</label>
+                    {% for number in function.contact_numbers %}
+                    <p class="fs-5 mb-1">
+                        <i class="bi bi-telephone text-primary me-2"></i>{{ number }}
+                    </p>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">ADDRESS</label>
+                    <p class="fs-5 mb-0" style="white-space: pre-line;">{{ function.address }}</p>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">FUNCTION DATE</label>
+                    <p class="fs-5 mb-0">
+                        <i class="bi bi-calendar3 text-warning me-2"></i>{{ function.function_date|date:"d M Y" }}
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">TIME</label>
+                    <p class="fs-5 mb-0">
+                        <i class="bi bi-clock text-info me-2"></i>{{ function.time_from|time:"h:i A" }} - {{ function.time_to|time:"h:i A" }}
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">CREATED BY</label>
+                    <p class="fs-5 mb-0">{{ function.created_by.username }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-muted small fw-semibold mb-1">CREATED AT</label>
+                    <p class="fs-5 mb-0">{{ function.created_at|date:"d M Y, h:i A" }}</p>
+                </div>
+            </div>
         </div>
-        <div class="card-body p-4">
-            <div class="row g-4">
-                <!-- Left Column -->
+
+        <hr class="my-4">
+
+        <!-- UPDATED: Menu Items Display -->
+        {% if function.menu_items %}
+        <div class="mb-4">
+            <label class="text-muted small fw-semibold mb-2">
+                <i class="bi bi-cup-hot me-2"></i>MENU ITEMS
+            </label>
+            <div class="row g-3">
+                {% if function.menu_items.welcome_drink %}
                 <div class="col-md-6">
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">Location</label>
-                        <p class="fs-5 fw-bold text-primary mb-0">{{ function.location }}</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">FUNCTION NAME</label>
-                        <p class="fs-5 mb-0">{{ function.function_name }}</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">BOOKED BY</label>
-                        <p class="fs-5 mb-0">{{ function.booked_by }}</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">CONTACT NUMBERS</label>
-                        {% for number in function.contact_numbers %}
-                        <p class="fs-5 mb-1">
-                            <i class="bi bi-telephone text-primary me-2"></i>{{ number }}
-                        </p>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">ADDRESS</label>
-                        <p class="fs-5 mb-0" style="white-space: pre-line;">{{ function.address }}</p>
-                    </div>
-                </div>
-
-                <!-- Right Column -->
-                <div class="col-md-6">
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">FUNCTION DATE</label>
-                        <p class="fs-5 mb-0">
-                            <i class="bi bi-calendar3 text-warning me-2"></i>{{ function.function_date|date:"d M Y" }}
-                        </p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">TIME</label>
-                        <p class="fs-5 mb-0">
-                            <i class="bi bi-clock text-info me-2"></i>{{ function.time_from|time:"H:i" }} - {{ function.time_to|time:"H:i" }}
-                        </p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">CREATED BY</label>
-                        <p class="fs-5 mb-0">{{ function.created_by.username }}</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="text-muted small fw-semibold mb-1">CREATED AT</label>
-                        <p class="fs-5 mb-0">{{ function.created_at|date:"d M Y, H:i" }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <hr class="my-4">
-
-            <!-- Menu Items -->
-            {% if function.menu_items %}
-            <div class="mb-4">
-                <label class="text-muted small fw-semibold mb-2">MENU ITEMS</label>
-                <ul class="list-group">
-                    {% for item in function.menu_items %}
-                    <li class="list-group-item">{{ item }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <hr class="my-4">
-            {% endif %}
-
-            <!-- Pricing Details -->
-            <div class="row g-4">
-                <div class="col-md-4">
                     <div class="card bg-light">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">NUMBER OF PAX</label>
-                            <p class="fs-4 fw-bold text-success mb-0">
-                                <i class="bi bi-people me-2"></i>{{ function.no_of_pax }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">RATE PER PAX</label>
-                            <p class="fs-4 fw-bold text-info mb-0">₹{{ function.rate_per_pax }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">GST</label>
-                            <p class="fs-5 fw-bold mb-0">
-                                {% if function.gst_option == 'INCLUDING' %}
-                                <span class="badge bg-success">Including GST (5%)</span>
-                                {% else %}
-                                <span class="badge bg-warning text-dark">Excluding GST</span>
-                                {% endif %}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Hall Rent & Extra Charges -->
-            {% if function.hall_rent or function.extra_charges %}
-            <hr class="my-4">
-            <div class="row g-4">
-                {% if function.hall_rent %}
-                <div class="col-md-6">
-                    <div class="card bg-warning bg-opacity-10 border-warning">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">HALL RENT</label>
-                            <p class="fs-4 fw-bold text-warning mb-0">₹{{ function.hall_rent }}</p>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                
-                {% if function.extra_charges %}
-                <div class="col-md-6">
-                    <label class="text-muted small fw-semibold mb-2">EXTRA CHARGES</label>
-                    {% for charge in function.extra_charges %}
-                    <div class="card mb-2">
                         <div class="card-body py-2">
-                            <div class="d-flex justify-content-between">
-                                <span>{{ charge.description }}</span>
-                                <strong>₹{{ charge.rate }}</strong>
-                            </div>
+                            <small class="text-muted fw-semibold d-block">
+                                <i class="bi bi-cup-straw me-1"></i>Welcome Drink
+                            </small>
+                            <p class="mb-0">{{ function.menu_items.welcome_drink }}</p>
                         </div>
                     </div>
-                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if function.menu_items.starters %}
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <small class="text-muted fw-semibold d-block">
+                                <i class="bi bi-egg-fried me-1"></i>Starters
+                            </small>
+                            <p class="mb-0">{{ function.menu_items.starters }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if function.menu_items.main_course %}
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <small class="text-muted fw-semibold d-block">
+                                <i class="bi bi-bowl-hot-fill me-1"></i>Main Course
+                            </small>
+                            <p class="mb-0">{{ function.menu_items.main_course }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if function.menu_items.desserts %}
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <small class="text-muted fw-semibold d-block">
+                                <i class="bi bi-cake2 me-1"></i>Desserts
+                            </small>
+                            <p class="mb-0">{{ function.menu_items.desserts }}</p>
+                        </div>
+                    </div>
                 </div>
                 {% endif %}
             </div>
-            {% endif %}
+        </div>
+        <hr class="my-4">
+        {% endif %}
 
-            <!-- Total Amount -->
-            <hr class="my-4">
-            <div class="alert alert-success text-center">
-                <h3 class="mb-0">
-                    <strong>TOTAL AMOUNT: ₹{{ function.total_amount|floatformat:2 }}</strong>
-                </h3>
-            </div>
+        <!-- Pricing Details... (same as before) -->
 
-            <!-- Confirmation Details (if confirmed) -->
-            {% if function.status == 'CONFIRMED' %}
-            <hr class="my-4">
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card bg-success bg-opacity-10 border-success">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">ADVANCE AMOUNT PAID</label>
-                            <p class="fs-4 fw-bold text-success mb-0">₹{{ function.advance_amount|floatformat:2 }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-info bg-opacity-10 border-info">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">CONFIRMED BY</label>
-                            <p class="fs-5 fw-bold text-info mb-0">{{ function.confirmed_by.username }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-success bg-opacity-10 border-success">
-                        <div class="card-body">
-                            <label class="text-muted small fw-semibold mb-1">DUE AMOUNT</label>
-                            <p class="fs-4 fw-bold text-success mb-0">₹{{ function.due_amount }}</p>
-                        </div>
+        <!-- UPDATED: Confirmation Details -->
+        
+        <hr class="my-4">
+        <div class="row g-4">
+            <!-- Advance Amount -->
+            <div class="col-md-4">
+                <div class="card bg-success bg-opacity-10 border-success">
+                    <div class="card-body">
+                        <label class="text-muted small fw-semibold mb-1">NO OF PAX</label>
+                        <p class="fs-4 fw-bold text-success mb-0">{{ function.no_of_pax}}</p>
                     </div>
                 </div>
             </div>
-            {% endif %}
+            
+            <!-- Due Amount -->
+            <div class="col-md-4">
+                <div class="card bg-warning bg-opacity-10 border-warning">
+                    <div class="card-body">
+                        <label class="text-muted small fw-semibold mb-1">RATE PER PAX</label>
+                        <p class="fs-4 fw-bold text-warning mb-0">₹{{ function.rate_per_pax|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Confirmed By -->
+            <div class="col-md-4">
+                <div class="card bg-info bg-opacity-10 border-info">
+                    <div class="card-body">
+                        <label class="text-muted small fw-semibold mb-1">HALL RENT</label>
+                        <p class="fs-4 fw-bold text-info mb-0">{{ function.hall_rent }}</p>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% if function.extra_charges %}
+<div class="row g-4 mt-1">
+
+    <!-- Extra Charges -->
+    <div class="col-md-12">
+        <div class="card bg-danger bg-opacity-10 border-danger">
+            <div class="card-body">
+                <label class="text-muted small fw-semibold mb-2">EXTRA CHARGES</label>
+
+                {% for charge in function.extra_charges %}
+                <div class="d-flex justify-content-between">
+                    <span>{{ charge.description }}</span>
+                    <strong>₹{{ charge.rate|floatformat:2 }}</strong>
+                </div>
+                {% endfor %}
+
+            </div>
         </div>
     </div>
 
-    <!-- Confirm Function Button (only for pending functions) -->
-    {% if function.status == 'PENDING' and is_admin_staff or user.is_superuser %}
-    <div class="text-center mt-4">
-        <button class="btn btn-success btn-lg px-5 py-3" onclick="showConfirmModal()">
-            <i class="bi bi-check-circle me-2"></i>Confirm Function
+</div>
+{% endif %}
+
+        <!-- NEW: Special Instructions Display -->
+        {% if function.special_instructions %}
+        <div class="alert alert-light border-primary mt-4">
+            <h6 class="text-primary mb-2">
+                <i class="bi bi-pencil-square me-2"></i>Special Instructions
+            </h6>
+            <p class="mb-0" style="white-space: pre-line;">{{ function.special_instructions }}</p>
+        </div>
+        {% endif %}
+{% if function.status == 'CONFIRMED' %}
+    <!-- Food Timing Information -->
+    {% if function.food_pickup_time or function.food_service_time %}
+    <div class="row g-3 mt-3">
+        {% if function.food_pickup_time %}
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h6 class="text-primary mb-2">
+                        <i class="bi bi-basket me-2"></i>Food Pickup Time
+                    </h6>
+                    <p class="fs-4 fw-bold text-dark mb-0">
+                        {{ function.food_pickup_time|time:"h:i A" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if function.food_service_time %}
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h6 class="text-success mb-2">
+                        <i class="bi bi-clock me-2"></i>Food Service Time
+                    </h6>
+                    <p class="fs-4 fw-bold text-dark mb-0">
+                        {{ function.food_service_time|time:"h:i A" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Special Instructions Display -->
+    {% if function.special_instructions %}
+    <div class="alert alert-light border-primary mt-4">
+        <h6 class="text-primary mb-2">
+            <i class="bi bi-pencil-square me-2"></i>Special Instructions
+        </h6>
+        <p class="mb-0" style="white-space: pre-line;">{{ function.special_instructions }}</p>
+    </div>
+    {% endif %}
+
+    <!-- EDIT BUTTON for Special Instructions and Food Times (Admin only) -->
+    {% if is_admin_staff or user.is_superuser %}
+    <div class="text-center mt-3">
+        <button class="btn btn-outline-primary" onclick="showEditDetailsModal()">
+            <i class="bi bi-pencil me-2"></i>Edit Details
         </button>
     </div>
     {% endif %}
+{% endif %}
+        <!-- Payment Summary Card -->
+        <div class="card border-info mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Payment Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center border-end">
+                        <p class="text-muted mb-1">Total Amount</p>
+                        <h3 class="text-primary mb-0">₹{{ function.total_amount|floatformat:2 }}</h3>
+                    </div>
+                    <div class="col-md-4 text-center border-end">
+    <p class="text-muted mb-1">Amount Paid</p>
+    <h3 class="text-success mb-0">
+        ₹{% if function.advance_amount %}{{ function.advance_amount|floatformat:2 }}{% else %}0.00{% endif %}
+    </h3>
+</div>
+
+                    <div class="col-md-4 text-center">
+    <p class="text-muted mb-1">Amount Due</p>
+    <h3 class="text-warning mb-0">
+        ₹{{ function.due_amount|default_if_none:function.total_amount|floatformat:2 }}
+    </h3>
+</div>
+
+                
+                
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+    <!-- Confirm Function Button (only for pending functions) -->
+    {% if function.status == 'PENDING' %}
+    {% if is_admin_staff or user.is_superuser %}
+        <div class="text-center mt-4">
+            <button class="btn btn-success btn-lg px-5 py-3" onclick="showConfirmModal()">
+                <i class="bi bi-check-circle me-2"></i>Confirm Function
+            </button>
+        </div>
+    {% endif %}
+{% endif %}
+
 
     <!-- Event Status Badge -->
     <div class="text-center mt-4">
@@ -264,6 +373,7 @@
             </span>
         {% endif %}
     </div>
+
 </div>
 
 <!-- EDIT FUNCTION MODAL (Similar to Create Modal) -->
@@ -326,10 +436,50 @@
                         </div>
 
                         <!-- Menu Items -->
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Menu Items</label>
-                            <textarea class="form-control" id="edit_menu_items" rows="4"></textarea>
-                        </div>
+                        <!-- UPDATED: Menu Items with Categories -->
+                            <div class="col-12">
+                                <label class="form-label fw-semibold mb-3">
+                                    <i class="bi bi-cup-hot me-2"></i>Menu Items
+                                </label>
+                                
+                                <div class="row g-3">
+                                    <!-- Welcome Drink -->
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-semibold">
+                                            <i class="bi bi-cup-straw me-1"></i>Welcome Drink
+                                        </label>
+                                        <input type="text" class="form-control" id="edit_menu_welcome_drink" 
+                                            placeholder="e.g., Fresh Lime Juice, Tender Coconut">
+                                    </div>
+
+                                    <!-- Starters -->
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-semibold">
+                                            <i class="bi bi-egg-fried me-1"></i>Starters
+                                        </label>
+                                        <input type="text" class="form-control" id="edit_menu_starters" 
+                                            placeholder="e.g., Chicken 65, Paneer Tikka">
+                                    </div>
+
+                                    <!-- Main Course -->
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-semibold">
+                                            <i class="bi bi-bowl-hot-fill me-1"></i>Main Course
+                                        </label>
+                                        <input type="text" class="form-control" id="edit_menu_main_course" 
+                                            placeholder="e.g., Biryani, Dal Makhani, Roti">
+                                    </div>
+
+                                    <!-- Desserts -->
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-semibold">
+                                            <i class="bi bi-cake2 me-1"></i>Desserts
+                                        </label>
+                                        <input type="text" class="form-control" id="edit_menu_desserts" 
+                                            placeholder="e.g., Gulab Jamun, Ice Cream">
+                                    </div>
+                                </div>
+                            </div>
 
                         <!-- Number of Pax -->
                         <div class="col-md-6">
@@ -400,7 +550,7 @@
 
 <!-- ENHANCED CONFIRMATION MODAL -->
 <div class="modal fade" id="confirmFunctionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title fw-bold">
@@ -409,28 +559,13 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="confirmFunctionForm">
-                <div class="modal-body p-4">
+                <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto;">
                     <!-- Total Amount Display -->
                     <div class="alert alert-info">
                         <div class="d-flex justify-content-between align-items-center">
                             <span><strong>Total Amount:</strong></span>
                             <span class="fs-5 fw-bold">₹<span id="confirm_total_amount">{{ function.total_amount|floatformat:2 }}</span></span>
                         </div>
-                    </div>
-                    
-                    <!-- Location Selection -->
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Location <span class="text-danger">*</span>
-                        </label>
-                        <select class="form-select" id="location" required>
-                            <option value="">Select Location</option>
-                            <option value="Banquet">Banquet</option>
-                            <option value="Restaurant">Restaurant</option>
-                            <option value="Family Room">Family Room</option>
-                            <option value="Outdoor">Outdoor</option>
-                        </select>
-                        <small class="text-muted">Select where the function will be held</small>
                     </div>
                     
                     <!-- Advance Amount -->
@@ -457,6 +592,37 @@
                         <small class="text-muted">This is the amount remaining to be paid</small>
                     </div>
 
+                    <hr class="my-4">
+
+                    <!-- NEW: Food Timing Section -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-basket me-2"></i>Food Pickup Time <span class="text-muted">(Optional)</span>
+                            </label>
+                            <input type="time" class="form-control" id="food_pickup_time">
+                            <small class="text-muted">Time when food should be picked up</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-clock me-2"></i>Food Service Time <span class="text-muted">(Optional)</span>
+                            </label>
+                            <input type="time" class="form-control" id="food_service_time">
+                            <small class="text-muted">Time when food service should begin</small>
+                        </div>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-pencil-square me-2"></i>Special Instructions <span class="text-muted">(Optional)</span>
+                        </label>
+                        <textarea class="form-control" id="special_instructions" rows="3" 
+                                  placeholder="Enter any special instructions or notes for this function..."></textarea>
+                        <small class="text-muted">Add any specific requirements, preferences, or important notes</small>
+                    </div>
+
                     <div id="confirmFormError" class="alert alert-danger mt-3 d-none"></div>
                     <div id="confirmFormSuccess" class="alert alert-success mt-3 d-none"></div>
                 </div>
@@ -472,7 +638,61 @@
     </div>
 </div>
 
-<!-- Keep your existing confirmation modal code here -->
+<!-- EDIT DETAILS MODAL (Special Instructions & Food Times) -->
+<div class="modal fade" id="editDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-pencil me-2"></i>Edit Function Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editDetailsForm">
+                <div class="modal-body p-4">
+                    <!-- Food Timing Section -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-basket me-2"></i>Food Pickup Time
+                            </label>
+                            <input type="time" class="form-control" id="edit_food_pickup_time" 
+                                   value="{{ function.food_pickup_time|time:'H:i'|default:'' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-clock me-2"></i>Food Service Time
+                            </label>
+                            <input type="time" class="form-control" id="edit_food_service_time"
+                                   value="{{ function.food_service_time|time:'H:i'|default:'' }}">
+                        </div>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-pencil-square me-2"></i>Special Instructions
+                        </label>
+                        <textarea class="form-control" id="edit_special_instructions" rows="4" 
+                                  placeholder="Enter any special instructions...">{{ function.special_instructions }}</textarea>
+                    </div>
+
+                    <div id="editDetailsError" class="alert alert-danger mt-3 d-none"></div>
+                    <div id="editDetailsSuccess" class="alert alert-success mt-3 d-none"></div>
+                </div>
+
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-lg me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 
 <script>
 function getCsrfToken() {
@@ -500,13 +720,15 @@ function calculateDueAmount() {
     }
 }
 
-// Show Confirmation Modal
+// Show Confirmation Modal (Updated)
 function showConfirmModal() {
     const modal = new bootstrap.Modal(document.getElementById('confirmFunctionModal'));
     
     // Reset form
     document.getElementById('advance_amount').value = '';
-    document.getElementById('location').value = '';
+    document.getElementById('food_pickup_time').value = '';
+    document.getElementById('food_service_time').value = '';
+    document.getElementById('special_instructions').value = '';
     document.getElementById('due_amount').textContent = document.getElementById('confirm_total_amount').textContent;
     document.getElementById('confirmFormError').classList.add('d-none');
     document.getElementById('confirmFormSuccess').classList.add('d-none');
@@ -514,7 +736,7 @@ function showConfirmModal() {
     modal.show();
 }
 
-// Confirm Function Form Submission
+// Updated Confirm Function Form Submission
 document.getElementById('confirmFunctionForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -524,7 +746,9 @@ document.getElementById('confirmFunctionForm').addEventListener('submit', functi
     successDiv.classList.add('d-none');
     
     const advanceAmount = document.getElementById('advance_amount').value;
-    const location = document.getElementById('location').value;
+    const foodPickupTime = document.getElementById('food_pickup_time').value;
+    const foodServiceTime = document.getElementById('food_service_time').value;
+    const specialInstructions = document.getElementById('special_instructions').value.trim();
     const totalAmount = parseFloat(document.getElementById('confirm_total_amount').textContent);
     
     // Validation
@@ -536,12 +760,6 @@ document.getElementById('confirmFunctionForm').addEventListener('submit', functi
     
     if (parseFloat(advanceAmount) > totalAmount) {
         errorDiv.textContent = 'Advance amount cannot exceed total amount';
-        errorDiv.classList.remove('d-none');
-        return;
-    }
-    
-    if (!location) {
-        errorDiv.textContent = 'Please select a location';
         errorDiv.classList.remove('d-none');
         return;
     }
@@ -561,7 +779,9 @@ document.getElementById('confirmFunctionForm').addEventListener('submit', functi
         body: JSON.stringify({
             advance_amount: advanceAmount,
             due_amount: dueAmount.toFixed(2),
-            location: location
+            food_pickup_time: foodPickupTime || null,
+            food_service_time: foodServiceTime || null,
+            special_instructions: specialInstructions
         })
     })
     .then(r => r.json())
@@ -621,16 +841,19 @@ function showEditModal() {
     
     // Pre-fill data
     document.getElementById('edit_function_date').value = '{{ function.function_date|date:"Y-m-d" }}';
-    document.getElementById('edit_time_from').value = '{{ function.time_from|time:"H:i" }}';
-    document.getElementById('edit_time_to').value = '{{ function.time_to|time:"H:i" }}';
+    document.getElementById('edit_time_from').value = '{{ function.time_from|time:"h:i A A" }}';
+    document.getElementById('edit_time_to').value = '{{ function.time_to|time:"h:i A A" }}';
     document.getElementById('edit_function_name').value = '{{ function.function_name }}';
     document.getElementById('edit_booked_by').value = '{{ function.booked_by }}';
     document.getElementById('edit_address').value = `{{ function.address }}`;
     
     // Menu items
     const menuItems = {{ function.menu_items|safe }};
-    document.getElementById('edit_menu_items').value = menuItems.join('\n');
-    
+    document.getElementById('edit_menu_welcome_drink').value = menuItems.welcome_drink || '';
+    document.getElementById('edit_menu_starters').value = menuItems.starters || '';
+    document.getElementById('edit_menu_main_course').value = menuItems.main_course || '';
+    document.getElementById('edit_menu_desserts').value = menuItems.desserts || '';
+
     // Contact numbers
     const contactNumbers = {{ function.contact_numbers|safe }};
     const container = document.getElementById('editContactNumbersContainer');
@@ -747,7 +970,6 @@ function calculateEditTotal() {
     
     document.getElementById('editTotalAmountDisplay').textContent = total.toFixed(2);
 }
-
 // Edit Form Submission
 document.getElementById('editFunctionForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -757,15 +979,21 @@ document.getElementById('editFunctionForm').addEventListener('submit', function(
     errorDiv.classList.add('d-none');
     successDiv.classList.add('d-none');
     
-    // Collect data
+    // Collect contact numbers
     const contactNumbers = [];
     document.querySelectorAll('.edit-contact-number').forEach(input => {
         if (input.value.trim()) contactNumbers.push(input.value.trim());
     });
     
-    const menuText = document.getElementById('edit_menu_items').value;
-    const menuItems = menuText.split('\n').filter(item => item.trim()).map(item => item.trim());
+    // UPDATED: Collect menu items as object
+    const menuItems = {
+        welcome_drink: document.getElementById('edit_menu_welcome_drink').value.trim(),
+        starters: document.getElementById('edit_menu_starters').value.trim(),
+        main_course: document.getElementById('edit_menu_main_course').value.trim(),
+        desserts: document.getElementById('edit_menu_desserts').value.trim()
+    };
     
+    // Collect extra charges
     const extraCharges = [];
     document.querySelectorAll('.edit-extra-charge-row').forEach(row => {
         const desc = row.querySelector('.edit-extra-charge-desc').value.trim();
@@ -783,7 +1011,7 @@ document.getElementById('editFunctionForm').addEventListener('submit', function(
     formData.append('booked_by', document.getElementById('edit_booked_by').value);
     formData.append('contact_numbers', JSON.stringify(contactNumbers));
     formData.append('address', document.getElementById('edit_address').value);
-    formData.append('menu_items', JSON.stringify(menuItems));
+    formData.append('menu_items', JSON.stringify(menuItems));  // Send as JSON object
     formData.append('no_of_pax', document.getElementById('edit_no_of_pax').value);
     formData.append('rate_per_pax', document.getElementById('edit_rate_per_pax').value);
     formData.append('gst_option', document.querySelector('input[name="edit_gst_option"]:checked').value);
@@ -823,9 +1051,96 @@ document.getElementById('editFunctionForm').addEventListener('submit', function(
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Update Function';
     });
+    
 });
 
-
 </script>
+<script>
+(function () {
+    const printUrl = "{% url 'function_print' function.id %}";
+    let printIntercepted = false;
+
+    // Intercept Ctrl + P / Cmd + P
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+
+            if (!printIntercepted) {
+                printIntercepted = true;
+                window.open(printUrl, '_blank');
+            }
+
+            // Reset after short delay
+            setTimeout(() => {
+                printIntercepted = false;
+            }, 1000);
+        }
+    });
+
+    
+})();
+
+// Show Edit Details Modal
+function showEditDetailsModal() {
+    const modal = new bootstrap.Modal(document.getElementById('editDetailsModal'));
+    document.getElementById('editDetailsError').classList.add('d-none');
+    document.getElementById('editDetailsSuccess').classList.add('d-none');
+    modal.show();
+}
+
+// Handle Edit Details Form Submission
+document.getElementById('editDetailsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('editDetailsError');
+    const successDiv = document.getElementById('editDetailsSuccess');
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+    
+    const foodPickupTime = document.getElementById('edit_food_pickup_time').value;
+    const foodServiceTime = document.getElementById('edit_food_service_time').value;
+    const specialInstructions = document.getElementById('edit_special_instructions').value.trim();
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    
+    fetch(`/api/functions/{{ function.id }}/update-details/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            food_pickup_time: foodPickupTime || null,
+            food_service_time: foodServiceTime || null,
+            special_instructions: specialInstructions
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            successDiv.textContent = 'Details updated successfully!';
+            successDiv.classList.remove('d-none');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            errorDiv.textContent = data.error || 'Failed to update details';
+            errorDiv.classList.remove('d-none');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Save Changes';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Save Changes';
+    });
+});
+</script>
+
 
 {% endblock %}
