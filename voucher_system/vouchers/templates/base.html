@@ -68,6 +68,11 @@
     <i class="bi bi-key me-2"></i>Change Password
 </a>
     </li>
+    <li>
+    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateMobileModal">
+        <i class="bi bi-phone me-2"></i>Update Mobile Number
+    </a>
+</li>
 <li>
     <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateSignatureModal">
         <i class="bi bi-pen me-2"></i>Update Signature
@@ -174,6 +179,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-check-lg"></i> Update Password
                     </button>
+                    
                 </div>
             </form>
         </div>
@@ -218,6 +224,49 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-check-lg"></i> Update Signature
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- UPDATE MOBILE NUMBER MODAL -->
+<div class="modal fade" id="updateMobileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-phone me-2"></i>Update Mobile Number
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="updateMobileForm">
+                <div class="modal-body">
+                    {% if user.userprofile.mobile %}
+                        <div class="mb-4 text-center">
+                            <p class="text-muted small mb-2">Current Mobile Number:</p>
+                            <strong class="fs-5">{{ user.userprofile.mobile }}</strong>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-4 text-center">No mobile number set yet.</p>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="new_mobile" class="form-label">New Mobile Number <span class="text-danger">*</span></label>
+                        <input type="text"
+                               class="form-control"
+                               id="new_mobile"
+                               name="mobile"
+                               maxlength="10"
+                               required>
+                        
+                    </div>
+                    <div id="mobileError" class="alert alert-danger d-none mt-3"></div>
+                    <div id="mobileSuccess" class="alert alert-success d-none mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-check-lg"></i> Update Mobile
                     </button>
                 </div>
             </form>
@@ -283,6 +332,21 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <!-- NEW: MOBILE NUMBER -->
+                        <div class="mb-3">
+                            <label for="user_mobile" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                            <input type="text" 
+                                class="form-control" 
+                                id="user_mobile" 
+                                name="mobile" 
+                                
+                                maxlength="10"
+                                
+                                required>
+                            
+                        </div>
+
+
                         <!-- NEW: SIGNATURE UPLOAD -->
                         <div class="mb-3">
                             <label for="user_signature" class="form-label">Signature (Optional)</label>
@@ -1379,6 +1443,48 @@ toggleChequeFields();
                 });
             };
         }
+        // === UPDATE MOBILE NUMBER MODAL ===
+            const mobileForm = document.getElementById('updateMobileForm');
+            if (mobileForm) {
+                mobileForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const formData = new FormData();
+                    const newMobile = document.getElementById('new_mobile').value.trim();
+                    if (!newMobile) {
+                        return alert('Mobile number is required');
+                    }
+                    formData.append('mobile', newMobile);
+
+                    const errorDiv = document.getElementById('mobileError');
+                    const successDiv = document.getElementById('mobileSuccess');
+                    errorDiv.classList.add('d-none');
+                    successDiv.classList.add('d-none');
+
+                    fetch("{% url 'user_update_api' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': getCsrfToken() },
+                        body: formData
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.message) {
+                            successDiv.textContent = 'Mobile number updated successfully!';
+                            successDiv.classList.remove('d-none');
+                            setTimeout(() => {
+                                bootstrap.Modal.getInstance(document.getElementById('updateMobileModal')).hide();
+                                location.reload(); // Reload to reflect changes if needed
+                            }, 1200);
+                        } else {
+                            errorDiv.textContent = data.error || 'Failed to update mobile number.';
+                            errorDiv.classList.remove('d-none');
+                        }
+                    })
+                    .catch(() => {
+                        errorDiv.textContent = 'Network error. Please try again.';
+                        errorDiv.classList.remove('d-none');
+                    });
+                });
+            }
                 // === UPDATE SIGNATURE MODAL ===
         const signatureForm = document.getElementById('updateSignatureForm');
         if (signatureForm) {

@@ -17,6 +17,13 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     designation = models.ForeignKey(Designation, on_delete=models.SET_NULL, null=True, blank=True)
     
+    # NEW: Mobile Number
+    mobile = models.CharField(
+        max_length=15,
+        blank=True,
+        null=True,
+        help_text="Mobile number (e.g., +91 9876543210 or 9876543210)"
+    )
     # NEW: User signature
     signature = models.ImageField(
         upload_to='signatures/',
@@ -423,7 +430,7 @@ class FunctionBooking(models.Model):
         null=True,
         help_text="Special instructions or notes for the function"
     )
-    
+    is_completed = models.BooleanField(default=False, verbose_name="Marked as Completed")
     confirmed_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 
@@ -490,3 +497,23 @@ class FunctionBooking(models.Model):
         extra_total = sum(Decimal(charge.get('rate', 0)) for charge in self.extra_charges)
         
         self.total_amount = amount_with_gst + hall_rent + extra_total
+
+@property
+def is_function_completed(self):
+    """
+    Check if function is completed based on date and time.
+    Uses timezone-aware datetime comparison.
+    """
+    from django.utils import timezone
+    import datetime
+    
+    # Get current time in configured timezone (Asia/Kolkata)
+    now = timezone.localtime(timezone.now())
+    
+    # Create timezone-aware datetime for function end time
+    function_end_datetime = timezone.make_aware(
+        datetime.datetime.combine(self.function_date, self.time_to)
+    )
+    
+    # Function is completed if current time >= function end time
+    return now >= function_end_datetime

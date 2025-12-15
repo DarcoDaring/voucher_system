@@ -11,7 +11,30 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+# TIMEZONE CONFIGURATION - Set to Indian Standard Time
+TIME_ZONE = 'Asia/Kolkata'  # Indian Standard Time (IST)
 
+# Keep timezone support enabled
+USE_TZ = True
+
+# Optional: Set language/locale
+LANGUAGE_CODE = 'en-in'  # English (India)
+
+# ===================================================================
+# For debugging: Add this temporary print statement
+# ===================================================================
+import datetime
+from django.utils import timezone
+
+print("=" * 60)
+print("⚙️  DJANGO TIMEZONE CONFIGURATION")
+print("=" * 60)
+print(f"TIME_ZONE setting: {TIME_ZONE}")
+print(f"USE_TZ: {USE_TZ}")
+print(f"Current timezone: {timezone.get_current_timezone()}")
+print(f"Current datetime: {timezone.now()}")
+print(f"Current time (IST): {timezone.localtime(timezone.now())}")
+print("=" * 60)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

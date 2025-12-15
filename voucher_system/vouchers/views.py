@@ -877,6 +877,12 @@ class UserCreateAPI(APIView):
             if user_group == 'Admin Staff':
                 designation = Designation.objects.get(id=designation_id)
                 profile.designation = designation
+                # NEW: Save mobile number
+            mobile = request.data.get('mobile', '').strip()
+            if mobile:
+                profile.mobile = mobile
+            elif user_group == 'Admin Staff':  # or make it always required
+                return Response({'error': 'Mobile number is required'}, status=status.HTTP_400_BAD_REQUEST)
             if signature:
                 profile.signature = signature
             profile.save()
@@ -962,6 +968,18 @@ class UserUpdateAPI(APIView):
             profile.save()
 
             return Response({'message': 'User updated successfully'}, status=200)
+        # CASE 3: Any logged-in user updating their OWN mobile number
+        elif 'mobile' in request.data:
+            mobile = request.data.get('mobile', '').strip()
+            if not mobile:
+                return Response({'error': 'Mobile number is required'}, status=400)
+            profile, created = UserProfile.objects.get_or_create(user=request.user)
+            profile.mobile = mobile
+            profile.save()
+            return Response({
+                'message': 'Mobile number updated successfully!',
+                'mobile': profile.mobile
+            }, status=200)
 
         # CASE 2: Any logged-in user updating ONLY their OWN signature
         else:
@@ -974,8 +992,8 @@ class UserUpdateAPI(APIView):
 
             return Response({
                 'message': 'Signature updated successfully!',
-                'signature_url': profile.signature.url
-            }, status=200)
+                'signature_url': profile.signature.url}, status=200)
+        
 class CompanyDetailAPI(APIView):
     permission_classes = [IsAuthenticated]
 

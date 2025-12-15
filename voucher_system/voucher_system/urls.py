@@ -68,4 +68,5 @@ urlpatterns = [
     path('api/functions/<int:pk>/update-details/', FunctionUpdateDetailsAPI.as_view(), name='function_update_details'),
     
     
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

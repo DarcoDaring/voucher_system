@@ -309,14 +309,12 @@
 
     <!-- EDIT BUTTON for Special Instructions and Food Times (Admin only) -->
     {% if is_admin_staff or user.is_superuser %}
-    {% if function.function_date|date:"Y-m-d" >= today %}
-        <div class="text-center mt-3">
-            <button class="btn btn-outline-primary" onclick="showEditDetailsModal()">
-                <i class="bi bi-pencil me-2"></i>Edit Details
-            </button>
-        </div>
+    <div class="text-center mt-3">
+        <button class="btn btn-outline-primary" onclick="showEditDetailsModal()">
+            <i class="bi bi-pencil me-2"></i>Edit Details
+        </button>
+    </div>
     {% endif %}
-{% endif %}
 {% endif %}
         <!-- Payment Summary Card -->
         <div class="card border-info mt-4">
