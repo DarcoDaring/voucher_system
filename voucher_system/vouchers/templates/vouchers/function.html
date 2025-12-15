@@ -804,6 +804,13 @@ let selectedDate = null;
 let bookedDates = {};
 let currentPendingCount = 0;
 
+function formatTime12hr(time24) {
+    if (!time24) return '';
+    const [hour, minute] = time24.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;  // Converts 0/12 to 12
+    return `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+}
 // ==========================================
 // MOVE THESE FUNCTIONS OUTSIDE DOMContentLoaded
 // Place them BEFORE the DOMContentLoaded block
@@ -1185,7 +1192,7 @@ function createPendingFunctionItem(func) {
                         <div class="col-md-6">
                             <p class="mb-1 small">
                                 <i class="bi bi-clock text-info me-1"></i>
-                                <strong>Time:</strong> ${func.time_from} - ${func.time_to}
+                                <strong>Time:</strong> ${formatTime12hr(func.time_from)} - ${formatTime12hr(func.time_to)}
                             </p>
                             <p class="mb-1 small">
                                 <i class="bi bi-person text-primary me-1"></i>
@@ -1243,7 +1250,7 @@ function createUpcomingEventItem(func) {
                         <div class="col-md-6">
                             <p class="mb-1 small">
                                 <i class="bi bi-clock text-info me-1"></i>
-                                <strong>Time:</strong> ${func.time_from} - ${func.time_to}
+                                <strong>Time:</strong> ${formatTime12hr(func.time_from)} - ${formatTime12hr(func.time_to)}
                             </p>
                             <p class="mb-1 small">
                                 <i class="bi bi-person text-primary me-1"></i>
@@ -1299,7 +1306,7 @@ function createCompletedFunctionItem(func) {
                         <div class="col-md-6">
                             <p class="mb-1 small">
                                 <i class="bi bi-clock text-info me-1"></i>
-                                <strong>Time:</strong> ${func.time_from} - ${func.time_to}
+                                <strong>Time:</strong> ${formatTime12hr(func.time_from)} - ${formatTime12hr(func.time_to)}
                             </p>
                             <p class="mb-1 small">
                                 <i class="bi bi-person text-primary me-1"></i>
@@ -1863,7 +1870,7 @@ window.selectDate = function(year, month, day, dateStr) {
                             ${statusBadge}
                         </div>
                         <p class="mb-1 text-muted small">
-                            <i class="bi bi-clock me-1"></i>${func.time_from} - ${func.time_to}
+                            <i class="bi bi-clock me-1"></i>${formatTime12hr(func.time_from)} - ${formatTime12hr(func.time_to)}
                         </p>
                         <p class="mb-1 small">
                             <i class="bi bi-person me-1"></i>${func.booked_by}

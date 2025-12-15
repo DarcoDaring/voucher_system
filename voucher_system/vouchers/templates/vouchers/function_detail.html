@@ -16,14 +16,19 @@
             <a href="{% url 'function' %}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left me-2"></i>Back to Calendar
             </a>
-            {% if is_admin_staff or user.is_superuser %}
-            <button class="btn btn-warning me-2" onclick="showEditModal()">
-                <i class="bi bi-pencil me-2"></i>Edit
-            </button>
-            <button class="btn btn-danger" onclick="deleteFunction()">
-                <i class="bi bi-trash me-2"></i>Delete
-            </button>
-            {% endif %}
+            {% now "Y-m-d" as today %}
+{% if is_admin_staff or user.is_superuser %}
+    {% if function.function_date|date:"Y-m-d" >= today %}
+        <button class="btn btn-warning me-2" onclick="showEditModal()">
+            <i class="bi bi-pencil me-2"></i>Edit
+        </button>
+          
+        
+    {% endif %}
+    <button class="btn btn-danger" onclick="deleteFunction()">
+            <i class="bi bi-trash me-2"></i>Delete
+        </button>
+{% endif %}
             {% if function.status == 'CONFIRMED' %}
             <a href="{% url 'function_print' function.id %}" target="_blank" class="btn btn-info me-2">
                 <i class="bi bi-printer me-2"></i>Print
@@ -304,12 +309,14 @@
 
     <!-- EDIT BUTTON for Special Instructions and Food Times (Admin only) -->
     {% if is_admin_staff or user.is_superuser %}
-    <div class="text-center mt-3">
-        <button class="btn btn-outline-primary" onclick="showEditDetailsModal()">
-            <i class="bi bi-pencil me-2"></i>Edit Details
-        </button>
-    </div>
+    {% if function.function_date|date:"Y-m-d" >= today %}
+        <div class="text-center mt-3">
+            <button class="btn btn-outline-primary" onclick="showEditDetailsModal()">
+                <i class="bi bi-pencil me-2"></i>Edit Details
+            </button>
+        </div>
     {% endif %}
+{% endif %}
 {% endif %}
         <!-- Payment Summary Card -->
         <div class="card border-info mt-4">
@@ -841,8 +848,8 @@ function showEditModal() {
     
     // Pre-fill data
     document.getElementById('edit_function_date').value = '{{ function.function_date|date:"Y-m-d" }}';
-    document.getElementById('edit_time_from').value = '{{ function.time_from|time:"h:i A A" }}';
-    document.getElementById('edit_time_to').value = '{{ function.time_to|time:"h:i A A" }}';
+    document.getElementById('edit_time_from').value = '{{ function.time_from|time:"h:i" }}';
+    document.getElementById('edit_time_to').value = '{{ function.time_to|time:"h:i" }}';
     document.getElementById('edit_function_name').value = '{{ function.function_name }}';
     document.getElementById('edit_booked_by').value = '{{ function.booked_by }}';
     document.getElementById('edit_address').value = `{{ function.address }}`;
