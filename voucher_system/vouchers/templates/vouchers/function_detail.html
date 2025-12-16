@@ -16,18 +16,17 @@
             <a href="{% url 'function' %}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left me-2"></i>Back to Calendar
             </a>
-            {% now "Y-m-d" as today %}
 {% if is_admin_staff or user.is_superuser %}
-    {% if function.function_date|date:"Y-m-d" >= today %}
+    {# ✅ Only show edit if function hasn't ended yet #}
+    {% if not function.is_function_completed %}
         <button class="btn btn-warning me-2" onclick="showEditModal()">
             <i class="bi bi-pencil me-2"></i>Edit
         </button>
-          
-        
     {% endif %}
+    
     <button class="btn btn-danger" onclick="deleteFunction()">
-            <i class="bi bi-trash me-2"></i>Delete
-        </button>
+        <i class="bi bi-trash me-2"></i>Delete
+    </button>
 {% endif %}
             {% if function.status == 'CONFIRMED' %}
             <a href="{% url 'function_print' function.id %}" target="_blank" class="btn btn-info me-2">
@@ -362,13 +361,15 @@
 
 
     <!-- Event Status Badge -->
-    <div class="text-center mt-4">
+<div class="text-center mt-4">
+    {# ✅ Use model property to check completion (date + time) #}
+    {% if function.is_function_completed %}
+        <span class="badge bg-secondary fs-6 px-4 py-2">
+            <i class="bi bi-check-circle me-2"></i>Event Completed
+        </span>
+    {% else %}
         {% now "Y-m-d" as today %}
-        {% if function.function_date|date:"Y-m-d" < today %}
-            <span class="badge bg-secondary fs-6 px-4 py-2">
-                <i class="bi bi-check-circle me-2"></i>Event Completed
-            </span>
-        {% elif function.function_date|date:"Y-m-d" == today %}
+        {% if function.function_date|date:"Y-m-d" == today %}
             <span class="badge bg-warning text-dark fs-6 px-4 py-2">
                 <i class="bi bi-clock-history me-2"></i>Event Today
             </span>
@@ -377,7 +378,8 @@
                 <i class="bi bi-calendar-check me-2"></i>Upcoming Event
             </span>
         {% endif %}
-    </div>
+    {% endif %}
+</div>
 
 </div>
 

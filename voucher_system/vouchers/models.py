@@ -517,3 +517,98 @@ def is_function_completed(self):
     
     # Function is completed if current time >= function end time
     return now >= function_end_datetime
+
+
+class UserPermission(models.Model):
+    """
+    Granular permissions for each user.
+    Allows superusers to control what each user can do.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='permissions')
+    
+    # Voucher Permissions
+    can_create_voucher = models.BooleanField(
+        default=True,
+        help_text="User can create new vouchers"
+    )
+    can_edit_voucher = models.BooleanField(
+        default=False,
+        help_text="User can edit existing vouchers (only accountants, only pending, only if no approvals yet)"
+    )
+    can_view_voucher_list = models.BooleanField(
+        default=True,
+        help_text="User can view voucher list page"
+    )
+    can_view_voucher_detail = models.BooleanField(
+        default=True,
+        help_text="User can view individual voucher details"
+    )
+    can_print_voucher = models.BooleanField(
+        default=True,
+        help_text="User can print vouchers"
+    )
+    # Function Permissions
+    can_create_function = models.BooleanField(
+        default=True,
+        help_text="User can create new function bookings"
+    )
+    can_edit_function = models.BooleanField(
+        default=False,
+        help_text="User can edit existing function bookings"
+    )
+    can_delete_function = models.BooleanField(
+        default=False,
+        help_text="User can delete function bookings"
+    )
+    can_view_function_list = models.BooleanField(
+        default=True,
+        help_text="User can view function calendar/list page"
+    )
+    can_view_function_detail = models.BooleanField(
+        default=True,
+        help_text="User can view individual function details"
+    )
+    can_print_function = models.BooleanField(
+        default=True,
+        help_text="User can print function prospectus"
+    )
+    
+    # Metadata
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='permission_updates'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "User Permission"
+        verbose_name_plural = "User Permissions"
+    
+    def __str__(self):
+        return f"Permissions for {self.user.username}"
+    
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """
+        Get or create permissions for a user with default values.
+        """
+        obj, created = cls.objects.get_or_create(
+            user=user,
+            defaults={
+                'can_create_voucher': True,
+                'can_edit_voucher': False,
+                'can_view_voucher_list': True,
+                'can_view_voucher_detail': True,
+                'can_print_voucher': True,
+                'can_create_function': True,
+                'can_edit_function': False,
+                'can_delete_function': False,
+                'can_view_function_list': True,
+                'can_view_function_detail': True,
+                'can_print_function': True,
+            }
+        )
+        return obj

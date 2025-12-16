@@ -46,9 +46,14 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarContent">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{% url 'voucher_list' %}">Vouchers</a></li>
-                </ul>
+                {% if request.resolver_match.url_name == 'voucher_detail' %}
+<ul class="navbar-nav me-auto">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'voucher_list' %}">Vouchers</a>
+    </li>
+</ul>
+{% endif %}
+
                 <ul class="navbar-nav ms-auto align-items-center">
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
@@ -93,17 +98,43 @@
             </div>
         </div>
     </nav>
-    <!-- FLASH MESSAGES -->
-    {% if messages %}
-        <div class="container mt-3">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!-- FLASH MESSAGES - BOOTSTRAP MODAL VERSION -->
+{% if messages %}
+    {% for message in messages %}
+    <div class="modal fade" id="messageModal{{ forloop.counter }}" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header {% if message.tags == 'error' or message.tags == 'danger' %}bg-danger{% elif message.tags == 'warning' %}bg-warning{% elif message.tags == 'success' %}bg-success{% else %}bg-info{% endif %} text-white">
+                    <h5 class="modal-title">
+                        {% if message.tags == 'error' or message.tags == 'danger' %}
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>Access Denied
+                        {% elif message.tags == 'warning' %}
+                            <i class="bi bi-exclamation-circle-fill me-2"></i>Warning
+                        {% elif message.tags == 'success' %}
+                            <i class="bi bi-check-circle-fill me-2"></i>Success
+                        {% else %}
+                            <i class="bi bi-info-circle-fill me-2"></i>Information
+                        {% endif %}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-            {% endfor %}
+                <div class="modal-body text-center py-4">
+                    <p class="mb-0 fs-6">{{ message }}</p>
+                </div>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="button" class="btn {% if message.tags == 'error' or message.tags == 'danger' %}btn-danger{% elif message.tags == 'warning' %}btn-warning{% elif message.tags == 'success' %}btn-success{% else %}btn-info{% endif %} px-5" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
         </div>
-    {% endif %}
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal{{ forloop.counter }} = new bootstrap.Modal(document.getElementById('messageModal{{ forloop.counter }}'));
+            modal{{ forloop.counter }}.show();
+        });
+    </script>
+    {% endfor %}
+{% endif %}
    
     <!-- (Buttons removed as requested) -->
     <div class="container mt-4">{% block content %}{% endblock %}</div>
@@ -547,6 +578,313 @@
         </div>
     </div>
     {% endif %}
+    {% if user.is_superuser %}
+<!-- USER RIGHTS MODAL -->
+<div class="modal fade" id="userRightsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-shield-lock me-2"></i>Manage User Rights & Permissions
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Loading State -->
+                <div id="userRightsLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-3">Loading user permissions...</p>
+                </div>
+
+                <!-- Main Content -->
+                <div id="userRightsContent" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 12%;">Username</th>
+                                    <th style="width: 10%;">Group</th>
+                                    <th style="width: 12%;">Designation</th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-file-earmark-plus text-primary"></i><br>
+                                        <small>Create<br>Voucher</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-pencil-square text-warning"></i><br>
+                                        <small>Edit<br>Voucher</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-list-ul text-info"></i><br>
+                                        <small>Voucher<br>List</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-eye text-secondary"></i><br>
+                                        <small>Voucher<br>Detail</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-printer text-dark"></i><br>
+                                        <small>Print<br>Voucher</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-calendar-plus text-success"></i><br>
+                                        <small>Create<br>Function</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-pencil text-info"></i><br>
+                                        <small>Edit<br>Function</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-trash text-danger"></i><br>
+                                        <small>Delete<br>Function</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-calendar3 text-primary"></i><br>
+                                        <small>Function<br>List</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-eye-fill text-success"></i><br>
+                                        <small>Function<br>Detail</small>
+                                    </th>
+                                    <th class="text-center" style="width: 6%;">
+                                        <i class="bi bi-printer-fill text-secondary"></i><br>
+                                        <small>Print<br>Function</small>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="userRightsTableBody">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div id="userRightsError" class="text-center py-5" style="display: none;">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    <p class="text-danger mt-3" id="userRightsErrorMessage"></p>
+                    <button class="btn btn-outline-danger btn-sm" onclick="loadUserRights()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <div class="me-auto">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Changes are saved immediately when you toggle permissions
+                    </small>
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ PASS CURRENT USER ID TO JAVASCRIPT -->
+<script>
+    window.CURRENT_USER_ID = {{ user.id }};
+</script>
+
+<script>
+// ===================================
+// USER RIGHTS MANAGEMENT - COMPLETE
+// ===================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('userRightsModal');
+    if (!modal) return;
+
+    // Load data when modal opens
+    modal.addEventListener('show.bs.modal', function() {
+        loadUserRights();
+    });
+});
+
+function loadUserRights() {
+    const loading = document.getElementById('userRightsLoading');
+    const content = document.getElementById('userRightsContent');
+    const error = document.getElementById('userRightsError');
+    
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    error.style.display = 'none';
+
+    fetch('/api/user-rights/', {
+        headers: {
+            'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        }
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(data => {
+        console.log('✅ User rights loaded:', data);
+        renderUserRightsTable(data.users);
+        loading.style.display = 'none';
+        content.style.display = 'block';
+    })
+    .catch(err => {
+        console.error('❌ Error loading user rights:', err);
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        document.getElementById('userRightsErrorMessage').textContent = 
+            'Failed to load user rights: ' + err.message + '. Check console (F12) for details.';
+    });
+}
+
+function renderUserRightsTable(users) {
+    const tbody = document.getElementById('userRightsTableBody');
+    tbody.innerHTML = '';
+
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">No users found</td></tr>';
+        return;
+    }
+
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        const isCurrentUser = user.id === window.CURRENT_USER_ID;
+        
+        row.innerHTML = `
+            <td>
+                <strong>${escapeHtml(user.username)}</strong>
+                ${isCurrentUser ? '<span class="badge bg-info ms-2">You</span>' : ''}
+            </td>
+            <td>
+                <span class="badge bg-${getGroupColor(user.group)}">${escapeHtml(user.group)}</span>
+            </td>
+            <td>
+                <small class="text-muted">${escapeHtml(user.designation)}</small>
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_create_voucher', user.permissions.can_create_voucher)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_edit_voucher', user.permissions.can_edit_voucher)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_view_voucher_list', user.permissions.can_view_voucher_list)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_view_voucher_detail', user.permissions.can_view_voucher_detail)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_print_voucher', user.permissions.can_print_voucher)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_create_function', user.permissions.can_create_function)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_edit_function', user.permissions.can_edit_function)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_delete_function', user.permissions.can_delete_function)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_view_function_list', user.permissions.can_view_function_list)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_view_function_detail', user.permissions.can_view_function_detail)}
+            </td>
+            <td class="text-center">
+                ${createPermissionCheckbox(user.id, 'can_print_function', user.permissions.can_print_function)}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Attach event listeners
+    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', handlePermissionChange);
+    });
+    
+    console.log('✅ Rendered ' + users.length + ' users');
+}
+function createPermissionCheckbox(userId, permission, checked) {
+    return `
+        <div class="form-check d-inline-block">
+            <input class="form-check-input permission-checkbox" 
+                   type="checkbox" 
+                   data-user-id="${userId}"
+                   data-permission="${permission}"
+                   ${checked ? 'checked' : ''}>
+        </div>
+    `;
+}
+
+function getGroupColor(group) {
+    switch(group) {
+        case 'Admin Staff': return 'primary';
+        case 'Accountants': return 'success';
+        default: return 'secondary';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function handlePermissionChange(event) {
+    const checkbox = event.target;
+    const userId = checkbox.dataset.userId;
+    const permission = checkbox.dataset.permission;
+    const isChecked = checkbox.checked;
+
+    // Disable checkbox while saving
+    checkbox.disabled = true;
+
+    // Collect ALL current checkbox states for this user
+    const row = checkbox.closest('tr');
+    const allCheckboxes = row.querySelectorAll('.permission-checkbox');
+    
+    const permissions = {};
+    allCheckboxes.forEach(cb => {
+        permissions[cb.dataset.permission] = cb.checked;
+    });
+
+    console.log('💾 Saving permissions for user ' + userId + ':', permissions);
+
+    fetch('/api/user-rights/update/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            permissions: permissions
+        })
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(data => {
+        console.log('✅ Permission updated:', data);
+        checkbox.disabled = false;
+        
+        // Flash the row green
+        row.style.transition = 'background-color 0.3s';
+        row.style.backgroundColor = '#d4edda';
+        setTimeout(() => {
+            row.style.backgroundColor = '';
+        }, 800);
+    })
+    .catch(err => {
+        console.error('❌ Error updating permission:', err);
+        // Revert checkbox on error
+        checkbox.checked = !isChecked;
+        checkbox.disabled = false;
+        alert('Failed to update permission: ' + err.message);
+    });
+}
+</script>
+{% endif %}
     <!-- UPDATED: COMPANY DETAILS MODAL (SUPERUSER ONLY) -->
     {% if user.is_superuser %}
     <div class="modal fade" id="companyDetailsModal" tabindex="-1">
@@ -1175,25 +1513,50 @@ toggleChequeFields();
             addBtn.onclick = () => {
     const row = document.createElement('tr');
     row.innerHTML = `
-        <td><input type="text" class="form-control form-control-sm" 
-                   name="particulars[${index}][description]" required></td>
-
-        <td><input type="number" step="0.01" class="form-control form-control-sm" 
-                   name="particulars[${index}][amount]" required></td>
-
-        <td>
-            <input type="file"
-                   class="form-control form-control-sm"
-                   name="particular_attachment_${index}"
-                   multiple
-                   accept="image/*,application/pdf"
-                   required>
-
-            <div class="mt-1 text-muted small particular-file-list"></div>
-        </td>
-
-        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
-    `;
+    <td>
+        <strong>${escapeHtml(user.username)}</strong>
+        ${isCurrentUser ? '<span class="badge bg-info ms-2">You</span>' : ''}
+    </td>
+    <td>
+        <span class="badge bg-${getGroupColor(user.group)}">${escapeHtml(user.group)}</span>
+    </td>
+    <td>
+        <small class="text-muted">${escapeHtml(user.designation)}</small>
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_create_voucher', user.permissions.can_create_voucher)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_edit_voucher', user.permissions.can_edit_voucher)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_view_voucher_list', user.permissions.can_view_voucher_list)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_view_voucher_detail', user.permissions.can_view_voucher_detail)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_print_voucher', user.permissions.can_print_voucher)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_create_function', user.permissions.can_create_function)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_edit_function', user.permissions.can_edit_function)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_delete_function', user.permissions.can_delete_function)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_view_function_list', user.permissions.can_view_function_list)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_view_function_detail', user.permissions.can_view_function_detail)}
+    </td>
+    <td class="text-center">
+        ${createPermissionCheckbox(user.id, 'can_print_function', user.permissions.can_print_function)}
+    </td>
+`;
     tbody.appendChild(row);
     index++;
 };

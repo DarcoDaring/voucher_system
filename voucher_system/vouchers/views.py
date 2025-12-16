@@ -23,6 +23,66 @@ from decimal import Decimal, InvalidOperation
 import time
 from datetime import datetime
 from django.utils import timezone
+from .models import UserPermission
+
+
+def check_user_permission(user, permission_name):
+    """
+    Check if user has a specific permission.
+    Returns tuple: (has_permission: bool, error_message: str or None)
+    """
+    if user.is_superuser:
+        return True, None
+    
+    try:
+        perms = UserPermission.objects.get(user=user)
+        has_perm = getattr(perms, permission_name, False)
+        
+        if not has_perm:
+            permission_labels = {
+                'can_create_voucher': 'create vouchers',
+                'can_edit_voucher': 'edit vouchers',
+                'can_view_voucher_list': 'view voucher list',
+                'can_view_voucher_detail': 'view voucher details',
+                'can_print_voucher': 'print vouchers',
+                'can_create_function': 'create functions',
+                'can_edit_function': 'edit functions',
+                'can_delete_function': 'delete functions',
+                'can_view_function_list': 'view function calendar',
+                'can_view_function_detail': 'view function details',
+                'can_print_function': 'print function prospectus',
+            }
+            label = permission_labels.get(permission_name, 'perform this action')
+            return False, f"You don't have permission to {label}."
+        
+        return True, None
+        
+    except UserPermission.DoesNotExist:
+        # Default permissions if record doesn't exist
+        if permission_name in ['can_create_voucher', 'can_create_function', 
+                               'can_view_voucher_list', 'can_view_voucher_detail', 'can_print_voucher',
+                               'can_view_function_list', 'can_view_function_detail', 'can_print_function']:
+            return True, None
+        return False, "You don't have permission to perform this action."
+
+def is_function_completed_check(function_date, time_to):
+    """
+    Helper function to check if a function is completed based on date and time.
+    Returns True if current datetime is past the function's end time.
+    """
+    from django.utils import timezone
+    import datetime
+    
+    # Get current time in configured timezone (Asia/Kolkata)
+    now = timezone.localtime(timezone.now())
+    
+    # Create timezone-aware datetime for function end time
+    function_end_datetime = timezone.make_aware(
+        datetime.datetime.combine(function_date, time_to)
+    )
+    
+    # Function is completed if current time >= function end time
+    return now >= function_end_datetime
 
 # === MIXINS ===
 class AccountantRequiredMixin(LoginRequiredMixin):
@@ -85,7 +145,14 @@ class VoucherListView(LoginRequiredMixin, ListView):
     template_name = 'vouchers/voucher_list.html'
     context_object_name = 'vouchers'
     ordering = ['-created_at']
-
+    def dispatch(self, request, *args, **kwargs):
+        # ADD THIS PERMISSION CHECK
+        has_perm, error = check_user_permission(request.user, 'can_view_voucher_list')
+        if not has_perm:
+            messages.error(request, error)
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
+    
     def get_queryset(self):
         qs = super().get_queryset().select_related('created_by')
         qs = qs.prefetch_related('particulars', 'approvals', 'approvals__approver')
@@ -226,7 +293,14 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
     model = Voucher
     template_name = 'vouchers/voucher_detail.html'
     context_object_name = 'voucher'
-
+    def dispatch(self, request, *args, **kwargs):
+        # ADD THIS PERMISSION CHECK
+        has_perm, error = check_user_permission(request.user, 'can_view_voucher_detail')
+        if not has_perm:
+            messages.error(request, error)
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
+    
     def get_queryset(self):
         qs = super().get_queryset().select_related('created_by') \
             .prefetch_related('particulars', 'approvals__approver')
@@ -380,6 +454,17 @@ class VoucherCreateAPI(APIView):
 
         voucher_id = data.get('voucher_id')
         is_edit = bool(voucher_id)
+
+        if is_edit:
+        # Editing existing voucher
+            has_perm, error = check_user_permission(request.user, 'can_edit_voucher')
+            if not has_perm:
+                return Response({'error': error}, status=403)
+        else:
+            # Creating new voucher
+            has_perm, error = check_user_permission(request.user, 'can_create_voucher')
+            if not has_perm:
+                return Response({'error': error}, status=403)
 
         try:
             with transaction.atomic():
@@ -1038,6 +1123,14 @@ class CompanyDetailAPI(APIView):
 class FunctionDetailsView(LoginRequiredMixin, TemplateView):
     template_name = 'vouchers/function.html'
     
+    def dispatch(self, request, *args, **kwargs):
+        # ADD THIS PERMISSION CHECK
+        has_perm, error = check_user_permission(request.user, 'can_view_function_list')
+        if not has_perm:
+            messages.error(request, error)
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -1071,6 +1164,9 @@ class FunctionCreateAPI(APIView):
     def post(self, request):
         try:
             import json
+            has_perm, error = check_user_permission(request.user, 'can_create_function')
+            if not has_perm:
+                return Response({'error': error}, status=403)
             
             function_date = request.data.get('function_date')
             time_from = request.data.get('time_from')
@@ -1164,8 +1260,7 @@ class FunctionListByDateAPI(APIView):
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             functions = FunctionBooking.objects.filter(function_date=date).order_by('time_from')
             
-            today = datetime.now().date()
-            
+            # ✅ UPDATED: Use helper function to check completion
             data = [{
                 'id': f.id,
                 'function_number': f.function_number,
@@ -1179,7 +1274,7 @@ class FunctionListByDateAPI(APIView):
                 'total_amount': str(f.total_amount),
                 'status': f.status,
                 'advance_amount': str(f.advance_amount) if f.advance_amount else None,
-                'is_completed': f.function_date < today
+                'is_completed': is_function_completed_check(f.function_date, f.time_to)  # ✅ FIXED
             } for f in functions]
             
             return Response({'functions': data})
@@ -1191,6 +1286,14 @@ class FunctionDetailView(LoginRequiredMixin, DetailView):
     model = FunctionBooking
     template_name = 'vouchers/function_detail.html'
     context_object_name = 'function'
+
+    def dispatch(self, request, *args, **kwargs):
+        # ADD THIS PERMISSION CHECK
+        has_perm, error = check_user_permission(request.user, 'can_view_function_detail')
+        if not has_perm:
+            messages.error(request, error)
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1205,8 +1308,9 @@ class FunctionDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def delete(self, request, pk):
-        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
-            return Response({'error': 'Permission denied'}, status=403)
+        has_perm, error = check_user_permission(request.user, 'can_delete_function')
+        if not has_perm:
+            return Response({'error': error}, status=403)
         
         try:
             function = FunctionBooking.objects.get(pk=pk)
@@ -1304,8 +1408,9 @@ class FunctionUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, pk):
-        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
-            return Response({'error': 'Permission denied'}, status=403)
+        has_perm, error = check_user_permission(request.user, 'can_edit_function')
+        if not has_perm:
+            return Response({'error': error}, status=403)
         
         try:
             import json
@@ -1367,6 +1472,14 @@ class FunctionPrintView(LoginRequiredMixin, DetailView):
     template_name = 'vouchers/function_print.html'
     context_object_name = 'function'
 
+    def dispatch(self, request, *args, **kwargs):
+        # ADD THIS PERMISSION CHECK
+        has_perm, error = check_user_permission(request.user, 'can_print_function')
+        if not has_perm:
+            messages.error(request, error)
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         try:
@@ -1381,14 +1494,31 @@ class FunctionUpcomingEventsAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        """Get all confirmed upcoming functions"""
-        today = datetime.now().date()
+        """Get all confirmed upcoming functions (not yet completed based on date + time)"""
+        from django.utils import timezone
+        import datetime as dt
         
-        # Get confirmed functions that are today or in the future
+        # Get current datetime
+        now = timezone.localtime(timezone.now())
+        today_date = now.date()
+        current_time = now.time()
+        
+        # Get all confirmed functions from today onwards
         functions = FunctionBooking.objects.filter(
             status='CONFIRMED',
-            function_date__gte=today
+            function_date__gte=today_date  # Today or future
         ).order_by('function_date', 'time_from')
+        
+        # ✅ UPDATED: Filter out completed functions based on date AND time
+        upcoming_functions = []
+        for f in functions:
+            # If function date is in future, it's upcoming
+            if f.function_date > today_date:
+                upcoming_functions.append(f)
+            # If function date is today, check if time_to has passed
+            elif f.function_date == today_date:
+                if f.time_to > current_time:
+                    upcoming_functions.append(f)
         
         data = [{
             'id': f.id,
@@ -1404,7 +1534,7 @@ class FunctionUpcomingEventsAPI(APIView):
             'total_amount': str(f.total_amount),
             'advance_amount': str(f.advance_amount) if f.advance_amount else None,
             'due_amount': str(f.due_amount) if f.due_amount else None,
-        } for f in functions]
+        } for f in upcoming_functions]
         
         return Response({
             'success': True,
@@ -1429,7 +1559,7 @@ class FunctionPendingByMonthAPI(APIView):
         pending_functions = FunctionBooking.objects.filter(
             function_date__gte=start_date,
             function_date__lt=end_date,
-            status='PENDING'  # Assuming default status is 'PENDING' if not CONFIRMED
+            status='PENDING'
         ).order_by('function_date', 'time_from')
         
         data = [{
@@ -1457,13 +1587,28 @@ class FunctionUpcomingCountAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Return the total count of confirmed upcoming functions (today and future)"""
-        today = datetime.now().date()
-
-        count = FunctionBooking.objects.filter(
+        """Return the total count of confirmed upcoming functions (not yet ended)"""
+        from django.utils import timezone
+        
+        now = timezone.localtime(timezone.now())
+        today_date = now.date()
+        current_time = now.time()
+        
+        # Get all confirmed functions from today onwards
+        functions = FunctionBooking.objects.filter(
             status='CONFIRMED',
-            function_date__gte=today
-        ).count()
+            function_date__gte=today_date
+        )
+        
+        # ✅ UPDATED: Count only functions that haven't ended yet
+        count = 0
+        for f in functions:
+            # Future dates are definitely upcoming
+            if f.function_date > today_date:
+                count += 1
+            # Today's functions - check if end time hasn't passed
+            elif f.function_date == today_date and f.time_to > current_time:
+                count += 1
 
         return Response({'count': count})
     
@@ -1471,11 +1616,29 @@ class FunctionCompletedCountAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        today = datetime.now().date()
-        count = FunctionBooking.objects.filter(
+        """Return count of completed functions (end time has passed)"""
+        from django.utils import timezone
+        
+        now = timezone.localtime(timezone.now())
+        today_date = now.date()
+        current_time = now.time()
+        
+        # ✅ UPDATED: Get all confirmed functions up to today
+        functions = FunctionBooking.objects.filter(
             status='CONFIRMED',
-            function_date__lt=today  # past dates
-        ).count()
+            function_date__lte=today_date  # Today or past
+        )
+        
+        # Count only functions where end time has passed
+        count = 0
+        for f in functions:
+            # Past dates are definitely completed
+            if f.function_date < today_date:
+                count += 1
+            # Today's functions - check if end time has passed
+            elif f.function_date == today_date and f.time_to <= current_time:
+                count += 1
+        
         return Response({'count': count})
 
 
@@ -1483,11 +1646,28 @@ class FunctionCompletedAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        today = datetime.now().date()
+        """Get all completed functions (end time has passed)"""
+        from django.utils import timezone
+        
+        now = timezone.localtime(timezone.now())
+        today_date = now.date()
+        current_time = now.time()
+        
+        # ✅ UPDATED: Get all confirmed functions up to today
         functions = FunctionBooking.objects.filter(
             status='CONFIRMED',
-            function_date__lt=today
-        ).order_by('-function_date', 'time_from')  # newest first
+            function_date__lte=today_date
+        ).order_by('-function_date', 'time_from')
+        
+        # Filter to only completed functions (end time passed)
+        completed_functions = []
+        for f in functions:
+            # Past dates are completed
+            if f.function_date < today_date:
+                completed_functions.append(f)
+            # Today - check if end time passed
+            elif f.function_date == today_date and f.time_to <= current_time:
+                completed_functions.append(f)
         
         data = [{
             'id': f.id,
@@ -1501,7 +1681,7 @@ class FunctionCompletedAPI(APIView):
             'location': f.location,
             'no_of_pax': f.no_of_pax,
             'total_amount': str(f.total_amount),
-        } for f in functions]
+        } for f in completed_functions]
         
         return Response({
             'success': True,
@@ -1594,3 +1774,128 @@ class FunctionUpdateDetailsAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': 'An error occurred while saving details'}, status=500)
+
+class UserRightsListAPI(APIView):
+    """Get all users with their current permissions"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        users = User.objects.filter(is_active=True).select_related('userprofile').order_by('username')
+        
+        data = []
+        for user in users:
+            # Get or create permissions for this user
+            perms = UserPermission.get_or_create_for_user(user)
+            
+            data.append({
+                'id': user.id,
+                'username': user.username,
+                'group': user.groups.first().name if user.groups.exists() else 'None',
+                'designation': user.userprofile.designation.name if hasattr(user, 'userprofile') and user.userprofile.designation else 'N/A',
+                'permissions': {
+                    'can_create_voucher': perms.can_create_voucher,
+                    'can_edit_voucher': perms.can_edit_voucher,
+                    'can_view_voucher_list': perms.can_view_voucher_list,
+                    'can_view_voucher_detail': perms.can_view_voucher_detail,
+                    'can_print_voucher': perms.can_print_voucher,
+                    'can_create_function': perms.can_create_function,
+                    'can_edit_function': perms.can_edit_function,
+                    'can_delete_function': perms.can_delete_function,
+                    'can_view_function_list': perms.can_view_function_list,
+                    'can_view_function_detail': perms.can_view_function_detail,
+                    'can_print_function': perms.can_print_function,
+                }
+            })
+        
+        return Response({'users': data})
+
+
+class UserRightsUpdateAPI(APIView):
+    """Update permissions for a specific user"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        user_id = request.data.get('user_id')
+        permissions_data = request.data.get('permissions', {})
+        
+        if not user_id:
+            return Response({'error': 'User ID is required'}, status=400)
+        
+        try:
+            user = User.objects.get(id=user_id)
+            perms = UserPermission.get_or_create_for_user(user)
+            
+            # Update permissions
+            perms.can_create_voucher = permissions_data.get('can_create_voucher', False)
+            perms.can_edit_voucher = permissions_data.get('can_edit_voucher', False)
+            perms.can_view_voucher_list = permissions_data.get('can_view_voucher_list', False)
+            perms.can_view_voucher_detail = permissions_data.get('can_view_voucher_detail', False)
+            perms.can_print_voucher = permissions_data.get('can_print_voucher', False)
+            perms.can_create_function = permissions_data.get('can_create_function', False)
+            perms.can_edit_function = permissions_data.get('can_edit_function', False)
+            perms.can_delete_function = permissions_data.get('can_delete_function', False)
+            perms.can_view_function_list = permissions_data.get('can_view_function_list', False)
+            perms.can_view_function_detail = permissions_data.get('can_view_function_detail', False)
+            perms.can_print_function = permissions_data.get('can_print_function', False)
+            
+            perms.updated_by = request.user
+            perms.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Permissions updated for {user.username}'
+            })
+            
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class UserRightsBulkUpdateAPI(APIView):
+    """Update permissions for multiple users at once"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        updates = request.data.get('updates', [])
+        
+        if not updates:
+            return Response({'error': 'No updates provided'}, status=400)
+        
+        try:
+            with transaction.atomic():
+                for update in updates:
+                    user_id = update.get('user_id')
+                    permissions = update.get('permissions', {})
+                    
+                    if not user_id:
+                        continue
+                    
+                    user = User.objects.get(id=user_id)
+                    perms = UserPermission.get_or_create_for_user(user)
+                    
+                    perms.can_create_voucher = permissions.get('can_create_voucher', False)
+                    perms.can_edit_voucher = permissions.get('can_edit_voucher', False)
+                    perms.can_create_function = permissions.get('can_create_function', False)
+                    perms.can_edit_function = permissions.get('can_edit_function', False)
+                    perms.can_delete_function = permissions.get('can_delete_function', False)
+                    
+                    perms.updated_by = request.user
+                    perms.save()
+            
+            return Response({
+                'success': True,
+                'message': f'{len(updates)} user permissions updated successfully'
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
