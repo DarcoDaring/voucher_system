@@ -1131,28 +1131,6 @@ function handlePermissionChange(event) {
             dateInput.value = window.today;
             dateInput.max = window.today;
         }
-        // === CREATE DESIGNATION ===
-        const createForm = document.getElementById('createDesignationForm');
-        if (createForm) {
-            createForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const name = this.querySelector('#designation_name').value.trim();
-                if (!name) return alert('Name required');
-                fetch("{% url 'designation_create_api' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.id) {
-                        alert('Designation created!');
-                        bootstrap.Modal.getInstance(document.getElementById('createDesignationModal')).hide();
-                        location.reload();
-                    } else alert('Error: ' + (d.error || 'Failed'));
-                });
-            });
-        }
         // === CREATE USER ===
         const userForm = document.getElementById('createUserForm');
         if (userForm) {
@@ -1175,6 +1153,14 @@ function handlePermissionChange(event) {
                 formData.append('username', document.getElementById('user_username').value.trim());
                 formData.append('password', document.getElementById('user_password').value);
                 formData.append('user_group', document.getElementById('user_group').value);
+                
+                // ✅ FIXED: Mobile number validation and append
+                const mobile = document.getElementById('user_mobile').value.trim();
+                if (!mobile) {
+                    return alert('Mobile number is required');
+                }
+                formData.append('mobile', mobile);
+                
                 const designation = document.getElementById('user_designation').value;
                 if (document.getElementById('user_group').value === 'Admin Staff') {
                     if (!designation) return alert('Designation required for Admin Staff');
