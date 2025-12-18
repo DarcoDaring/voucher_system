@@ -1329,57 +1329,67 @@ class FunctionDeleteAPI(APIView):
  
 class FunctionConfirmAPI(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request, pk):
         """Confirm a function with advance payment, due amount, and food times"""
         if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
             return Response({'error': 'Permission denied'}, status=403)
-        
+
         try:
             function = FunctionBooking.objects.get(pk=pk)
-            
-            # Check if already confirmed
+
             if function.status == 'CONFIRMED':
                 return Response({'error': 'Function is already confirmed'}, status=400)
-            
-            # Get form data
+
             advance_amount = request.data.get('advance_amount')
             due_amount = request.data.get('due_amount')
-            food_pickup_time = request.data.get('food_pickup_time')
-            food_service_time = request.data.get('food_service_time')
-            
-            # Validation
+            food_pickup_time_str = request.data.get('food_pickup_time')  # <-- raw string
+            food_service_time_str = request.data.get('food_service_time')  # <-- raw string
+
+            # Validation for amounts
             if not advance_amount:
                 return Response({'error': 'Advance amount is required'}, status=400)
-            
+
             try:
                 advance_amount = Decimal(str(advance_amount))
                 due_amount = Decimal(str(due_amount))
-                
+
                 if advance_amount < 0:
                     return Response({'error': 'Advance amount must be positive'}, status=400)
-                
+
                 if advance_amount > function.total_amount:
                     return Response({'error': 'Advance amount cannot exceed total amount'}, status=400)
-                
-                # Verify due amount calculation
+
                 calculated_due = function.total_amount - advance_amount
                 if abs(calculated_due - due_amount) > Decimal('0.01'):
                     return Response({'error': 'Due amount calculation mismatch'}, status=400)
-                
+
             except (InvalidOperation, ValueError):
                 return Response({'error': 'Invalid amount format'}, status=400)
-            
-            # Update function status
+
+            # === SAFE TIME PARSING (Critical Fix) ===
+            from datetime import datetime
+
+            def parse_time(time_str):
+                """Convert 'HH:MM' string to datetime.time object or return None"""
+                if not time_str or str(time_str).strip() in ('', 'null', 'None'):
+                    return None
+                try:
+                    return datetime.strptime(str(time_str).strip(), '%H:%M').time()
+                except ValueError:
+                    return None  # Invalid format → treat as None
+
+            function.food_pickup_time = parse_time(food_pickup_time_str)
+            function.food_service_time = parse_time(food_service_time_str)
+
+            # Update confirmation fields
             function.status = 'CONFIRMED'
             function.advance_amount = advance_amount
             function.due_amount = due_amount
-            function.food_pickup_time = food_pickup_time if food_pickup_time else None
-            function.food_service_time = food_service_time if food_service_time else None
             function.confirmed_by = request.user
             function.confirmed_at = timezone.now()
             function.save()
-            
+
             return Response({
                 'success': True,
                 'message': f'Function {function.function_number} confirmed successfully!',
@@ -1397,7 +1407,7 @@ class FunctionConfirmAPI(APIView):
                     'confirmed_at': function.confirmed_at.strftime('%d %b %Y, %H:%M')
                 }
             })
-            
+
         except FunctionBooking.DoesNotExist:
             return Response({'error': 'Function not found'}, status=404)
         except Exception as e:

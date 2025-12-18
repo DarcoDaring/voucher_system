@@ -782,8 +782,8 @@ document.getElementById('confirmFunctionForm').addEventListener('submit', functi
     successDiv.classList.add('d-none');
     
     const advanceAmount = document.getElementById('advance_amount').value;
-    const foodPickupTime = document.getElementById('food_pickup_time').value;
-    const foodServiceTime = document.getElementById('food_service_time').value;
+    const foodPickupTime = document.getElementById('food_pickup_time').value.trim();
+    const foodServiceTime = document.getElementById('food_service_time').value.trim();  
     
     const totalAmount = parseFloat(document.getElementById('confirm_total_amount').textContent);
     
