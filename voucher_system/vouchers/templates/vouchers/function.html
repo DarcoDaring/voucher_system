@@ -155,7 +155,7 @@
                                     rows="3" required maxlength="500"></textarea>
                         </div>
 
-                        <!-- UPDATED: Menu Items with Categories -->
+                        <!-- ✅ UPDATED: Menu Items with TEXTAREA instead of input -->
                         <div class="col-12">
                             <label class="form-label fw-semibold mb-3">
                                 <i class="bi bi-cup-hot me-2"></i>Menu Items
@@ -167,8 +167,8 @@
                                     <label class="form-label text-muted small fw-semibold">
                                         <i class="bi bi-cup-straw me-1"></i>Welcome Drink
                                     </label>
-                                    <input type="text" class="form-control" id="menu_welcome_drink" 
-                                           placeholder="e.g., Fresh Lime Juice, Tender Coconut">
+                                    <textarea class="form-control" id="menu_welcome_drink" rows="2"
+                                           placeholder="e.g., Fresh Lime Juice, Tender Coconut"></textarea>
                                 </div>
 
                                 <!-- Starters -->
@@ -176,8 +176,8 @@
                                     <label class="form-label text-muted small fw-semibold">
                                         <i class="bi bi-egg-fried me-1"></i>Starters
                                     </label>
-                                    <input type="text" class="form-control" id="menu_starters" 
-                                           placeholder="e.g., Chicken 65, Paneer Tikka">
+                                    <textarea class="form-control" id="menu_starters" rows="2"
+                                           placeholder="e.g., Chicken 65, Paneer Tikka"></textarea>
                                 </div>
 
                                 <!-- Main Course -->
@@ -185,8 +185,8 @@
                                     <label class="form-label text-muted small fw-semibold">
                                         <i class="bi bi-bowl-hot-fill me-1"></i>Main Course
                                     </label>
-                                    <input type="text" class="form-control" id="menu_main_course" 
-                                           placeholder="e.g., Biryani, Dal Makhani, Roti">
+                                    <textarea class="form-control" id="menu_main_course" rows="2"
+                                           placeholder="e.g., Biryani, Dal Makhani, Roti"></textarea>
                                 </div>
 
                                 <!-- Desserts -->
@@ -194,8 +194,8 @@
                                     <label class="form-label text-muted small fw-semibold">
                                         <i class="bi bi-cake2 me-1"></i>Desserts
                                     </label>
-                                    <input type="text" class="form-control" id="menu_desserts" 
-                                           placeholder="e.g., Gulab Jamun, Ice Cream">
+                                    <textarea class="form-control" id="menu_desserts" rows="2"
+                                           placeholder="e.g., Gulab Jamun, Ice Cream"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -249,7 +249,7 @@
                                    min="0" step="0.01" value="0" onchange="calculateTotal()">
                         </div>
 
-                        <!-- NEW: Location -->
+                        <!-- Location -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">
                                 Location <span class="text-danger">*</span>
@@ -272,6 +272,16 @@
                             <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExtraCharge()">
                                 <i class="bi bi-plus-circle me-1"></i>Add Extra Charge
                             </button>
+                        </div>
+
+                        <!-- ✅ NEW: Special Instructions in Create Modal -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-pencil-square me-2"></i>Special Instructions (Optional)
+                            </label>
+                            <textarea class="form-control" id="special_instructions" rows="3" 
+                                      placeholder="Enter any special instructions or notes for this function..."></textarea>
+                            <small class="text-muted">Add any specific requirements, preferences, or important notes</small>
                         </div>
 
                         <!-- Total Amount -->
@@ -1385,136 +1395,141 @@ if (createModal) {
 }
 
     // Updated Form Submission Handler for Create Function
-    document.getElementById('createFunctionForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const errorDiv = document.getElementById('formError');
-        const successDiv = document.getElementById('formSuccess');
-        errorDiv.classList.add('d-none');
-        successDiv.classList.add('d-none');
+document.getElementById('createFunctionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('formError');
+    const successDiv = document.getElementById('formSuccess');
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
 
-        // Validate times
-        const timeFrom = document.getElementById('time_from').value;
-        const timeTo = document.getElementById('time_to').value;
-        if (timeFrom >= timeTo) {
-            errorDiv.textContent = 'Time To must be after Time From';
-            errorDiv.classList.remove('d-none');
-            return;
+    // Validate times
+    const timeFrom = document.getElementById('time_from').value;
+    const timeTo = document.getElementById('time_to').value;
+    if (timeFrom >= timeTo) {
+        errorDiv.textContent = 'Time To must be after Time From';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    // Collect contact numbers
+    const contactNumbers = [];
+    document.querySelectorAll('.contact-number').forEach(input => {
+        if (input.value.trim()) {
+            contactNumbers.push(input.value.trim());
         }
+    });
+    
+    if (contactNumbers.length === 0) {
+        errorDiv.textContent = 'At least one contact number is required';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
 
-        // Collect contact numbers
-        const contactNumbers = [];
-        document.querySelectorAll('.contact-number').forEach(input => {
-            if (input.value.trim()) {
-                contactNumbers.push(input.value.trim());
-            }
-        });
-        
-        if (contactNumbers.length === 0) {
-            errorDiv.textContent = 'At least one contact number is required';
-            errorDiv.classList.remove('d-none');
-            return;
+    // ✅ UPDATED: Collect menu items (now from textareas)
+    const menuItems = {
+        welcome_drink: document.getElementById('menu_welcome_drink').value.trim(),
+        starters: document.getElementById('menu_starters').value.trim(),
+        main_course: document.getElementById('menu_main_course').value.trim(),
+        desserts: document.getElementById('menu_desserts').value.trim()
+    };
+
+    // Collect location
+    const location = document.getElementById('location').value;
+    if (!location) {
+        errorDiv.textContent = 'Please select a location';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    // Collect extra charges
+    const extraCharges = [];
+    document.querySelectorAll('.extra-charge-row').forEach(row => {
+        const desc = row.querySelector('.extra-charge-desc').value.trim();
+        const rate = row.querySelector('.extra-charge-rate').value;
+        if (desc && rate) {
+            extraCharges.push({ description: desc, rate: parseFloat(rate) });
         }
+    });
 
-        // UPDATED: Collect menu items as object
-        const menuItems = {
-            welcome_drink: document.getElementById('menu_welcome_drink').value.trim(),
-            starters: document.getElementById('menu_starters').value.trim(),
-            main_course: document.getElementById('menu_main_course').value.trim(),
-            desserts: document.getElementById('menu_desserts').value.trim()
-        };
+    // ✅ NEW: Collect special instructions
+    const specialInstructions = document.getElementById('special_instructions').value.trim();
 
-        // Collect location
-        const location = document.getElementById('location').value;
-        if (!location) {
-            errorDiv.textContent = 'Please select a location';
-            errorDiv.classList.remove('d-none');
-            return;
+    const formData = new FormData();
+    formData.append('function_number', document.getElementById('function_number').value);
+    formData.append('function_date', document.getElementById('function_date').value);
+    formData.append('time_from', document.getElementById('time_from').value);
+    formData.append('time_to', document.getElementById('time_to').value);
+    formData.append('function_name', document.getElementById('function_name').value);
+    formData.append('booked_by', document.getElementById('booked_by').value);
+    formData.append('contact_numbers', JSON.stringify(contactNumbers));
+    formData.append('address', document.getElementById('address').value);
+    formData.append('menu_items', JSON.stringify(menuItems));
+    formData.append('location', location);
+    formData.append('no_of_pax', document.getElementById('no_of_pax').value);
+    formData.append('rate_per_pax', document.getElementById('rate_per_pax').value);
+    formData.append('gst_option', document.querySelector('input[name="gst_option"]:checked').value);
+    formData.append('hall_rent', document.getElementById('hall_rent').value || 0);
+    formData.append('extra_charges', JSON.stringify(extraCharges));
+    formData.append('special_instructions', specialInstructions);  // ✅ NEW
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+
+    fetch('/api/functions/create/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCsrfToken()
         }
-
-        // Collect extra charges
-        const extraCharges = [];
-        document.querySelectorAll('.extra-charge-row').forEach(row => {
-            const desc = row.querySelector('.extra-charge-desc').value.trim();
-            const rate = row.querySelector('.extra-charge-rate').value;
-            if (desc && rate) {
-                extraCharges.push({ description: desc, rate: parseFloat(rate) });
-            }
-        });
-
-        const formData = new FormData();
-        formData.append('function_number', document.getElementById('function_number').value);
-        formData.append('function_date', document.getElementById('function_date').value);
-        formData.append('time_from', document.getElementById('time_from').value);
-        formData.append('time_to', document.getElementById('time_to').value);
-        formData.append('function_name', document.getElementById('function_name').value);
-        formData.append('booked_by', document.getElementById('booked_by').value);
-        formData.append('contact_numbers', JSON.stringify(contactNumbers));
-        formData.append('address', document.getElementById('address').value);
-        formData.append('menu_items', JSON.stringify(menuItems));
-        formData.append('location', location);
-        formData.append('no_of_pax', document.getElementById('no_of_pax').value);
-        formData.append('rate_per_pax', document.getElementById('rate_per_pax').value);
-        formData.append('gst_option', document.querySelector('input[name="gst_option"]:checked').value);
-        formData.append('hall_rent', document.getElementById('hall_rent').value || 0);
-        formData.append('extra_charges', JSON.stringify(extraCharges));
-
-        const submitBtn = this.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
-
-        fetch('/api/functions/create/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': getCsrfToken()
-            }
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                successDiv.textContent = 'Function created successfully!';
-                successDiv.classList.remove('d-none');
-                setTimeout(() => {
-                    bootstrap.Modal.getInstance(document.getElementById('createFunctionModal')).hide();
-                    this.reset();
-                    // Reset contact numbers
-                    document.getElementById('contactNumbersContainer').innerHTML = `
-                        <div class="input-group mb-2">
-                            <input type="tel" class="form-control contact-number" 
-                                   pattern="[0-9]{10}" maxlength="10" required>
-                            <button type="button" class="btn btn-outline-danger btn-sm" 
-                                    onclick="removeContactNumber(this)" style="display:none;">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                    // Reset extra charges and menu items
-                    document.getElementById('extraChargesContainer').innerHTML = '';
-                    document.getElementById('menu_welcome_drink').value = '';
-                    document.getElementById('menu_starters').value = '';
-                    document.getElementById('menu_main_course').value = '';
-                    document.getElementById('menu_desserts').value = '';
-                    document.getElementById('totalAmountDisplay').textContent = '0.00';
-                    loadBookedDates();
-                    renderCalendar(currentDate);
-                    
-                }, 1500);
-            } else {
-                errorDiv.textContent = data.error || 'Failed to create function';
-                errorDiv.classList.remove('d-none');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            errorDiv.textContent = 'Network error. Please try again.';
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            successDiv.textContent = 'Function created successfully!';
+            successDiv.classList.remove('d-none');
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('createFunctionModal')).hide();
+                this.reset();
+                // Reset contact numbers
+                document.getElementById('contactNumbersContainer').innerHTML = `
+                    <div class="input-group mb-2">
+                        <input type="tel" class="form-control contact-number" 
+                               pattern="[0-9]{10}" maxlength="10" required>
+                        <button type="button" class="btn btn-outline-danger btn-sm" 
+                                onclick="removeContactNumber(this)" style="display:none;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                // Reset extra charges and menu items
+                document.getElementById('extraChargesContainer').innerHTML = '';
+                document.getElementById('menu_welcome_drink').value = '';
+                document.getElementById('menu_starters').value = '';
+                document.getElementById('menu_main_course').value = '';
+                document.getElementById('menu_desserts').value = '';
+                document.getElementById('special_instructions').value = '';  // ✅ NEW
+                document.getElementById('totalAmountDisplay').textContent = '0.00';
+                loadBookedDates();
+                renderCalendar(currentDate);
+                
+            }, 1500);
+        } else {
+            errorDiv.textContent = data.error || 'Failed to create function';
             errorDiv.classList.remove('d-none');
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
-        });
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
     });
+});
 
     let functionsByDate = {}; // Global variable to store functions by date
 

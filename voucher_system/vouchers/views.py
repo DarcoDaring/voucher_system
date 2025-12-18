@@ -1184,7 +1184,7 @@ class FunctionCreateAPI(APIView):
             # Parse menu items (now an object with categories)
             menu_items = json.loads(request.data.get('menu_items', '{}'))
             
-            # NEW: Location is now required during creation
+            # Location is required during creation
             location = request.data.get('location', '').strip()
             if not location:
                 return Response({'error': 'Location is required'}, status=400)
@@ -1200,6 +1200,9 @@ class FunctionCreateAPI(APIView):
             # Parse extra charges (array of objects)
             extra_charges = json.loads(request.data.get('extra_charges', '[]'))
             
+            # ✅ NEW: Get special instructions from create form
+            special_instructions = request.data.get('special_instructions', '').strip()
+            
             if not all([function_date, time_from, time_to, function_name, address, no_of_pax, rate_per_pax]):
                 return Response({'error': 'All required fields must be filled'}, status=400)
             
@@ -1212,12 +1215,13 @@ class FunctionCreateAPI(APIView):
                 contact_numbers=contact_numbers,
                 address=address,
                 menu_items=menu_items,
-                location=location,  # NEW: Save location during creation
+                location=location,
                 no_of_pax=no_of_pax,
                 rate_per_pax=rate_per_pax,
                 gst_option=gst_option,
                 hall_rent=hall_rent,
                 extra_charges=extra_charges,
+                special_instructions=special_instructions,  # ✅ NEW
                 created_by=request.user
             )
             
@@ -1327,7 +1331,7 @@ class FunctionConfirmAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, pk):
-        """Confirm a function with advance payment, due amount, food times, and special instructions"""
+        """Confirm a function with advance payment, due amount, and food times"""
         if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
             return Response({'error': 'Permission denied'}, status=403)
         
@@ -1343,7 +1347,6 @@ class FunctionConfirmAPI(APIView):
             due_amount = request.data.get('due_amount')
             food_pickup_time = request.data.get('food_pickup_time')
             food_service_time = request.data.get('food_service_time')
-            special_instructions = request.data.get('special_instructions', '').strip()
             
             # Validation
             if not advance_amount:
@@ -1373,7 +1376,6 @@ class FunctionConfirmAPI(APIView):
             function.due_amount = due_amount
             function.food_pickup_time = food_pickup_time if food_pickup_time else None
             function.food_service_time = food_service_time if food_service_time else None
-            function.special_instructions = special_instructions
             function.confirmed_by = request.user
             function.confirmed_at = timezone.now()
             function.save()
@@ -1391,7 +1393,6 @@ class FunctionConfirmAPI(APIView):
                     'due_amount': str(function.due_amount),
                     'food_pickup_time': function.food_pickup_time.strftime('%H:%M') if function.food_pickup_time else None,
                     'food_service_time': function.food_service_time.strftime('%H:%M') if function.food_service_time else None,
-                    'special_instructions': function.special_instructions,
                     'confirmed_by': function.confirmed_by.username,
                     'confirmed_at': function.confirmed_at.strftime('%d %b %Y, %H:%M')
                 }
@@ -1403,6 +1404,7 @@ class FunctionConfirmAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': str(e)}, status=500)
+
        
 class FunctionUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -1432,7 +1434,7 @@ class FunctionUpdateAPI(APIView):
             menu_items = json.loads(request.data.get('menu_items', '{}'))
             function.menu_items = menu_items
             
-            # NEW: Update location
+            # Update location
             location = request.data.get('location')
             if location:
                 if location not in ['Banquet', 'Restaurant', 'Family Room', 'Outdoor']:
@@ -1446,6 +1448,10 @@ class FunctionUpdateAPI(APIView):
             
             extra_charges = json.loads(request.data.get('extra_charges', '[]'))
             function.extra_charges = extra_charges
+            
+            # ✅ NEW: Update special instructions
+            special_instructions = request.data.get('special_instructions', '').strip()
+            function.special_instructions = special_instructions
             
             function.save()
             
@@ -1464,7 +1470,7 @@ class FunctionUpdateAPI(APIView):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return Response({'error': str(e)}, status=500)\
+            return Response({'error': str(e)}, status=500)
             
 
 class FunctionPrintView(LoginRequiredMixin, DetailView):
@@ -1748,7 +1754,6 @@ class FunctionUpdateDetailsAPI(APIView):
                 try:
                     return datetime.strptime(time_str, '%H:%M').time()
                 except ValueError:
-                    # Invalid format - treat as empty
                     return None
 
             function.food_pickup_time = parse_time(food_pickup_time_str)
