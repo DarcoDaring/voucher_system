@@ -486,9 +486,9 @@ class FunctionBooking(models.Model):
         
         # Apply GST
         if self.gst_option == 'INCLUDING':
-            amount_with_gst = (base_amount*100)/105
+            amount_with_gst = base_amount
         else:
-            amount_with_gst = base_amount * Decimal('1.05')
+            amount_with_gst = base_amount+((base_amount*5)/100)
         
         # Add hall rent
         hall_rent = Decimal(self.hall_rent or 0)

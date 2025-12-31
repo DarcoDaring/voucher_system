@@ -227,14 +227,14 @@
                                     <input class="form-check-input" type="radio" name="gst_option" 
                                            id="gst_including" value="INCLUDING" checked onchange="calculateTotal()">
                                     <label class="form-check-label" for="gst_including">
-                                        Including GST (5%)
+                                       Including GST 
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="gst_option" 
                                            id="gst_excluding" value="EXCLUDING" onchange="calculateTotal()">
                                     <label class="form-check-label" for="gst_excluding">
-                                        Excluding GST
+                                        Without GST
                                     </label>
                                 </div>
                             </div>
@@ -898,12 +898,20 @@ function calculateTotal() {
     
     let baseAmount = pax * rate;
     
+    // ✅ FIXED: Match backend logic exactly
+    let amountWithGst;
     if (gstOption === 'INCLUDING') {
-        baseAmount = baseAmount * 1.05;
+        // GST already included - reverse calculate to get net amount
+        amountWithGst = baseAmount
+    } else {
+        // Add 5% GST to base amount
+        amountWithGst = baseAmount + ((baseAmount * 5) / 100);
     }
     
-    let total = baseAmount + hallRent;
+    // Add hall rent
+    let total = amountWithGst + hallRent;
     
+    // Add extra charges
     const extraCharges = document.querySelectorAll('.extra-charge-rate');
     extraCharges.forEach(input => {
         total += parseFloat(input.value || 0);
