@@ -1272,6 +1272,52 @@ function handlePermissionChange(event) {
                 });
             };
         }
+
+
+        // CREATE DESIGNATION MODAL - IMPROVED ERROR HANDLING
+const designationForm = document.getElementById('createDesignationForm');
+if (designationForm) {
+    designationForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const name = document.getElementById('designation_name').value.trim();
+        if (!name) return alert('Designation name is required');
+        
+        console.log('📤 Sending designation:', name); // Debug log
+        
+        fetch("{% url 'designation_create_api' %}", {
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': getCsrfToken(), 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ name: name })
+        })
+        .then(r => {
+            console.log('📥 Response status:', r.status); // Debug log
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(err.error || 'Server error: ' + r.status);
+                });
+            }
+            return r.json();
+        })
+        .then(d => {
+            console.log('✅ Response data:', d); // Debug log
+            if (d.id) {
+                alert(`✅ Designation "${name}" created successfully!`);
+                bootstrap.Modal.getInstance(document.getElementById('createDesignationModal')).hide();
+                designationForm.reset();
+                location.reload();
+            } else {
+                throw new Error(d.error || 'Unknown error');
+            }
+        })
+        .catch(err => {
+            console.error('❌ Error creating designation:', err); // Debug log
+            alert('❌ Error: ' + err.message);
+        });
+    });
+}
         // === ACCOUNT CONTROL MODAL ===
         const accountModal = document.getElementById('accountControlModal');
         if (accountModal) {
