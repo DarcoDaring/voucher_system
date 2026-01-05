@@ -14,7 +14,7 @@ from vouchers.views import (
     CompanyDetailAPI, FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI,
     FunctionDetailView,FunctionDeleteAPI,FunctionUpdateAPI,FunctionUpcomingEventsAPI,FunctionPendingByMonthAPI,
     FunctionUpcomingCountAPI,FunctionCompletedCountAPI,FunctionCompletedAPI,FunctionListByMonthAPI,FunctionUpdateDetailsAPI,
-    UserRightsListAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI
+    UserRightsListAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI,
 )
 
 urlpatterns = [
@@ -70,6 +70,7 @@ urlpatterns = [
     path('api/user-rights/', UserRightsListAPI.as_view(), name='user_rights_list'),
     path('api/user-rights/update/', UserRightsUpdateAPI.as_view(), name='user_rights_update'),
     path('api/user-rights/bulk-update/', UserRightsBulkUpdateAPI.as_view(), name='user_rights_bulk_update'),
+    
     
     
     

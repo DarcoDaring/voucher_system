@@ -113,10 +113,10 @@
                         <!-- Function Name & Booked By -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">
-                                Function Name <span class="text-danger">*</span>
+                                Function Name <span class="text-danger" >*</span>
                             </label>
                             <input type="text" class="form-control" id="function_name" 
-                                name="function_name" required maxlength="200">
+                                name="function_name" required maxlength="200" oninput="this.value = this.value.toUpperCase();">
                         </div>
 
                         <div class="col-md-6">
@@ -124,7 +124,7 @@
                                 Booked By <span class="text-danger">*</span>
                             </label>
                             <input type="text" class="form-control" id="booked_by" 
-                                name="booked_by" required maxlength="200">
+                                name="booked_by" required maxlength="200" oninput="this.value = this.value.toUpperCase();">
                         </div>
 
                         <!-- Contact Numbers & Address -->
@@ -152,7 +152,7 @@
                                 Address <span class="text-danger">*</span>
                             </label>
                             <textarea class="form-control" id="address" name="address" 
-                                    rows="3" required maxlength="500"></textarea>
+                                    rows="3" required maxlength="500" oninput="this.value = this.value.toUpperCase();"></textarea >
                         </div>
 
                         <!-- ✅ UPDATED: Menu Items with TEXTAREA instead of input -->
@@ -168,7 +168,7 @@
                                         <i class="bi bi-cup-straw me-1"></i>Welcome Drink
                                     </label>
                                     <textarea class="form-control" id="menu_welcome_drink" rows="2"
-                                           placeholder="e.g., Fresh Lime Juice, Tender Coconut"></textarea>
+                                           placeholder="e.g., Fresh Lime Juice, Tender Coconut" oninput="this.value = this.value.toUpperCase();"></textarea>
                                 </div>
 
                                 <!-- Starters -->
@@ -177,7 +177,7 @@
                                         <i class="bi bi-egg-fried me-1"></i>Starters
                                     </label>
                                     <textarea class="form-control" id="menu_starters" rows="2"
-                                           placeholder="e.g., Chicken 65, Paneer Tikka"></textarea>
+                                           placeholder="e.g., Chicken 65, Paneer Tikka" oninput="this.value = this.value.toUpperCase();"></textarea>
                                 </div>
 
                                 <!-- Main Course -->
@@ -186,7 +186,7 @@
                                         <i class="bi bi-bowl-hot-fill me-1"></i>Main Course
                                     </label>
                                     <textarea class="form-control" id="menu_main_course" rows="2"
-                                           placeholder="e.g., Biryani, Dal Makhani, Roti"></textarea>
+                                           placeholder="e.g., Biryani, Dal Makhani, Roti" oninput="this.value = this.value.toUpperCase();"></textarea>
                                 </div>
 
                                 <!-- Desserts -->
@@ -195,7 +195,7 @@
                                         <i class="bi bi-cake2 me-1"></i>Desserts
                                     </label>
                                     <textarea class="form-control" id="menu_desserts" rows="2"
-                                           placeholder="e.g., Gulab Jamun, Ice Cream"></textarea>
+                                           placeholder="e.g., Gulab Jamun, Ice Cream" oninput="this.value = this.value.toUpperCase();"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -274,13 +274,13 @@
                             </button>
                         </div>
 
-                        <!-- ✅ NEW: Special Instructions in Create Modal -->
+                        <!--  Special Instructions in Create Modal -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-pencil-square me-2"></i>Special Instructions (Optional)
                             </label>
                             <textarea class="form-control" id="special_instructions" rows="3" 
-                                      placeholder="Enter any special instructions or notes for this function..."></textarea>
+                                      placeholder="Enter any special instructions or notes for this function..." oninput="this.value = this.value.toUpperCase();"></textarea>
                             <small class="text-muted">Add any specific requirements, preferences, or important notes</small>
                         </div>
 

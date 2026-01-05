@@ -261,9 +261,18 @@
     <tbody>
         <!-- Rate Per Pax -->
         <tr>
-            <td><strong>Rate Per Pax</strong></td>
-            <td class="amount">₹{{ function.rate_per_pax|floatformat:2 }}</td>
-        </tr>
+    <td>
+        <strong>Rate Per Pax</strong>
+        <small style="color: #666; margin-left: 6px;">
+            {% if function.gst_option == 'INCLUDING' %}
+                (Incl. GST)
+            {% else %}
+                (Without. GST)
+            {% endif %}
+        </small>
+    </td>
+    <td class="amount">₹{{ function.rate_per_pax|floatformat:2 }}</td>
+</tr>
 
         <!-- Hall Rent -->
         {% if function.hall_rent %}

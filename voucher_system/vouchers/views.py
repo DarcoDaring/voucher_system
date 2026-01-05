@@ -1745,36 +1745,40 @@ class FunctionListByMonthAPI(APIView):
         
 class FunctionUpdateDetailsAPI(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request, pk):
         if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
             return Response({'error': 'Permission denied'}, status=403)
-
+        
         try:
             function = FunctionBooking.objects.get(pk=pk)
-
+            
             food_pickup_time_str = request.data.get('food_pickup_time')
             food_service_time_str = request.data.get('food_service_time')
-            special_instructions = request.data.get('special_instructions', '').strip()
-
+            
             def parse_time(time_str):
-                """Safely convert time string to time object or None"""
                 if not time_str or time_str in ('', None, 'null'):
                     return None
                 try:
                     return datetime.strptime(time_str, '%H:%M').time()
                 except ValueError:
                     return None
-
+            
+            # Update food times
             function.food_pickup_time = parse_time(food_pickup_time_str)
             function.food_service_time = parse_time(food_service_time_str)
-            function.special_instructions = special_instructions or None
-
+            
+            # CRITICAL FIX: Only update special_instructions if explicitly sent
+            if 'special_instructions' in request.data:
+                special_instructions = request.data.get('special_instructions', '').strip()
+                function.special_instructions = special_instructions if special_instructions else None
+            # Else: do nothing → preserves existing value
+            
             function.save()
-
+            
             return Response({
                 'success': True,
-                'message': 'Function details updated successfully!',
+                'message': 'Food times updated successfully!',
                 'function': {
                     'id': function.id,
                     'food_pickup_time': function.food_pickup_time.strftime('%H:%M') if function.food_pickup_time else None,
@@ -1782,13 +1786,15 @@ class FunctionUpdateDetailsAPI(APIView):
                     'special_instructions': function.special_instructions
                 }
             })
-
+            
         except FunctionBooking.DoesNotExist:
             return Response({'error': 'Function not found'}, status=404)
         except Exception as e:
             import traceback
             traceback.print_exc()
             return Response({'error': 'An error occurred while saving details'}, status=500)
+
+
 
 class UserRightsListAPI(APIView):
     """Get all users with their current permissions"""
