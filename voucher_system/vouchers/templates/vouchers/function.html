@@ -34,26 +34,29 @@
         <h6 class="mb-3 text-muted">Quick Stats</h6>
         
         <!-- Pending Enquiries Card -->
-        <div class="card mb-2 border-0 bg-white shadow-sm cursor-pointer" onclick="showPendingFunctions()">
-            <div class="card-body p-3">
-                <small class="text-muted"> Enquiries</small>
-                <h4 class="mb-0 text-warning" id="pendingCountDisplay">0</h4>
-            </div>
-        </div>
-        
-        <!-- NEW: Upcoming Functions Card -->
-        <div class="card mb-2 border-0 bg-white shadow-sm cursor-pointer" onclick="showUpcomingEvents()">
-            <div class="card-body p-3">
-                <small class="text-muted">Upcoming </small>
-                <h4 class="mb-0 text-success" id="upcomingCountDisplay">0</h4>
-            </div>
-        </div>
-        
-        <!-- NEW: Completed Functions Card -->
-        <div class="card mb-2 border-0 bg-white shadow-sm cursor-pointer" onclick="showCompletedFunctions()">
-    <div class="card-body p-3">
-        <small class="text-muted">Completed </small>
-        <h4 class="mb-0 text-secondary" id="completedCountDisplay">0</h4>
+<div class="card mb-3 border-0 bg-white shadow-sm cursor-pointer" onclick="showPendingFunctions()">
+    <div class="card-body p-3 text-center">
+        <i class="bi bi-clock-history text-warning mb-2" style="font-size: 1.8rem;"></i>
+        <h4 class="mb-1 text-warning" id="pendingCountDisplay">0</h4>
+        <small class="text-muted d-block">Enquiries</small>
+    </div>
+</div>
+
+<!-- Upcoming Functions Card -->
+<div class="card mb-3 border-0 bg-white shadow-sm cursor-pointer" onclick="showUpcomingEvents()">
+    <div class="card-body p-3 text-center">
+        <i class="bi bi-calendar-check text-success mb-2" style="font-size: 1.8rem;"></i>
+        <h4 class="mb-1 text-success" id="upcomingCountDisplay">0</h4>
+        <small class="text-muted d-block">Upcoming</small>
+    </div>
+</div>
+
+<!-- Completed Functions Card -->
+<div class="card mb-3 border-0 bg-white shadow-sm cursor-pointer" onclick="showCompletedFunctions()">
+    <div class="card-body p-3 text-center">
+        <i class="bi bi-archive text-secondary mb-2" style="font-size: 1.8rem;"></i>
+        <h4 class="mb-1 text-secondary" id="completedCountDisplay">0</h4>
+        <small class="text-muted d-block">Completed</small>
     </div>
 </div>
     </div>
