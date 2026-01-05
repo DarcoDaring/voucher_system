@@ -1794,7 +1794,70 @@ class FunctionUpdateDetailsAPI(APIView):
             traceback.print_exc()
             return Response({'error': 'An error occurred while saving details'}, status=500)
 
-
+class FunctionTimeConflictCheckAPI(APIView):
+    """Check if there's a time conflict with existing functions"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        function_date = request.data.get('function_date')
+        time_from = request.data.get('time_from')
+        time_to = request.data.get('time_to')
+        function_id = request.data.get('function_id')  # For edit mode, to exclude current function
+        
+        if not all([function_date, time_from, time_to]):
+            return Response({'error': 'Date and times are required'}, status=400)
+        
+        try:
+            from datetime import datetime, time as dt_time
+            
+            # Parse the date and times
+            check_date = datetime.strptime(function_date, '%Y-%m-%d').date()
+            check_time_from = datetime.strptime(time_from, '%H:%M').time()
+            check_time_to = datetime.strptime(time_to, '%H:%M').time()
+            
+            # Get existing functions on the same date
+            existing_functions = FunctionBooking.objects.filter(
+                function_date=check_date
+            )
+            
+            # Exclude current function if editing
+            if function_id:
+                existing_functions = existing_functions.exclude(id=function_id)
+            
+            conflicts = []
+            
+            for func in existing_functions:
+                # Check if times overlap
+                # Overlap occurs if: (StartA < EndB) and (EndA > StartB)
+                if (check_time_from < func.time_to) and (check_time_to > func.time_from):
+                    conflicts.append({
+                        'function_number': func.function_number,
+                        'function_name': func.function_name,
+                        'time_from': func.time_from.strftime('%H:%M'),
+                        'time_to': func.time_to.strftime('%H:%M'),
+                        'booked_by': func.booked_by,
+                        'location': func.location,
+                        'status': func.status
+                    })
+            
+            if conflicts:
+                return Response({
+                    'has_conflict': True,
+                    'conflicts': conflicts,
+                    'message': f"Found {len(conflicts)} function(s) with overlapping time"
+                })
+            else:
+                return Response({
+                    'has_conflict': False,
+                    'message': 'No time conflicts found'
+                })
+                
+        except ValueError as e:
+            return Response({'error': f'Invalid date/time format: {str(e)}'}, status=400)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=500)
 
 class UserRightsListAPI(APIView):
     """Get all users with their current permissions"""

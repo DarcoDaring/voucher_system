@@ -316,24 +316,27 @@
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title fw-bold">
-                    
                     <i class="bi bi-calendar-day me-2"></i>Functions on <span id="selectedDateDisplay"></span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- NEW: Create Function Button -->
+                    <button type="button" class="btn btn-light btn-sm" id="createFunctionFromListBtn">
+                        <i class="bi bi-plus-circle me-1"></i>Create Function
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
             </div>
             <div class="modal-body p-0" style="max-height: 70vh; overflow-y: auto;">
                 <div id="functionListContainer">
                     <div class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
-                            
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-   
 </div>
 <!-- Confirmation Details (if confirmed) - UPDATED VERSION -->
 {% if function.status == 'CONFIRMED' %}
@@ -471,6 +474,43 @@
         </div>
     </div>
 </div>
+
+<!-- TIME CONFLICT WARNING MODAL -->
+<div class="modal fade" id="timeConflictModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning border-3 shadow-lg">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Time Conflict Detected
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning mb-3">
+                    <strong>Warning:</strong> Another function is already scheduled during this time period.
+                </div>
+                
+                <div id="conflictDetails">
+                    <!-- Conflict details will be inserted here -->
+                </div>
+                
+                <p class="text-muted mb-0 mt-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Do you want to continue creating this function anyway?
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-warning px-4" id="confirmCreateAnyway">
+                    <i class="bi bi-check-lg me-1"></i>Continue Anyway
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .cursor-pointer {
         cursor: pointer;
@@ -806,6 +846,22 @@
             padding: 2px 3px;
         }
     }
+
+    Add some styling for the conflict modal */
+.modal-content.border-warning {
+    border-width: 3px !important;
+}
+
+#conflictDetails .list-group-item {
+    border-left: 4px solid #ffc107;
+    margin-bottom: 10px;
+}
+
+#confirmCreateAnyway:hover {
+    background-color: #e0a800 !important;
+    border-color: #d39e00 !important;
+}
+
 </style>
 
 <script>
@@ -1402,104 +1458,310 @@ if (createModal) {
     });
 }
 
-    // Updated Form Submission Handler for Create Function
-document.getElementById('createFunctionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+// =====================================================
+// COMPLETE REPLACEMENT FOR FUNCTION CREATE HANDLER
+// Replace the entire document.getElementById('createFunctionForm').addEventListener('submit', ...) 
+// section in your template with this code
+// =====================================================
+
+let pendingFunctionData = null;
+let conflictCheckInProgress = false;
+
+// Remove any existing event listeners and add new one
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createFunctionForm');
     
+    // Clone and replace to remove all existing listeners
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    // Add the ONLY submit handler
+    document.getElementById('createFunctionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Prevent double submission
+        if (conflictCheckInProgress) {
+            console.log('Conflict check already in progress, ignoring submission');
+            return false;
+        }
+        
+        const errorDiv = document.getElementById('formError');
+        const successDiv = document.getElementById('formSuccess');
+        errorDiv.classList.add('d-none');
+        successDiv.classList.add('d-none');
+
+        // Validate times
+        const timeFrom = document.getElementById('time_from').value;
+        const timeTo = document.getElementById('time_to').value;
+        if (timeFrom >= timeTo) {
+            errorDiv.textContent = 'Time To must be after Time From';
+            errorDiv.classList.remove('d-none');
+            return false;
+        }
+
+        // Collect contact numbers
+        const contactNumbers = [];
+        document.querySelectorAll('.contact-number').forEach(input => {
+            if (input.value.trim()) {
+                contactNumbers.push(input.value.trim());
+            }
+        });
+        
+        if (contactNumbers.length === 0) {
+            errorDiv.textContent = 'At least one contact number is required';
+            errorDiv.classList.remove('d-none');
+            return false;
+        }
+
+        // Collect menu items
+        const menuItems = {
+            welcome_drink: document.getElementById('menu_welcome_drink').value.trim(),
+            starters: document.getElementById('menu_starters').value.trim(),
+            main_course: document.getElementById('menu_main_course').value.trim(),
+            desserts: document.getElementById('menu_desserts').value.trim()
+        };
+
+        // Collect location
+        const location = document.getElementById('location').value;
+        if (!location) {
+            errorDiv.textContent = 'Please select a location';
+            errorDiv.classList.remove('d-none');
+            return false;
+        }
+
+        // Collect extra charges
+        const extraCharges = [];
+        document.querySelectorAll('.extra-charge-row').forEach(row => {
+            const desc = row.querySelector('.extra-charge-desc').value.trim();
+            const rate = row.querySelector('.extra-charge-rate').value;
+            if (desc && rate) {
+                extraCharges.push({ description: desc, rate: parseFloat(rate) });
+            }
+        });
+
+        const specialInstructions = document.getElementById('special_instructions').value.trim();
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('function_number', document.getElementById('function_number').value);
+        formData.append('function_date', document.getElementById('function_date').value);
+        formData.append('time_from', document.getElementById('time_from').value);
+        formData.append('time_to', document.getElementById('time_to').value);
+        formData.append('function_name', document.getElementById('function_name').value);
+        formData.append('booked_by', document.getElementById('booked_by').value);
+        formData.append('contact_numbers', JSON.stringify(contactNumbers));
+        formData.append('address', document.getElementById('address').value);
+        formData.append('menu_items', JSON.stringify(menuItems));
+        formData.append('location', location);
+        formData.append('no_of_pax', document.getElementById('no_of_pax').value);
+        formData.append('rate_per_pax', document.getElementById('rate_per_pax').value);
+        formData.append('gst_option', document.querySelector('input[name="gst_option"]:checked').value);
+        formData.append('hall_rent', document.getElementById('hall_rent').value || 0);
+        formData.append('extra_charges', JSON.stringify(extraCharges));
+        formData.append('special_instructions', specialInstructions);
+
+        // Store for later use
+        pendingFunctionData = formData;
+        conflictCheckInProgress = true;
+
+        // Disable submit button during check
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking conflicts...';
+
+        console.log('Starting conflict check...');
+
+        // CHECK FOR TIME CONFLICTS FIRST - DO NOT CREATE YET
+        checkTimeConflict(
+            document.getElementById('function_date').value,
+            document.getElementById('time_from').value,
+            document.getElementById('time_to').value
+        );
+        
+        return false;
+    });
+});
+
+function checkTimeConflict(date, timeFrom, timeTo, functionId = null) {
+    console.log('Checking time conflict for:', date, timeFrom, timeTo);
+    
+    const conflictData = {
+        function_date: date,
+        time_from: timeFrom,
+        time_to: timeTo
+    };
+    
+    if (functionId) {
+        conflictData.function_id = functionId;
+    }
+
+    fetch('/api/functions/check-time-conflict/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(conflictData)
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log('Conflict check result:', data);
+        
+        if (data.has_conflict) {
+            console.log('Conflicts found, showing modal');
+            
+            // Reset button state
+            const submitBtn = document.querySelector('#createFunctionForm button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+            conflictCheckInProgress = false;
+            
+            // Show conflict warning modal - DO NOT CREATE YET
+            showConflictModal(data.conflicts);
+        } else {
+            console.log('No conflicts, proceeding with creation');
+            // No conflict, proceed with creation immediately
+            submitFunctionCreate();
+        }
+    })
+    .catch(err => {
+        console.error('Error checking time conflict:', err);
+        
+        // Reset button state
+        const submitBtn = document.querySelector('#createFunctionForm button[type="submit"]');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+        conflictCheckInProgress = false;
+        
+        // On error, ask user if they want to continue
+        if (confirm('Unable to check for time conflicts. Continue anyway?')) {
+            conflictCheckInProgress = true;
+            submitFunctionCreate();
+        } else {
+            pendingFunctionData = null;
+        }
+    });
+}
+
+function showConflictModal(conflicts) {
+    console.log('Showing conflict modal with', conflicts.length, 'conflicts');
+    
+    const conflictDetails = document.getElementById('conflictDetails');
+    
+    let html = '<div class="list-group">';
+    conflicts.forEach(conflict => {
+        const statusBadge = conflict.status === 'CONFIRMED' 
+            ? '<span class="badge bg-success">Confirmed</span>'
+            : '<span class="badge bg-warning text-dark">Pending</span>';
+        
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0 fw-bold text-primary">${conflict.function_name}</h6>
+                    ${statusBadge}
+                </div>
+                <p class="mb-1 small">
+                    <i class="bi bi-hash me-1"></i><strong>${conflict.function_number}</strong>
+                </p>
+                <p class="mb-1 small">
+                    <i class="bi bi-clock text-danger me-1"></i>
+                    <strong>Time:</strong> ${formatTime12hr(conflict.time_from)} - ${formatTime12hr(conflict.time_to)}
+                </p>
+                <p class="mb-1 small">
+                    <i class="bi bi-person text-primary me-1"></i>
+                    <strong>Booked by:</strong> ${conflict.booked_by}
+                </p>
+                <p class="mb-0 small">
+                    <i class="bi bi-geo-alt text-success me-1"></i>
+                    <strong>Location:</strong> ${conflict.location}
+                </p>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    conflictDetails.innerHTML = html;
+    
+    const conflictModal = new bootstrap.Modal(document.getElementById('timeConflictModal'));
+    conflictModal.show();
+}
+
+// Handle "Continue Anyway" button click
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('confirmCreateAnyway').addEventListener('click', function() {
+        console.log('User clicked Continue Anyway');
+        
+        // Close conflict modal
+        const modalElement = document.getElementById('timeConflictModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        
+        // Set flag to allow creation
+        conflictCheckInProgress = true;
+        
+        // Proceed with function creation
+        submitFunctionCreate();
+    });
+
+    // Handle "Cancel" button - clear pending data
+    const cancelBtn = document.querySelector('#timeConflictModal .btn-secondary');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            console.log('User cancelled creation');
+            pendingFunctionData = null;
+            conflictCheckInProgress = false;
+        });
+    }
+});
+
+function submitFunctionCreate() {
+    console.log('submitFunctionCreate called');
+    
+    // Prevent multiple submissions
+    if (!pendingFunctionData) {
+        console.error('No pending function data to submit');
+        return;
+    }
+    
+    console.log('Submitting function creation...');
+    
+    const submitBtn = document.querySelector('#createFunctionForm button[type="submit"]');
     const errorDiv = document.getElementById('formError');
     const successDiv = document.getElementById('formSuccess');
-    errorDiv.classList.add('d-none');
-    successDiv.classList.add('d-none');
-
-    // Validate times
-    const timeFrom = document.getElementById('time_from').value;
-    const timeTo = document.getElementById('time_to').value;
-    if (timeFrom >= timeTo) {
-        errorDiv.textContent = 'Time To must be after Time From';
-        errorDiv.classList.remove('d-none');
-        return;
-    }
-
-    // Collect contact numbers
-    const contactNumbers = [];
-    document.querySelectorAll('.contact-number').forEach(input => {
-        if (input.value.trim()) {
-            contactNumbers.push(input.value.trim());
-        }
-    });
     
-    if (contactNumbers.length === 0) {
-        errorDiv.textContent = 'At least one contact number is required';
-        errorDiv.classList.remove('d-none');
-        return;
-    }
-
-    // ✅ UPDATED: Collect menu items (now from textareas)
-    const menuItems = {
-        welcome_drink: document.getElementById('menu_welcome_drink').value.trim(),
-        starters: document.getElementById('menu_starters').value.trim(),
-        main_course: document.getElementById('menu_main_course').value.trim(),
-        desserts: document.getElementById('menu_desserts').value.trim()
-    };
-
-    // Collect location
-    const location = document.getElementById('location').value;
-    if (!location) {
-        errorDiv.textContent = 'Please select a location';
-        errorDiv.classList.remove('d-none');
-        return;
-    }
-
-    // Collect extra charges
-    const extraCharges = [];
-    document.querySelectorAll('.extra-charge-row').forEach(row => {
-        const desc = row.querySelector('.extra-charge-desc').value.trim();
-        const rate = row.querySelector('.extra-charge-rate').value;
-        if (desc && rate) {
-            extraCharges.push({ description: desc, rate: parseFloat(rate) });
-        }
-    });
-
-    // ✅ NEW: Collect special instructions
-    const specialInstructions = document.getElementById('special_instructions').value.trim();
-
-    const formData = new FormData();
-    formData.append('function_number', document.getElementById('function_number').value);
-    formData.append('function_date', document.getElementById('function_date').value);
-    formData.append('time_from', document.getElementById('time_from').value);
-    formData.append('time_to', document.getElementById('time_to').value);
-    formData.append('function_name', document.getElementById('function_name').value);
-    formData.append('booked_by', document.getElementById('booked_by').value);
-    formData.append('contact_numbers', JSON.stringify(contactNumbers));
-    formData.append('address', document.getElementById('address').value);
-    formData.append('menu_items', JSON.stringify(menuItems));
-    formData.append('location', location);
-    formData.append('no_of_pax', document.getElementById('no_of_pax').value);
-    formData.append('rate_per_pax', document.getElementById('rate_per_pax').value);
-    formData.append('gst_option', document.querySelector('input[name="gst_option"]:checked').value);
-    formData.append('hall_rent', document.getElementById('hall_rent').value || 0);
-    formData.append('extra_charges', JSON.stringify(extraCharges));
-    formData.append('special_instructions', specialInstructions);  // ✅ NEW
-
-    const submitBtn = this.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
 
     fetch('/api/functions/create/', {
         method: 'POST',
-        body: formData,
+        body: pendingFunctionData,
         headers: {
             'X-CSRFToken': getCsrfToken()
         }
     })
     .then(r => r.json())
     .then(data => {
+        console.log('Function creation response:', data);
+        
         if (data.success) {
             successDiv.textContent = 'Function created successfully!';
             successDiv.classList.remove('d-none');
+            
+            // Reset all state
+            pendingFunctionData = null;
+            conflictCheckInProgress = false;
+            
             setTimeout(() => {
-                bootstrap.Modal.getInstance(document.getElementById('createFunctionModal')).hide();
-                this.reset();
+                const createModal = bootstrap.Modal.getInstance(document.getElementById('createFunctionModal'));
+                if (createModal) {
+                    createModal.hide();
+                }
+                
+                document.getElementById('createFunctionForm').reset();
+                
                 // Reset contact numbers
                 document.getElementById('contactNumbersContainer').innerHTML = `
                     <div class="input-group mb-2">
@@ -1511,33 +1773,51 @@ document.getElementById('createFunctionForm').addEventListener('submit', functio
                         </button>
                     </div>
                 `;
-                // Reset extra charges and menu items
                 document.getElementById('extraChargesContainer').innerHTML = '';
                 document.getElementById('menu_welcome_drink').value = '';
                 document.getElementById('menu_starters').value = '';
                 document.getElementById('menu_main_course').value = '';
                 document.getElementById('menu_desserts').value = '';
-                document.getElementById('special_instructions').value = '';  // ✅ NEW
+                document.getElementById('special_instructions').value = '';
                 document.getElementById('totalAmountDisplay').textContent = '0.00';
+                
+                // Reset button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+                
                 loadBookedDates();
                 renderCalendar(currentDate);
-                
             }, 1500);
         } else {
             errorDiv.textContent = data.error || 'Failed to create function';
             errorDiv.classList.remove('d-none');
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+            
+            // Reset state on error
+            conflictCheckInProgress = false;
         }
     })
     .catch(err => {
-        console.error(err);
+        console.error('Function creation error:', err);
         errorDiv.textContent = 'Network error. Please try again.';
         errorDiv.classList.remove('d-none');
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+        
+        // Reset state on error
+        conflictCheckInProgress = false;
     });
-});
+}
+
+// Helper function for 12-hour time format
+function formatTime12hr(time24) {
+    if (!time24) return '';
+    const [hour, minute] = time24.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+}
 
     let functionsByDate = {}; // Global variable to store functions by date
 
@@ -1771,6 +2051,7 @@ window.selectDate = function(year, month, day, dateStr) {
     loadPendingCountForCurrentMonth();
 };
 
+
     function showFunctionList(dateStr) {
         const modal = new bootstrap.Modal(document.getElementById('functionListModal'));
         const container = document.getElementById('functionListContainer');
@@ -1945,6 +2226,390 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+});
+
+let pendingFunctionData = null;
+let conflictCheckInProgress = false;
+
+// Remove any existing event listeners and add new one
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createFunctionForm');
+    
+    // Clone and replace to remove all existing listeners
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    // Add the ONLY submit handler
+    document.getElementById('createFunctionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Prevent double submission
+        if (conflictCheckInProgress) {
+            console.log('Conflict check already in progress, ignoring submission');
+            return false;
+        }
+        
+        const errorDiv = document.getElementById('formError');
+        const successDiv = document.getElementById('formSuccess');
+        errorDiv.classList.add('d-none');
+        successDiv.classList.add('d-none');
+
+        // Validate times
+        const timeFrom = document.getElementById('time_from').value;
+        const timeTo = document.getElementById('time_to').value;
+        if (timeFrom >= timeTo) {
+            errorDiv.textContent = 'Time To must be after Time From';
+            errorDiv.classList.remove('d-none');
+            return false;
+        }
+
+        // Collect contact numbers
+        const contactNumbers = [];
+        document.querySelectorAll('.contact-number').forEach(input => {
+            if (input.value.trim()) {
+                contactNumbers.push(input.value.trim());
+            }
+        });
+        
+        if (contactNumbers.length === 0) {
+            errorDiv.textContent = 'At least one contact number is required';
+            errorDiv.classList.remove('d-none');
+            return false;
+        }
+
+        // Collect menu items
+        const menuItems = {
+            welcome_drink: document.getElementById('menu_welcome_drink').value.trim(),
+            starters: document.getElementById('menu_starters').value.trim(),
+            main_course: document.getElementById('menu_main_course').value.trim(),
+            desserts: document.getElementById('menu_desserts').value.trim()
+        };
+
+        // Collect location
+        const location = document.getElementById('location').value;
+        if (!location) {
+            errorDiv.textContent = 'Please select a location';
+            errorDiv.classList.remove('d-none');
+            return false;
+        }
+
+        // Collect extra charges
+        const extraCharges = [];
+        document.querySelectorAll('.extra-charge-row').forEach(row => {
+            const desc = row.querySelector('.extra-charge-desc').value.trim();
+            const rate = row.querySelector('.extra-charge-rate').value;
+            if (desc && rate) {
+                extraCharges.push({ description: desc, rate: parseFloat(rate) });
+            }
+        });
+
+        const specialInstructions = document.getElementById('special_instructions').value.trim();
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('function_number', document.getElementById('function_number').value);
+        formData.append('function_date', document.getElementById('function_date').value);
+        formData.append('time_from', document.getElementById('time_from').value);
+        formData.append('time_to', document.getElementById('time_to').value);
+        formData.append('function_name', document.getElementById('function_name').value);
+        formData.append('booked_by', document.getElementById('booked_by').value);
+        formData.append('contact_numbers', JSON.stringify(contactNumbers));
+        formData.append('address', document.getElementById('address').value);
+        formData.append('menu_items', JSON.stringify(menuItems));
+        formData.append('location', location);
+        formData.append('no_of_pax', document.getElementById('no_of_pax').value);
+        formData.append('rate_per_pax', document.getElementById('rate_per_pax').value);
+        formData.append('gst_option', document.querySelector('input[name="gst_option"]:checked').value);
+        formData.append('hall_rent', document.getElementById('hall_rent').value || 0);
+        formData.append('extra_charges', JSON.stringify(extraCharges));
+        formData.append('special_instructions', specialInstructions);
+
+        // Store for later use
+        pendingFunctionData = formData;
+        conflictCheckInProgress = true;
+
+        // Disable submit button during check
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking conflicts...';
+
+        console.log('Starting conflict check...');
+
+        // CHECK FOR TIME CONFLICTS FIRST - DO NOT CREATE YET
+        checkTimeConflict(
+            document.getElementById('function_date').value,
+            document.getElementById('time_from').value,
+            document.getElementById('time_to').value
+        );
+        
+        return false;
+    });
+});
+
+function checkTimeConflict(date, timeFrom, timeTo, functionId = null) {
+    console.log('Checking time conflict for:', date, timeFrom, timeTo);
+    
+    const conflictData = {
+        function_date: date,
+        time_from: timeFrom,
+        time_to: timeTo
+    };
+    
+    if (functionId) {
+        conflictData.function_id = functionId;
+    }
+
+    fetch('/api/functions/check-time-conflict/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(conflictData)
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log('Conflict check result:', data);
+        
+        if (data.has_conflict) {
+            console.log('Conflicts found, showing modal');
+            
+            // Reset button state
+            const submitBtn = document.querySelector('#createFunctionForm button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+            conflictCheckInProgress = false;
+            
+            // Show conflict warning modal - DO NOT CREATE YET
+            showConflictModal(data.conflicts);
+        } else {
+            console.log('No conflicts, proceeding with creation');
+            // No conflict, proceed with creation immediately
+            submitFunctionCreate();
+        }
+    })
+    .catch(err => {
+        console.error('Error checking time conflict:', err);
+        
+        // Reset button state
+        const submitBtn = document.querySelector('#createFunctionForm button[type="submit"]');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+        conflictCheckInProgress = false;
+        
+        // On error, ask user if they want to continue
+        if (confirm('Unable to check for time conflicts. Continue anyway?')) {
+            conflictCheckInProgress = true;
+            submitFunctionCreate();
+        } else {
+            pendingFunctionData = null;
+        }
+    });
+}
+
+function showConflictModal(conflicts) {
+    console.log('Showing conflict modal with', conflicts.length, 'conflicts');
+    
+    const conflictDetails = document.getElementById('conflictDetails');
+    
+    let html = '<div class="list-group">';
+    conflicts.forEach(conflict => {
+        const statusBadge = conflict.status === 'CONFIRMED' 
+            ? '<span class="badge bg-success">Confirmed</span>'
+            : '<span class="badge bg-warning text-dark">Pending</span>';
+        
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0 fw-bold text-primary">${conflict.function_name}</h6>
+                    ${statusBadge}
+                </div>
+                <p class="mb-1 small">
+                    <i class="bi bi-hash me-1"></i><strong>${conflict.function_number}</strong>
+                </p>
+                <p class="mb-1 small">
+                    <i class="bi bi-clock text-danger me-1"></i>
+                    <strong>Time:</strong> ${formatTime12hr(conflict.time_from)} - ${formatTime12hr(conflict.time_to)}
+                </p>
+                <p class="mb-1 small">
+                    <i class="bi bi-person text-primary me-1"></i>
+                    <strong>Booked by:</strong> ${conflict.booked_by}
+                </p>
+                <p class="mb-0 small">
+                    <i class="bi bi-geo-alt text-success me-1"></i>
+                    <strong>Location:</strong> ${conflict.location}
+                </p>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    conflictDetails.innerHTML = html;
+    
+    const conflictModal = new bootstrap.Modal(document.getElementById('timeConflictModal'));
+    conflictModal.show();
+}
+
+// Handle "Continue Anyway" button click
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('confirmCreateAnyway').addEventListener('click', function() {
+        console.log('User clicked Continue Anyway');
+        
+        // Close conflict modal
+        const modalElement = document.getElementById('timeConflictModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        
+        // Set flag to allow creation
+        conflictCheckInProgress = true;
+        
+        // Proceed with function creation
+        submitFunctionCreate();
+    });
+
+    // Handle "Cancel" button - clear pending data
+    const cancelBtn = document.querySelector('#timeConflictModal .btn-secondary');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            console.log('User cancelled creation');
+            pendingFunctionData = null;
+            conflictCheckInProgress = false;
+        });
+    }
+});
+
+function submitFunctionCreate() {
+    console.log('submitFunctionCreate called');
+    
+    // Prevent multiple submissions
+    if (!pendingFunctionData) {
+        console.error('No pending function data to submit');
+        return;
+    }
+    
+    console.log('Submitting function creation...');
+    
+    const submitBtn = document.querySelector('#createFunctionForm button[type="submit"]');
+    const errorDiv = document.getElementById('formError');
+    const successDiv = document.getElementById('formSuccess');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+
+    fetch('/api/functions/create/', {
+        method: 'POST',
+        body: pendingFunctionData,
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log('Function creation response:', data);
+        
+        if (data.success) {
+            successDiv.textContent = 'Function created successfully! Reloading...';
+            successDiv.classList.remove('d-none');
+            
+            // Reset all state
+            pendingFunctionData = null;
+            conflictCheckInProgress = false;
+            
+            // Reload page after short delay to show success message
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            errorDiv.textContent = data.error || 'Failed to create function';
+            errorDiv.classList.remove('d-none');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+            
+            // Reset state on error
+            conflictCheckInProgress = false;
+        }
+    })
+    .catch(err => {
+        console.error('Function creation error:', err);
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Function';
+        
+        // Reset state on error
+        conflictCheckInProgress = false;
+    });
+}
+
+// Helper function for 12-hour time format
+function formatTime12hr(time24) {
+    if (!time24) return '';
+    const [hour, minute] = time24.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const createFromListBtn = document.getElementById('createFunctionFromListBtn');
+    
+    if (createFromListBtn) {
+        createFromListBtn.addEventListener('click', function() {
+            // Get the currently displayed date from the modal header
+            const selectedDateText = document.getElementById('selectedDateDisplay').textContent.trim();
+            
+            // Parse the date from the text (e.g., "Monday, January 5, 2026")
+            const parsedDate = new Date(selectedDateText);
+            let dateStr = '';
+            
+            if (!isNaN(parsedDate.getTime())) {
+                const year = parsedDate.getFullYear();
+                const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(parsedDate.getDate()).padStart(2, '0');
+                dateStr = `${year}-${month}-${day}`;
+            } else {
+                // Fallback: use today if parsing fails
+                dateStr = new Date().toISOString().split('T')[0];
+            }
+
+            // Close function list modal
+            const functionListModal = bootstrap.Modal.getInstance(document.getElementById('functionListModal'));
+            if (functionListModal) {
+                functionListModal.hide();
+            }
+
+            // Open create modal after a short delay
+            setTimeout(() => {
+                // Pre-fill the date input
+                const dateInput = document.getElementById('function_date');
+                dateInput.value = dateStr;
+                dateInput.min = new Date().toISOString().split('T')[0]; // Prevent past dates
+
+                // Generate new function number
+                fetch('/api/functions/generate-number/', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('function_number').value = data.function_number || 'FN0001';
+                })
+                .catch(() => {
+                    document.getElementById('function_number').value = 'FN0001';
+                });
+
+                // Finally open the create modal
+                const createModal = new bootstrap.Modal(document.getElementById('createFunctionModal'));
+                createModal.show();
+
+            }, 350); // Slightly longer delay to ensure smooth transition
+        });
+    }
 });
 </script>
 
