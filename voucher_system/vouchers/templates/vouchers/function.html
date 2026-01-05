@@ -872,7 +872,7 @@
     border-color: #d39e00 !important;
 }
 
-/* ====================== MOBILE OPTIMIZATIONS - KEEP SIDEBAR VISIBLE ====================== */
+/* ====================== MOBILE & TABLET OPTIMIZATIONS - WIDER SIDEBAR ====================== */
 @media (max-width: 992px) {
     /* Container adjustments */
     .container-fluid.p-0 {
@@ -880,102 +880,104 @@
         overflow: hidden;
     }
 
-    /* Row becomes column on very small screens, but keep side-by-side until 768px */
+    /* Row stays side-by-side */
     .row.g-0.h-100 {
-        flex-direction: row !important; /* Force row layout */
+        flex-direction: row !important;
         overflow: hidden;
     }
 
-    /* LEFT SIDEBAR - Narrow but visible */
-    .col-md-3.col-lg-2 {
-        flex: 0 0 120px !important;   /* Fixed narrow width on mobile */
-        max-width: 120px;
+    /* WIDER LEFT SIDEBAR on mobile/tablet */
+    .col-md-4.col-lg-3 {  /* Make sure your HTML uses col-md-4 col-lg-3 */
+        flex: 0 0 180px !important;
+        max-width: 180px;
         overflow-y: auto;
-        padding: 15px 8px !important;
-        font-size: 0.85rem;
+        padding: 15px 12px !important;
+        font-size: 0.9rem;
     }
 
-    /* Hide text labels in sidebar on mobile, keep icons and counts */
-    .col-md-3.col-lg-2 .nav-link .me-2 + span,
-    .col-md-3.col-lg-2 h5,
-    .col-md-3.col-lg-2 h6,
-    .col-md-3.col-lg-2 .text-muted,
-    /* Only hide the small text labels on very narrow screens (e.g., phones in portrait) */
-@media (max-width: 576px) {
-    .col-md-3.col-lg-2 .card-body small {
-        display: none;
+    /* Show text labels again (now that sidebar is wider) */
+    .col-md-4.col-lg-3 h5,
+    .col-md-4.col-lg-3 h6,
+    .col-md-4.col-lg-3 .text-muted,
+    .col-md-4.col-lg-3 .card-body small,
+    .col-md-4.col-lg-3 .nav-link .me-2 + span {
+        display: block !important;
     }
-}
 
-/* Show labels on tablets and larger phones */
-@media (min-width: 577px) and (max-width: 992px) {
-    .col-md-3.col-lg-2 .card-body small {
-        display: block;
-        font-size: 0.65rem; /* Smaller but visible */
+    /* Style adjustments for better fit in wider sidebar */
+    .col-md-4.col-lg-3 .card {
+        padding: 12px 8px;
+        text-align: center;
     }
-}
 
-    /* Keep only icons visible in nav */
-    .col-md-3.col-lg-2 .nav-link i {
-        font-size: 1.4rem;
+    .col-md-4.col-lg-3 .card i {
+        font-size: 2rem;
+        opacity: 0.8;
+        margin-bottom: 8px;
+    }
+
+    .col-md-4.col-lg-3 .card h4 {
+        font-size: 1.9rem;
+        margin: 8px 0 4px 0;
+    }
+
+    .col-md-4.col-lg-3 .card-body small {
+        font-size: 0.78rem;
+        margin-top: 4px;
+        line-height: 1.2;
+    }
+
+    /* Nav links - show text again */
+    .col-md-4.col-lg-3 .nav-link {
+        padding: 12px 10px !important;
+        text-align: left;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .col-md-4.col-lg-3 .nav-link i {
+        font-size: 1.3rem;
         margin-right: 0 !important;
+        min-width: 30px;
     }
 
-    .col-md-3.col-lg-2 .nav-link {
-        padding: 12px 8px !important;
-        text-align: center;
-        flex-direction: column;
-        gap: 4px;
+    .col-md-4.col-lg-3 .nav-link span {
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    /* Quick stats cards - smaller, icon + number only */
-    .col-md-3.col-lg-2 .card {
-        padding: 10px;
-        text-align: center;
-    }
-
-    .col-md-3.col-lg-2 .card h4 {
-        font-size: 1.6rem;
-        margin: 0;
-    }
-
-    .col-md-3.col-lg-2 .card i {
-        font-size: 1.8rem;
-        opacity: 0.7;
-    }
-
-    /* RIGHT CONTENT - Takes remaining space */
-    .col-md-9.col-lg-10 {
+    /* RIGHT CONTENT AREA */
+    .col-md-8.col-lg-9 {  /* This will be the remaining space */
         flex: 1;
         overflow: hidden;
         display: flex;
         flex-direction: column;
     }
 
-    .col-md-9.col-lg-10 > .p-4.h-100 {
-        padding: 10px !important;
+    .col-md-8.col-lg-9 > .p-4.h-100 {
+        padding: 12px !important;
         overflow: hidden;
         display: flex;
         flex-direction: column;
     }
 
-    /* Calendar container - allow horizontal scroll if needed */
+    /* Calendar adjustments */
     #calendar {
         flex: 1;
-        overflow-x: auto;
-        overflow-y: auto;
+        overflow: auto;
         padding: 15px;
-        min-width: 600px; /* Ensures calendar doesn't collapse too much */
+        min-width: 600px;
     }
 
-    /* Make calendar days taller on mobile for better readability */
     .calendar-days {
-        grid-auto-rows: minmax(100px, auto) !important;
+        grid-auto-rows: minmax(110px, auto) !important;
     }
 
     .calendar-day {
-        aspect-ratio: unset !important;
-        min-height: 100px;
+        min-height: 110px;
         padding: 8px 6px;
         font-size: 0.9rem;
     }
@@ -985,55 +987,27 @@
         font-weight: 700;
     }
 
-    .day-functions {
-        max-height: calc(100% - 30px);
-        gap: 3px;
-    }
-
     .function-name-badge {
-        font-size: 0.68rem;
+        font-size: 0.7rem;
         padding: 3px 6px;
-        line-height: 1.3;
-    }
-
-    /* Calendar header adjustments */
-    .calendar-header {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-
-    .calendar-header h2 {
-        font-size: 1.4rem;
-        margin: 0;
-    }
-
-    .calendar-nav {
-        order: -1;
-    }
-
-    .calendar-nav button {
-        padding: 8px 14px;
-        font-size: 0.9rem;
-    }
-
-    /* Modals - full width with margins */
-    .modal-dialog {
-        margin: 10px;
-        max-width: calc(100% - 20px);
-    }
-
-    .modal-body {
-        padding: 15px;
     }
 }
 
 @media (max-width: 576px) {
-    /* Even smaller screens */
-    .col-md-3.col-lg-2 {
-        flex: 0 0 100px !important;
-        max-width: 100px;
-        padding: 10px 5px !important;
+    /* On very small phones - slightly narrower but still better than before */
+    .col-md-4.col-lg-3 {
+        flex: 0 0 150px !important;
+        max-width: 150px;
+        padding: 12px 8px !important;
+    }
+
+    /* Optional: hide long labels only on tiniest screens to prevent overflow */
+    .col-md-4.col-lg-3 .card-body small {
+        display: none;  /* Remove this line if you want to keep labels even on small phones */
+    }
+
+    .col-md-4.col-lg-3 .nav-link span {
+        font-size: 0.85rem;
     }
 
     #calendar {
@@ -1042,12 +1016,6 @@
 
     .function-name-badge {
         font-size: 0.65rem;
-        padding: 2px 5px;
-    }
-
-    .calendar-day {
-        min-height: 90px;
-        padding: 6px 5px;
     }
 }
 </style>
