@@ -900,9 +900,20 @@
     .col-md-3.col-lg-2 h5,
     .col-md-3.col-lg-2 h6,
     .col-md-3.col-lg-2 .text-muted,
+    /* Only hide the small text labels on very narrow screens (e.g., phones in portrait) */
+@media (max-width: 576px) {
     .col-md-3.col-lg-2 .card-body small {
-        display: none !important;
+        display: none;
     }
+}
+
+/* Show labels on tablets and larger phones */
+@media (min-width: 577px) and (max-width: 992px) {
+    .col-md-3.col-lg-2 .card-body small {
+        display: block;
+        font-size: 0.65rem; /* Smaller but visible */
+    }
+}
 
     /* Keep only icons visible in nav */
     .col-md-3.col-lg-2 .nav-link i {
