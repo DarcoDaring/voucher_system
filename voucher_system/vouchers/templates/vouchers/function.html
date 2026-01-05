@@ -872,7 +872,7 @@
     border-color: #d39e00 !important;
 }
 
-/* ====================== MOBILE & TABLET OPTIMIZATIONS - WIDER SIDEBAR + SPACIOUS CALENDAR ====================== */
+/* ====================== MOBILE & TABLET OPTIMIZATIONS - WIDER SIDEBAR + SQUARE CALENDAR DAYS ====================== */
 @media (max-width: 992px) {
     /* Main layout */
     .container-fluid.p-0 {
@@ -894,7 +894,7 @@
         font-size: 0.9rem;
     }
 
-    /* Show all text labels now that we have space */
+    /* Show text labels */
     .sidebar-left h5,
     .sidebar-left h6,
     .sidebar-left .text-muted,
@@ -903,7 +903,6 @@
         display: block !important;
     }
 
-    /* Quick stats cards - better spacing */
     .sidebar-left .card {
         padding: 12px 8px;
         text-align: center;
@@ -926,7 +925,6 @@
         line-height: 1.2;
     }
 
-    /* Nav links - horizontal layout with icon + text */
     .sidebar-left .nav-link {
         padding: 12px 10px !important;
         text-align: left;
@@ -947,7 +945,7 @@
         text-overflow: ellipsis;
     }
 
-    /* RIGHT CONTENT AREA - FULLY FLEXIBLE */
+    /* RIGHT CONTENT */
     .col-md-8.col-lg-9 {
         flex: 1;
         overflow: hidden;
@@ -963,7 +961,7 @@
         height: 100%;
     }
 
-    /* CALENDAR - RESTORED TO ORIGINAL SPACIOUS LOOK */
+    /* CALENDAR - keep days square */
     #calendar {
         flex: 1;
         overflow: auto;
@@ -972,40 +970,49 @@
         border-radius: 15px;
         box-shadow: 0 5px 20px rgba(0,0,0,0.08);
         min-height: 800px;
-        /* Remove forced min-width that caused horizontal scroll */
         min-width: unset !important;
     }
 
     .calendar-days {
-        grid-auto-rows: minmax(120px, 1fr) !important;
-        gap: 10px;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        /* Remove forced row height → days stay square */
     }
 
     .calendar-day {
-        min-height: 120px;
-        padding: 10px 8px;
+        aspect-ratio: 1;               /* ← crucial: keeps days square */
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 8px 6px;
         font-size: 0.95rem;
-        aspect-ratio: unset !important;
+        border-radius: 10px;
+        background: #f8f9fa;
+        /* Remove min-height so aspect-ratio can work */
     }
 
     .calendar-day .day-number {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 700;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
 
     .day-functions {
-        max-height: calc(100% - 34px);
-        gap: 4px;
+        flex-grow: 1;
+        width: 100%;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
     }
 
     .function-name-badge {
-        font-size: 0.72rem;
-        padding: 4px 7px;
-        line-height: 1.3;
+        font-size: 0.7rem;
+        padding: 3px 6px;
     }
 
-    /* Calendar header adjustments */
     .calendar-header {
         flex-direction: row;
         justify-content: space-between;
@@ -1016,43 +1023,32 @@
     .calendar-header h2 {
         font-size: 1.6rem;
     }
-
-    .calendar-nav button {
-        padding: 8px 14px;
-        font-size: 0.9rem;
-    }
 }
 
 @media (max-width: 576px) {
-    /* Small phones - slightly narrower sidebar, but still usable */
     .sidebar-left {
         flex: 0 0 150px !important;
         max-width: 150px;
         padding: 12px 8px !important;
     }
 
-    /* Optional: hide long labels on very small screens */
+    /* Optional: hide labels on very small screens */
     .sidebar-left .card-body small {
         display: none;
     }
 
-    .sidebar-left .nav-link span {
-        font-size: 0.85rem;
-    }
-
-    /* Calendar still comfortable */
     .calendar-day {
-        min-height: 100px;
-        padding: 8px 6px;
+        padding: 6px 5px;
+        font-size: 0.9rem;
     }
 
     .calendar-day .day-number {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .function-name-badge {
-        font-size: 0.68rem;
-        padding: 3px 6px;
+        font-size: 0.65rem;
+        padding: 2px 5px;
     }
 
     #calendar {
