@@ -2,6 +2,13 @@
 {% load static %}
 
 {% block content %}
+<!-- Mobile Menu Toggle Button -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle">
+    <i class="bi bi-list"></i>
+</button>
+
+<!-- Mobile Sidebar Overlay -->
+<div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
 <div class="container-fluid p-0" style="height: calc(100vh - 80px); overflow: hidden;">
     <div class="row g-0 h-100">
         <!-- LEFT SIDEBAR NAVIGATION -->
@@ -862,6 +869,74 @@
     border-color: #d39e00 !important;
 }
 
+/* ====================== FULL HEIGHT FIX - NO EMPTY SPACE ====================== */
+@media (max-width: 992px) {
+    /* Ensure the main container takes full viewport height minus header */
+    .container-fluid.p-0 {
+        height: 100vh !important; /* Changed from calc(100vh - 80px) to full screen */
+        overflow: hidden;
+    }
+
+    /* Row and columns take full height */
+    .row.g-0.h-100 {
+        height: 100% !important;
+    }
+
+    /* Right content area - full height and column layout */
+    .col-md-9.col-lg-10 {
+        height: 100%;
+        padding: 0 !important;
+    }
+
+    .col-md-9.col-lg-10 > .p-4.h-100 {
+        padding: 8px !important; /* Small padding for breathing room */
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Calendar itself - grow to fill all remaining space */
+    #calendar {
+        flex: 1 1 auto;           /* This is the key: make it grow */
+        display: flex !important;
+        flex-direction: column;
+        overflow: hidden;         /* Prevent inner scroll issues */
+        min-width: unset;         /* Remove any min-width that blocks shrinking */
+        padding: 10px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    /* Calendar days grid - grow to fill remaining space after header */
+    .calendar-days {
+        flex: 1 1 auto;           /* Make the grid expand */
+        display: grid !important;
+        grid-auto-rows: minmax(80px, 1fr) !important; /* Taller min height, equal growth */
+        overflow: hidden;
+    }
+
+    /* Optional: Slightly larger day cells on mobile for better readability */
+    .calendar-day {
+        min-height: 80px;
+        padding: 8px 6px;
+    }
+
+    .day-functions {
+        max-height: calc(100% - 30px);
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 576px) {
+    .calendar-day {
+        min-height: 75px;
+    }
+
+    .calendar-days {
+        grid-auto-rows: minmax(75px, 1fr) !important;
+    }
+}
 </style>
 
 <script>
@@ -2609,6 +2684,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
             }, 350); // Slightly longer delay to ensure smooth transition
         });
+    }
+});
+
+// Mobile sidebar toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.col-md-3.col-lg-2');
+    const toggleBtn = document.getElementById('mobileMenuToggle');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+
+    if (toggleBtn && sidebar && overlay) {
+        toggleBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('mobile-sidebar-open');
+            overlay.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-sidebar-open');
+            overlay.classList.remove('active');
+        });
+
+        // Close sidebar when clicking a nav link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 992) {
+                    sidebar.classList.remove('mobile-sidebar-open');
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+    }
+
+    // Hide toggle button on desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 992) {
+            sidebar.classList.remove('mobile-sidebar-open');
+            overlay.classList.remove('active');
+            toggleBtn.style.display = 'none';
+        } else {
+            toggleBtn.style.display = 'flex';
+        }
+    });
+
+    // Initial check
+    if (window.innerWidth <= 992) {
+        toggleBtn.style.display = 'flex';
+    } else {
+        toggleBtn.style.display = 'none';
     }
 });
 </script>
