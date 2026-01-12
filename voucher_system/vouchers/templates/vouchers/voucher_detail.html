@@ -578,7 +578,8 @@ const VOUCHER_EDIT_DATA = {
 
 document.addEventListener('DOMContentLoaded', function () {
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    const listUrl = document.getElementById('voucher-list-url').dataset.url || '/vouchers/';
+    const listUrlEl = document.getElementById('voucher-list-url');
+    const listUrl = listUrlEl ? listUrlEl.dataset.url : '/vouchers/';
 
     // === APPROVE/REJECT ===
     document.querySelectorAll('.approve-btn').forEach(btn => {
@@ -609,298 +610,341 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify(payload)
             })
-            .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+            .then(r => {
+                if (!r.ok) {
+                    return r.json().then(errData => {
+                        throw new Error(errData.error || 'Server error');
+                    });
+                }
+                return r.json();
+            })
             .then(data => {
+                console.log('✅ Approval response:', data);
                 if (data.status === 'APPROVED' || data.status === 'REJECTED') {
+                    alert('Voucher ' + data.status.toLowerCase() + ' successfully!');
                     window.location.href = listUrl;
+                } else {
+                    alert('Your approval has been recorded. Waiting for other approvers.');
+                    window.location.reload();
                 }
             })
             .catch(err => {
-                console.error(err);
-                alert('Action failed. Try again.');
+                console.error('❌ Approval error:', err);
+                alert('Approval failed: ' + err.message);
                 document.querySelectorAll('.approve-btn').forEach(b => b.disabled = false);
             });
         });
     });
 
-    // === ATTACHMENT PREVIEW (Images now work perfectly) ===
+    // === ATTACHMENT PREVIEW ===
     document.querySelectorAll('.view-attachment-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             const url = this.dataset.url;
             const filename = this.dataset.filename || 'Attachment';
 
-            document.getElementById('attachmentFileName').textContent = filename;
-            document.getElementById('downloadLink').href = url;
+            const fileNameEl = document.getElementById('attachmentFileName');
+            if (fileNameEl) fileNameEl.textContent = filename;
+            
+            const downloadLink = document.getElementById('downloadLink');
+            if (downloadLink) downloadLink.href = url;
 
             const iframe = document.getElementById('attachmentIframe');
             const imagePreview = document.getElementById('imagePreview');
             const previewImage = document.getElementById('previewImage');
             const fallback = document.getElementById('fallbackMessage');
 
-            iframe.src = '';
-            iframe.classList.add('d-none');
-            imagePreview.classList.add('d-none');
-            fallback.classList.add('d-none');
+            if (iframe) {
+                iframe.src = '';
+                iframe.classList.add('d-none');
+            }
+            if (imagePreview) imagePreview.classList.add('d-none');
+            if (fallback) fallback.classList.add('d-none');
 
             const ext = filename.split('.').pop().toLowerCase();
 
             if (['jpg','jpeg','png','gif','webp','bmp','svg','tif','tiff'].includes(ext)) {
-                previewImage.src = url + '?t=' + Date.now();
-                imagePreview.classList.remove('d-none');
+                if (previewImage && imagePreview) {
+                    previewImage.src = url + '?t=' + Date.now();
+                    imagePreview.classList.remove('d-none');
+                }
             } 
             else if (['pdf','doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) {
-                iframe.src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-                iframe.classList.remove('d-none');
+                if (iframe) {
+                    iframe.src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                    iframe.classList.remove('d-none');
+                }
             } 
             else {
-                fallback.classList.remove('d-none');
+                if (fallback) fallback.classList.remove('d-none');
             }
 
-            new bootstrap.Modal(document.getElementById('attachmentPreviewModal')).show();
+            const modalEl = document.getElementById('attachmentPreviewModal');
+            if (modalEl) {
+                new bootstrap.Modal(modalEl).show();
+            }
         });
     });
 
-    // === EDIT BUTTON – FINAL 100% WORKING VERSION ===
-const editBtn = document.getElementById('editVoucherBtn');
-if (editBtn) {
-    editBtn.addEventListener('click', function () {
-        const createModal = document.getElementById('createVoucherModal');
-        if (!createModal) {
-            alert("Edit modal not found!");
-            return;
-        }
-
-        createModal.querySelector('.modal-title').textContent = 'Edit Voucher {{ voucher.voucher_number }}';
-        const bsModal = new bootstrap.Modal(createModal);
-        bsModal.show();
-
-        createModal.addEventListener('shown.bs.modal', function handler() {
-            const form = createModal.querySelector('form');
-            const tbody = form.querySelector('#particularsTable tbody');
-            tbody.innerHTML = '';
-
-            // === BASIC FIELDS ===
-            form.querySelector('[name="voucher_date"]').value = VOUCHER_EDIT_DATA.voucher_date;
-            form.querySelector('[name="payment_type"]').value = VOUCHER_EDIT_DATA.payment_type;
-            form.querySelector('[name="name_title"]').value = VOUCHER_EDIT_DATA.name_title;
-            form.querySelector('[name="pay_to"]').value = VOUCHER_EDIT_DATA.pay_to;
-            // === CHEQUE FIELDS – NOW 100% PRE-LOADED ON EDIT ===
-            const chequeFields = document.querySelectorAll('#chequeNumberField, #chequeDateField, #accountDetailsField, #chequeAttachmentField');
-            const chequeNumber = form.querySelector('[name="cheque_number"]');
-            const chequeDate = form.querySelector('[name="cheque_date"]');
-            const accountDetails = form.querySelector('[name="account_details"]');
-
-           if (VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
-    chequeFields.forEach(field => field.style.display = '');
-
-    if (chequeNumber) chequeNumber.value = VOUCHER_EDIT_DATA.cheque_number || '';
-    if (chequeDate) chequeDate.value = VOUCHER_EDIT_DATA.cheque_date || '';
-    if (accountDetails) {
-        accountDetails.value = VOUCHER_EDIT_DATA.account_details || '';
-        accountDetails.dispatchEvent(new Event('change'));
-        accountDetails.required = true;   // <-- IMPORTANT FIX
-    }
-
-    // Show current cheque files
-    const fileInput = form.querySelector('[name="cheque_attachments"]');
-    if (fileInput && VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
-        const currentText = VOUCHER_EDIT_DATA.cheque_attachments.join(', ');
-        const preview = `
-            <div class="mt-1">
-                <small class="text-muted">Current files: ${currentText}</small>
-            </div>`;
-        fileInput.insertAdjacentHTML('afterend', preview);
-    }
-
-} else {
-    chequeFields.forEach(field => field.style.display = 'none');
-
-    if (chequeNumber) chequeNumber.value = '';
-    if (chequeDate) chequeDate.value = '';
-
-    if (accountDetails) {
-        accountDetails.value = '';
-        accountDetails.required = false;   // <-- IMPORTANT FIX
-    }
-}
-
-            // === REBUILD PARTICULARS ROWS ===
-tbody.innerHTML = ''; // Clear first
-VOUCHER_EDIT_DATA.particulars.forEach((p, i) => {
-    const filesList = p.files.length > 0
-        ? `<small class="text-muted d-block mt-1">Current: ${p.files.join(', ')}</small>`
-        : '';
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td>
-            <input type="text" class="form-control form-control-sm" name="particulars[${i}][description]" value="${p.description}" required>
-        </td>
-        <td>
-            <input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${i}][amount]" value="${p.amount}" required>
-        </td>
-        <td>
-            <input type="file" class="form-control form-control-sm" name="particular_attachment_${i}" multiple accept="image/*,.pdf,.doc,.docx">
-            ${filesList}
-            <div class="mt-1 text-muted small particular-file-list"></div>
-        </td>
-        <td>
-            <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
-        </td>
-    `;
-    tbody.appendChild(row);
-});
-                        // === MAIN ATTACHMENTS – Clean display + replace old ones ===
-            const mainFileInput = form.querySelector('[name="main_attachments"]');
-            if (mainFileInput) {
-                // Show current files (if any)
-                if (VOUCHER_EDIT_DATA.main_attachments && VOUCHER_EDIT_DATA.main_attachments.length > 0) {
-                    const current = VOUCHER_EDIT_DATA.main_attachments.join(', ');
-                    mainFileInput.insertAdjacentHTML('afterend', `
-                        <div class="mt-1"><small class="text-muted">Current: ${current}</small></div>
-                    `);
-                }
-                // This is the key: clear the file input so old files don't stay selected
-                mainFileInput.value = '';
+    // === EDIT BUTTON – SAFE VERSION ===
+    const editBtn = document.getElementById('editVoucherBtn');
+    if (editBtn) {
+        editBtn.addEventListener('click', function () {
+            const createModal = document.getElementById('createVoucherModal');
+            if (!createModal) {
+                alert("Edit modal not found!");
+                return;
             }
 
-            // === CHEQUE ATTACHMENTS – Clean display + replace old ones ===
-            const chequeFileInput = form.querySelector('[name="cheque_attachments"]');
-            if (chequeFileInput && VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
-                if (VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
-                    const current = VOUCHER_EDIT_DATA.cheque_attachments.join(', ');
-                    chequeFileInput.insertAdjacentHTML('afterend', `
-                        <div class="mt-1"><small class="text-muted">Current: ${current}</small></div>
-                    `);
-                }
-                chequeFileInput.value = '';  // clears the browser's "X files selected"
+            const modalTitle = createModal.querySelector('.modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = 'Edit Voucher {{ voucher.voucher_number }}';
             }
+            
+            const bsModal = new bootstrap.Modal(createModal);
+            bsModal.show();
 
-            // === PARTICULAR ATTACHMENTS – Clear old selection ===
-            document.querySelectorAll('input[name^="particular_attachment_"]').forEach(input => {
-                input.value = '';
-            });
-
-            // === FORM SUBMIT ===
-            form.onsubmit = function(e) {
-                e.preventDefault();
-                const fd = new FormData(form);
-                fd.append('voucher_id', VOUCHER_EDIT_DATA.id);
-
-                const apiUrl = "{% url 'voucher_create_api' %}";
+            createModal.addEventListener('shown.bs.modal', function handler() {
+                const form = createModal.querySelector('form');
+                if (!form) return;
                 
+                const tbody = form.querySelector('#particularsTable tbody');
+                if (tbody) tbody.innerHTML = '';
 
-fetch(apiUrl, {
-    method: 'POST',
-    body: fd,
-    headers: { 'X-CSRFToken': csrf }
-})
-                .then(r => r.json())
-                .then(d => {
-                    if (d.success) {
-                        alert('Voucher updated successfully!');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + (d.message || JSON.stringify(d)));
+                // === BASIC FIELDS ===
+                const voucherDateInput = form.querySelector('[name="voucher_date"]');
+                const paymentTypeInput = form.querySelector('[name="payment_type"]');
+                const nameTitleInput = form.querySelector('[name="name_title"]');
+                const payToInput = form.querySelector('[name="pay_to"]');
+                
+                if (voucherDateInput) voucherDateInput.value = VOUCHER_EDIT_DATA.voucher_date;
+                if (paymentTypeInput) paymentTypeInput.value = VOUCHER_EDIT_DATA.payment_type;
+                if (nameTitleInput) nameTitleInput.value = VOUCHER_EDIT_DATA.name_title;
+                if (payToInput) payToInput.value = VOUCHER_EDIT_DATA.pay_to;
+
+                // === CHEQUE FIELDS ===
+                const chequeFields = document.querySelectorAll('#chequeNumberField, #chequeDateField, #accountDetailsField, #chequeAttachmentField');
+                const chequeNumber = form.querySelector('[name="cheque_number"]');
+                const chequeDate = form.querySelector('[name="cheque_date"]');
+                const accountDetails = form.querySelector('[name="account_details"]');
+
+                if (VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
+                    chequeFields.forEach(field => field.style.display = '');
+
+                    if (chequeNumber) chequeNumber.value = VOUCHER_EDIT_DATA.cheque_number || '';
+                    if (chequeDate) chequeDate.value = VOUCHER_EDIT_DATA.cheque_date || '';
+                    if (accountDetails) {
+                        accountDetails.value = VOUCHER_EDIT_DATA.account_details || '';
+                        accountDetails.required = true;
                     }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('Update failed. Check console.');
-                });
-            };
 
-            form.querySelector('button[type="submit"]').textContent = 'Update Voucher';
-            createModal.removeEventListener('shown.bs.modal', handler);
+                    const fileInput = form.querySelector('[name="cheque_attachments"]');
+                    if (fileInput && VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
+                        const currentText = VOUCHER_EDIT_DATA.cheque_attachments.join(', ');
+                        fileInput.insertAdjacentHTML('afterend', `
+                            <div class="mt-1">
+                                <small class="text-muted">Current files: ${currentText}</small>
+                            </div>`);
+                    }
+                } else {
+                    chequeFields.forEach(field => field.style.display = 'none');
+                    if (chequeNumber) chequeNumber.value = '';
+                    if (chequeDate) chequeDate.value = '';
+                    if (accountDetails) accountDetails.required = false;
+                }
+
+                // === REBUILD PARTICULARS ===
+                if (tbody) {
+                    VOUCHER_EDIT_DATA.particulars.forEach((p, i) => {
+                        const filesList = p.files.length > 0
+                            ? `<small class="text-muted d-block mt-1">Current: ${p.files.join(', ')}</small>`
+                            : '';
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <input type="text" class="form-control form-control-sm" name="particulars[${i}][description]" value="${p.description}" required>
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${i}][amount]" value="${p.amount}" required>
+                            </td>
+                            <td>
+                                <input type="file" class="form-control form-control-sm" name="particular_attachment_${i}" multiple accept="image/*,.pdf,.doc,.docx">
+                                ${filesList}
+                                <div class="mt-1 text-muted small particular-file-list"></div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+
+                // === MAIN ATTACHMENTS ===
+                const mainFileInput = form.querySelector('[name="main_attachments"]');
+                if (mainFileInput) {
+                    if (VOUCHER_EDIT_DATA.main_attachments && VOUCHER_EDIT_DATA.main_attachments.length > 0) {
+                        const current = VOUCHER_EDIT_DATA.main_attachments.join(', ');
+                        mainFileInput.insertAdjacentHTML('afterend', `
+                            <div class="mt-1"><small class="text-muted">Current: ${current}</small></div>
+                        `);
+                    }
+                    mainFileInput.value = '';
+                }
+
+                // === FORM SUBMIT ===
+                form.onsubmit = function(e) {
+                    e.preventDefault();
+                    const fd = new FormData(form);
+                    fd.append('voucher_id', VOUCHER_EDIT_DATA.id);
+
+                    fetch("{% url 'voucher_create_api' %}", {
+                        method: 'POST',
+                        body: fd,
+                        headers: { 'X-CSRFToken': csrf }
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            alert('Voucher updated successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (d.message || JSON.stringify(d)));
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Update failed. Check console.');
+                    });
+                };
+
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Update Voucher';
+                
+                createModal.removeEventListener('shown.bs.modal', handler);
+            });
         });
-    });
-}
+    }
+
     // Remove row button
     document.addEventListener('click', e => {
         if (e.target && e.target.classList.contains('remove-row')) {
-            e.target.closest('tr').remove();
+            const row = e.target.closest('tr');
+            if (row) row.remove();
         }
     });
 });
 
-// Disable Ctrl + P & right-click (your existing code)
+// Disable Ctrl + P & right-click
 document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'p') { e.preventDefault(); } });
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-// Show Confirmation Modal
+// ✅ SAFE: Show Confirmation Modal - only if element exists
 function showConfirmModal() {
-    const modal = new bootstrap.Modal(document.getElementById('confirmFunctionModal'));
-    document.getElementById('advance_amount').value = '';
-    document.getElementById('confirmFormError').classList.add('d-none');
-    document.getElementById('confirmFormSuccess').classList.add('d-none');
+    const modalEl = document.getElementById('confirmFunctionModal');
+    if (!modalEl) return;
+    
+    const modal = new bootstrap.Modal(modalEl);
+    const advanceInput = document.getElementById('advance_amount');
+    const errorDiv = document.getElementById('confirmFormError');
+    const successDiv = document.getElementById('confirmFormSuccess');
+    
+    if (advanceInput) advanceInput.value = '';
+    if (errorDiv) errorDiv.classList.add('d-none');
+    if (successDiv) successDiv.classList.add('d-none');
+    
     modal.show();
 }
 
-// Confirm Function Form Submission
-document.getElementById('confirmFunctionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const errorDiv = document.getElementById('confirmFormError');
-    const successDiv = document.getElementById('confirmFormSuccess');
-    errorDiv.classList.add('d-none');
-    successDiv.classList.add('d-none');
-    
-    const advanceAmount = document.getElementById('advance_amount').value;
-    
-    if (!advanceAmount || parseFloat(advanceAmount) < 0) {
-        errorDiv.textContent = 'Please enter a valid advance amount';
-        errorDiv.classList.remove('d-none');
-        return;
-    }
-    
-    const submitBtn = this.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Confirming...';
-    
-    fetch(`/api/functions/{{ function.id }}/confirm/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({
-            advance_amount: advanceAmount
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            successDiv.textContent = data.message;
-            successDiv.classList.remove('d-none');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        } else {
-            errorDiv.textContent = data.error || 'Failed to confirm function';
-            errorDiv.classList.remove('d-none');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
+// ✅ SAFE: Confirm Function Form - Only if element exists
+const confirmFunctionForm = document.getElementById('confirmFunctionForm');
+if (confirmFunctionForm) {
+    confirmFunctionForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const errorDiv = document.getElementById('confirmFormError');
+        const successDiv = document.getElementById('confirmFormSuccess');
+        const advanceInput = document.getElementById('advance_amount');
+        
+        if (errorDiv) errorDiv.classList.add('d-none');
+        if (successDiv) successDiv.classList.add('d-none');
+        
+        if (!advanceInput) return;
+        const advanceAmount = advanceInput.value;
+        
+        if (!advanceAmount || parseFloat(advanceAmount) < 0) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Please enter a valid advance amount';
+                errorDiv.classList.remove('d-none');
+            }
+            return;
         }
-    })
-    .catch(err => {
-        console.error(err);
-        errorDiv.textContent = 'Network error. Please try again.';
-        errorDiv.classList.remove('d-none');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Confirming...';
+        }
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || window.csrfToken || '';
+        
+        fetch(`/api/functions/{{ function.id }}/confirm/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                advance_amount: advanceAmount
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (successDiv) {
+                    successDiv.textContent = data.message;
+                    successDiv.classList.remove('d-none');
+                }
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                if (errorDiv) {
+                    errorDiv.textContent = data.error || 'Failed to confirm function';
+                    errorDiv.classList.remove('d-none');
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            if (errorDiv) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.remove('d-none');
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
+            }
+        });
     });
-});
+}
 
-// Delete Function
+// ✅ SAFE: Delete Function - only if on function page
 function deleteFunction() {
     if (!confirm('Are you sure you want to delete this function? This action cannot be undone.')) {
         return;
     }
     
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || window.csrfToken || '';
+    
     fetch(`/api/functions/{{ function.id }}/delete/`, {
         method: 'DELETE',
         headers: {
-            'X-CSRFToken': getCsrfToken()
+            'X-CSRFToken': csrfToken
         }
     })
     .then(r => r.json())

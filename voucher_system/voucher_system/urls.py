@@ -11,11 +11,14 @@ from vouchers.views import (
     DesignationCreateAPI, ApprovalControlAPI,
     UserCreateAPI, UserUpdateAPI, VoucherDeleteAPI,  
     AccountDetailListAPI, AccountDetailCreateAPI, AccountDetailDeleteAPI,
-    CompanyDetailAPI, FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI,
+     FunctionDetailsView, FunctionBookedDatesAPI,FunctionListByDateAPI,
     FunctionDetailView,FunctionDeleteAPI,FunctionUpdateAPI,FunctionUpcomingEventsAPI,FunctionPendingByMonthAPI,
     FunctionUpcomingCountAPI,FunctionCompletedCountAPI,FunctionCompletedAPI,FunctionListByMonthAPI,FunctionUpdateDetailsAPI,
-    UserRightsListAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI,FunctionTimeConflictCheckAPI
-
+    UserRightsListAPI,CompanyManagementAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI,FunctionTimeConflictCheckAPI,CustomLoginView, SelectCompanyView, SetCompanyView,
+    CompanyListAPI, CompanyCreateAPI, CompanyUpdateAPI, 
+    CompanyToggleActiveAPI, CompanyDeleteAPI,
+    UserMembershipListAPI, UserMembershipCreateAPI,
+    UserMembershipUpdateAPI, UserMembershipDeleteAPI,DesignationListAPI
 )
 
 urlpatterns = [
@@ -42,8 +45,7 @@ urlpatterns = [
     path('api/accounts/create/', AccountDetailCreateAPI.as_view(), name='account_create'),
     path('api/accounts/delete/<int:pk>/', AccountDetailDeleteAPI.as_view(), name='account_delete'),
 
-    # NEW: COMPANY DETAIL API
-    path('api/company/', CompanyDetailAPI.as_view(), name='company_detail_api'),
+  
 
     # AUTH
     path('accounts/login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
@@ -72,6 +74,29 @@ urlpatterns = [
     path('api/user-rights/update/', UserRightsUpdateAPI.as_view(), name='user_rights_update'),
     path('api/user-rights/bulk-update/', UserRightsBulkUpdateAPI.as_view(), name='user_rights_bulk_update'),
     path('api/functions/check-time-conflict/', FunctionTimeConflictCheckAPI.as_view(),name='function_time_conflict_check'),
+
+    path('accounts/login/', CustomLoginView.as_view(), name='login'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('select-company/', SelectCompanyView.as_view(), name='select_company'),
+    path('set-company/', SetCompanyView.as_view(), name='set_company'),
+    path('accounts/', include('django.contrib.auth.urls')),  # Keep for password reset, etc.
+    path('api/company-management/', CompanyManagementAPI.as_view(), name='company_management_api'),
+
+    # Company Management
+    path('api/companies/', CompanyListAPI.as_view(), name='company_list_api'),
+    path('api/companies/create/', CompanyCreateAPI.as_view(), name='company_create_api'),
+    path('api/companies/<int:pk>/update/', CompanyUpdateAPI.as_view(), name='company_update_api'),
+    path('api/companies/<int:pk>/toggle/', CompanyToggleActiveAPI.as_view(), name='company_toggle_api'),
+    path('api/companies/<int:pk>/delete/', CompanyDeleteAPI.as_view(), name='company_delete_api'),
+    
+    # User-Company Memberships
+    path('api/memberships/', UserMembershipListAPI.as_view(), name='membership_list_api'),
+    path('api/memberships/create/', UserMembershipCreateAPI.as_view(), name='membership_create_api'),
+    path('api/memberships/<int:pk>/update/', UserMembershipUpdateAPI.as_view(), name='membership_update_api'),
+    path('api/memberships/<int:pk>/delete/', UserMembershipDeleteAPI.as_view(), name='membership_delete_api'),
+    path('api/designations/by-company/<int:company_id>/', DesignationListAPI.as_view(), name='designation_list_by_company'),
+    path('api/designations/', DesignationListAPI.as_view(), name='designation_list_api'),
+
     
     
     

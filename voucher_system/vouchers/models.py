@@ -5,26 +5,141 @@ import os
 from decimal import Decimal, InvalidOperation
 
 class Designation(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='designations')
+    name = models.CharField(max_length=100)
+    company = models.ForeignKey(
+        'Company', 
+        on_delete=models.CASCADE, 
+        related_name='designations',
+        help_text="Company this designation belongs to"
+    )
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='designations'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('company', 'name')  # Unique per company
+        ordering = ['company__name', 'name']
+        verbose_name = "Designation"
+        verbose_name_plural = "Designations"
 
+    def __str__(self):
+        return f"{self.name} ({self.company.name})"
+
+
+# =============================================
+# COMPANY MODEL (Multi-Company Support)
+# =============================================
+
+class Company(models.Model):
+    """
+    Multi-company support - replaces singleton CompanyDetail.
+    Each company has its own vouchers, functions, and approval workflows.
+    """
+    name = models.CharField(max_length=200, unique=True, help_text="Company Name")
+    gst_no = models.CharField(max_length=20, blank=True, null=True, help_text="GST Number")
+    pan_no = models.CharField(max_length=15, blank=True, null=True, help_text="PAN Number")
+    address = models.TextField(blank=True, null=True, help_text="Full company address")
+    email = models.EmailField(blank=True, null=True, help_text="Company email")
+    phone = models.CharField(max_length=20, blank=True, null=True, help_text="Company phone")
+    logo = models.ImageField(
+        upload_to='company/logos/',
+        null=True,
+        blank=True,
+        help_text="Company logo (PNG/JPG, max 2MB)"
+    )
+    is_active = models.BooleanField(default=True, help_text="Active companies appear in selection")
+    
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='companies_created'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Company"
+        verbose_name_plural = "Companies"
+        ordering = ['name']
+    
     def __str__(self):
         return self.name
 
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    designation = models.ForeignKey(Designation, on_delete=models.SET_NULL, null=True, blank=True)
+class CompanyMembership(models.Model):
+    """
+    Links users to companies with role & designation.
+    A user can belong to multiple companies with different roles.
+    """
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='company_memberships'
+    )
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='memberships'
+    )
     
-    # NEW: Mobile Number
+    # Role in THIS company
+    GROUP_CHOICES = (
+        ('Admin Staff', 'Admin Staff'),
+        ('Accountants', 'Accountants'),
+    )
+    group = models.CharField(
+        max_length=50, 
+        choices=GROUP_CHOICES,
+        help_text="User's role in this company"
+    )
+    
+    # Designation in THIS company (only for Admin Staff)
+    designation = models.ForeignKey(
+        'Designation', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Required for Admin Staff"
+    )
+    
+    # Mobile number (moved from UserProfile - now per-company)
     mobile = models.CharField(
         max_length=15,
         blank=True,
         null=True,
-        help_text="Mobile number (e.g., +91 9876543210 or 9876543210)"
+        help_text="Mobile number for this company"
     )
-    # NEW: User signature
+    
+    is_active = models.BooleanField(
+        default=True, 
+        help_text="Inactive memberships hide the company from user"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'company')
+        ordering = ['company__name', 'user__username']
+        verbose_name = "Company Membership"
+        verbose_name_plural = "Company Memberships"
+    
+    def __str__(self):
+        des = f" - {self.designation.name}" if self.designation else ""
+        return f"{self.user.username} @ {self.company.name} ({self.group}{des})"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.group == 'Admin Staff' and not self.designation:
+            raise ValidationError("Designation is required for Admin Staff members")
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    
     signature = models.ImageField(
         upload_to='signatures/',
         null=True,
@@ -33,7 +148,7 @@ class UserProfile(models.Model):
     )
 
     def __str__(self):
-        return f"{self.user.username} - {self.designation}"
+        return f"{self.user.username} Profile"  # ✅ FIXED
 
 
 class Voucher(models.Model):
@@ -42,8 +157,13 @@ class Voucher(models.Model):
         ('CHEQUE', 'Cheque'),
         ('PETTY_CASH', 'Petty Cash'),
     )
-
-    voucher_number = models.CharField(max_length=20, unique=True, blank=True)
+    company = models.ForeignKey(
+            Company, 
+            on_delete=models.CASCADE, 
+            related_name='vouchers',
+            help_text="Company this voucher belongs to"
+        )
+    voucher_number = models.CharField(max_length=20, blank=True)
     voucher_date = models.DateField()
     payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES)
     name_title = models.CharField(max_length=5, choices=[('MR', 'Mr.'), ('MRS', 'Mrs.'), ('MS', 'Ms.')])
@@ -94,7 +214,8 @@ class Voucher(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.voucher_number:
-            last_voucher = Voucher.objects.order_by('-id').first()
+            # Generate company-specific voucher number
+            last_voucher = Voucher.objects.filter(company=self.company).order_by('-id').first()
             if last_voucher and last_voucher.voucher_number.startswith('VCH'):
                 num = int(last_voucher.voucher_number[3:]) + 1
                 self.voucher_number = f'VCH{num:04d}'
@@ -109,20 +230,28 @@ class Voucher(models.Model):
         else:
             super().save(*args, **kwargs)
 
+    # FIND this method and REPLACE it:
+
     def _get_current_required_approvers(self):
         """Helper: Get current required approvers from active levels."""
-        levels = ApprovalLevel.objects.filter(is_active=True).select_related('designation').order_by('order')
+        # ✅ NOW FILTER BY COMPANY
+        levels = ApprovalLevel.objects.filter(
+            company=self.company,  # ADD THIS
+            is_active=True
+        ).select_related('designation').order_by('order')
+        
         usernames = []
         for level in levels:
-            users = UserProfile.objects.filter(
+            # Get users from THIS company's memberships
+            memberships = CompanyMembership.objects.filter(
+                company=self.company,
                 designation=level.designation,
-                user__groups__name='Admin Staff'
+                group='Admin Staff',
+                is_active=True,
+                user__is_active=True
             ).values_list('user__username', flat=True).distinct()
-            usernames.extend(users)
+            usernames.extend(memberships)
         return usernames
-
-    def __str__(self):
-        return self.voucher_number
 
     @property
     def required_approvers(self):
@@ -138,8 +267,12 @@ class Voucher(models.Model):
             self.save(update_fields=['status'])
             return
 
-        # Get active approval levels
-        levels = ApprovalLevel.objects.filter(is_active=True).order_by('order')
+        # ✅ Get active approval levels FOR THIS COMPANY
+        levels = ApprovalLevel.objects.filter(
+            company=self.company,  # ✅ ADDED
+            is_active=True
+        ).order_by('order')
+        
         if not levels.exists():
             self.status = 'APPROVED'
             self.save(update_fields=['status'])
@@ -152,18 +285,21 @@ class Voucher(models.Model):
 
         # Check: for each active level, is AT LEAST ONE user from that designation approved?
         for level in levels:
-            level_users = UserProfile.objects.filter(
+            # ✅ Use CompanyMembership instead of UserProfile
+            level_memberships = CompanyMembership.objects.filter(
+                company=self.company,  # ✅ ADDED
                 designation=level.designation,
-                user__groups__name='Admin Staff',
+                group='Admin Staff',
+                is_active=True,
                 user__is_active=True
             ).values_list('user__username', flat=True)
 
             # If no users in this designation → skip (shouldn't happen)
-            if not level_users:
+            if not level_memberships:
                 continue
 
             # If NONE of the users in this level have approved → not done yet
-            if not any(username in approved_usernames for username in level_users):
+            if not any(username in approved_usernames for username in level_memberships):
                 self.status = 'PENDING'
                 self.save(update_fields=['status'])
                 return
@@ -190,7 +326,9 @@ class Voucher(models.Model):
             self.cheque_number = None
             self.cheque_date = None
             self.account_details = None
-
+    class Meta:
+        unique_together = ('company', 'voucher_number')  # ADD THIS
+        ordering = ['-created_at']
 
 class Particular(models.Model):
     voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, related_name='particulars')
@@ -224,79 +362,48 @@ class VoucherApproval(models.Model):
 
 
 class ApprovalLevel(models.Model):
-    designation = models.OneToOneField(Designation, on_delete=models.CASCADE)
-    order = models.PositiveIntegerField(unique=True, help_text="Lower number = earlier in approval chain")
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='approval_levels',
+        help_text="Company this approval level belongs to"
+    )
+    designation = models.ForeignKey(Designation, on_delete=models.CASCADE)  # ✅ Changed to ForeignKey
+    order = models.PositiveIntegerField(help_text="Lower number = earlier in approval chain")  # ✅ Removed unique=True
     is_active = models.BooleanField(default=True, help_text="Only active levels require approval")
     updated_by = models.ForeignKey(User, on_delete=models.CASCADE)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['order']
+        unique_together = ('company', 'designation')  # ✅ This ensures uniqueness per company
+        ordering = ['company', 'order']
         verbose_name = "Approval Level"
         verbose_name_plural = "Approval Levels"
 
     def __str__(self):
-        return f"{self.order}. {self.designation.name} ({'Active' if self.is_active else 'Inactive'})"
+        return f"{self.company.name} - {self.order}. {self.designation.name} ({'Active' if self.is_active else 'Inactive'})"  # ✅ Added company name
 
 
 class AccountDetail(models.Model):
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='accounts',
+        help_text="Company this account belongs to"
+    )
     bank_name = models.CharField(max_length=200)
     account_number = models.CharField(max_length=50)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='account_details')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('bank_name', 'account_number')
+        unique_together = ('company', 'bank_name', 'account_number')
         ordering = ['bank_name']
 
     def __str__(self):
         return f"{self.bank_name} / {self.account_number}"
 
 
-# === NEW: COMPANY DETAIL (SINGLETON - ONLY ONE RECORD) ===
-class CompanyDetail(models.Model):
-    """
-    matedocstring
-    Singleton model: Only ONE company detail exists at a time.
-    Used for: Company Name, GST, PAN, Address, Logo, Email, Phone.
-    """
-    name = models.CharField(max_length=200, help_text="Company Name")
-    gst_no = models.CharField(max_length=20, blank=True, null=True, help_text="GST Number (e.g., 22AAAAA0000A1Z5)")
-    pan_no = models.CharField(max_length=15, blank=True, null=True, help_text="PAN Number (e.g., AAAAA0000A)")
-    address = models.TextField(blank=True, null=True, help_text="Full company address")
-    email = models.EmailField(blank=True, null=True, help_text="Company email address")
-    phone = models.CharField(max_length=20, blank=True, null=True, help_text="Company phone number")
-    logo = models.ImageField(
-        upload_to='company/logo/',
-        null=True,
-        blank=True,
-        help_text="Company logo (PNG/JPG, max 2MB)"
-    )
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='company_details_updated'
-    )
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Company Detail"
-        verbose_name_plural = "Company Details"
-
-    def __str__(self):
-        return self.name or "Company"
-
-    def save(self, *args, **kwargs):
-        self.pk = 1
-        super().save(*args, **kwargs)
-        CompanyDetail.objects.exclude(pk=1).delete()
-
-    @classmethod
-    def load(cls):
-        obj, created = cls.objects.get_or_create(pk=1)
-        return obj
 
 
 # =============================================
@@ -328,6 +435,70 @@ class ParticularAttachment(models.Model):
 
     def __str__(self):
         return os.path.basename(self.file.name)
+
+class UserPermission(models.Model):
+    """
+    Granular permissions for each user PER COMPANY.
+    """
+    # ✅ ADD THIS FIELD FIRST
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='user_permissions',
+        help_text="Company these permissions apply to"
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permissions')
+    
+    # Voucher Permissions
+    can_create_voucher = models.BooleanField(default=True, help_text="User can create new vouchers")
+    can_edit_voucher = models.BooleanField(default=False, help_text="User can edit existing vouchers")
+    can_view_voucher_list = models.BooleanField(default=True, help_text="User can view voucher list page")
+    can_view_voucher_detail = models.BooleanField(default=True, help_text="User can view individual voucher details")
+    can_print_voucher = models.BooleanField(default=True, help_text="User can print vouchers")
+    
+    # Function Permissions
+    can_create_function = models.BooleanField(default=True, help_text="User can create new function bookings")
+    can_edit_function = models.BooleanField(default=False, help_text="User can edit existing function bookings")
+    can_delete_function = models.BooleanField(default=False, help_text="User can delete function bookings")
+    can_view_function_list = models.BooleanField(default=True, help_text="User can view function calendar/list page")
+    can_view_function_detail = models.BooleanField(default=True, help_text="User can view individual function details")
+    can_print_function = models.BooleanField(default=True, help_text="User can print function prospectus")
+    
+    # Metadata
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='permission_updates')
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        # ✅ UPDATE THIS
+        unique_together = ('user', 'company')
+        verbose_name = "User Permission"
+        verbose_name_plural = "User Permissions"
+    
+    def __str__(self):
+        return f"Permissions for {self.user.username} @ {self.company.name}"
+    
+    @classmethod
+    def get_or_create_for_user(cls, user, company):
+        """Get or create permissions for a user in a specific company."""
+        obj, created = cls.objects.get_or_create(
+            user=user,
+            company=company,
+            defaults={
+                'can_create_voucher': True,
+                'can_edit_voucher': False,
+                'can_view_voucher_list': True,
+                'can_view_voucher_detail': True,
+                'can_print_voucher': True,
+                'can_create_function': True,
+                'can_edit_function': False,
+                'can_delete_function': False,
+                'can_view_function_list': True,
+                'can_view_function_detail': True,
+                'can_print_function': True,
+            }
+        )
+        return obj
     
 #Create FunctionBooking 
 
@@ -336,6 +507,12 @@ class FunctionBooking(models.Model):
         ('PENDING', 'Pending Confirmation'),
         ('CONFIRMED', 'Function Confirmed'),
         ('CANCELLED', 'Cancelled'),
+    )
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='functions',
+        help_text="Company this function belongs to"
     )
     
     GST_CHOICES = (
@@ -350,7 +527,7 @@ class FunctionBooking(models.Model):
         ('Outdoor', 'Outdoor'),
     )
     
-    function_number = models.CharField(max_length=20, unique=True, blank=True)
+    function_number = models.CharField(max_length=20, blank=True)
     function_date = models.DateField()
     time_from = models.TimeField()
     time_to = models.TimeField()
@@ -451,14 +628,18 @@ class FunctionBooking(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        unique_together = ('company', 'function_number')
         ordering = ['-created_at']
     
     def __str__(self):
         return f"{self.function_number} - {self.function_name}"
     
+    # FIND and REPLACE the save() method:
+
     def save(self, *args, **kwargs):
         if not self.function_number:
-            last_function = FunctionBooking.objects.order_by('-id').first()
+            # Generate company-specific function number
+            last_function = FunctionBooking.objects.filter(company=self.company).order_by('-id').first()
             if last_function and last_function.function_number.startswith('FN'):
                 num = int(last_function.function_number[2:]) + 1
                 self.function_number = f'FN{num:04d}'
@@ -468,7 +649,7 @@ class FunctionBooking(models.Model):
         # Always recalculate total
         self.calculate_total_amount()
 
-        # ✅ ALWAYS recalculate due amount
+        # Always recalculate due amount
         total = Decimal(self.total_amount or 0)
         advance = Decimal(self.advance_amount or 0)
         self.due_amount = total - advance
@@ -478,7 +659,6 @@ class FunctionBooking(models.Model):
             self.due_amount = Decimal('0.00')
 
         super().save(*args, **kwargs)
-
     
     def calculate_total_amount(self):
         """Calculate total amount based on pax, rate, GST, hall rent and extra charges"""
@@ -519,96 +699,3 @@ def is_function_completed(self):
     return now >= function_end_datetime
 
 
-class UserPermission(models.Model):
-    """
-    Granular permissions for each user.
-    Allows superusers to control what each user can do.
-    """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='permissions')
-    
-    # Voucher Permissions
-    can_create_voucher = models.BooleanField(
-        default=True,
-        help_text="User can create new vouchers"
-    )
-    can_edit_voucher = models.BooleanField(
-        default=False,
-        help_text="User can edit existing vouchers (only accountants, only pending, only if no approvals yet)"
-    )
-    can_view_voucher_list = models.BooleanField(
-        default=True,
-        help_text="User can view voucher list page"
-    )
-    can_view_voucher_detail = models.BooleanField(
-        default=True,
-        help_text="User can view individual voucher details"
-    )
-    can_print_voucher = models.BooleanField(
-        default=True,
-        help_text="User can print vouchers"
-    )
-    # Function Permissions
-    can_create_function = models.BooleanField(
-        default=True,
-        help_text="User can create new function bookings"
-    )
-    can_edit_function = models.BooleanField(
-        default=False,
-        help_text="User can edit existing function bookings"
-    )
-    can_delete_function = models.BooleanField(
-        default=False,
-        help_text="User can delete function bookings"
-    )
-    can_view_function_list = models.BooleanField(
-        default=True,
-        help_text="User can view function calendar/list page"
-    )
-    can_view_function_detail = models.BooleanField(
-        default=True,
-        help_text="User can view individual function details"
-    )
-    can_print_function = models.BooleanField(
-        default=True,
-        help_text="User can print function prospectus"
-    )
-    
-    # Metadata
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='permission_updates'
-    )
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = "User Permission"
-        verbose_name_plural = "User Permissions"
-    
-    def __str__(self):
-        return f"Permissions for {self.user.username}"
-    
-    @classmethod
-    def get_or_create_for_user(cls, user):
-        """
-        Get or create permissions for a user with default values.
-        """
-        obj, created = cls.objects.get_or_create(
-            user=user,
-            defaults={
-                'can_create_voucher': True,
-                'can_edit_voucher': False,
-                'can_view_voucher_list': True,
-                'can_view_voucher_detail': True,
-                'can_print_voucher': True,
-                'can_create_function': True,
-                'can_edit_function': False,
-                'can_delete_function': False,
-                'can_view_function_list': True,
-                'can_view_function_detail': True,
-                'can_print_function': True,
-            }
-        )
-        return obj

@@ -35,70 +35,140 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand p-0" href="{% url 'home' %}">
-    {% if company_logo_url %}
-        <img src="{{ company_logo_url }}" 
-             alt="Company Logo" 
-             class="img-fluid" 
-             style="height: 45px; width: auto; max-width: 200px; object-fit: contain;">
-    {% endif %}
-</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+                {% if company_logo_url %}
+                    <img src="{{ company_logo_url }}" 
+                        alt="Company Logo" 
+                        class="img-fluid" 
+                        style="height: 45px; width: auto; max-width: 200px; object-fit: contain;">
+                {% endif %}
+            </a>
+
+            
             <div class="collapse navbar-collapse" id="navbarContent">
                 {% if request.resolver_match.url_name == 'voucher_detail' %}
-<ul class="navbar-nav me-auto">
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'voucher_list' %}">Vouchers</a>
-    </li>
-</ul>
-{% endif %}
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'voucher_list' %}">Voucher List</a>
+                    </li>
+                </ul>
+                {% endif %}
 
                 <ul class="navbar-nav ms-auto align-items-center">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-primary fw-bold d-flex align-items-center gap-2"
-                               href="#" role="button" data-bs-toggle="dropdown">
-                                {{ user.username }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow">
-    {% if user.is_superuser %}
-    <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin Panel</a></li>
-    <li><hr class="dropdown-divider"></li>
-    {% endif %}
-
-    <!-- CHANGE PASSWORD -->
-    <li>
-        <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-    <i class="bi bi-key me-2"></i>Change Password
-</a>
-    </li>
-    <li>
-    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateMobileModal">
-        <i class="bi bi-phone me-2"></i>Update Mobile Number
-    </a>
-</li>
-<li>
-    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateSignatureModal">
-        <i class="bi bi-pen me-2"></i>Update Signature
-    </a>
-</li>
-    <!-- LOGOUT -->
-    <li>
-        <a class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">
-            <i class="bi bi-box-arrow-right me-2"></i>Logout
-        </a>
-    </li>
-</ul>
-                        </li>
+    {% if user.is_authenticated %}
+        
+        <!-- ✅ COMPANY SWITCHER DROPDOWN -->
+        {% if user_companies %}
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" 
+               href="#" 
+               role="button" 
+               data-bs-toggle="dropdown"
+               style="border: 1px solid #dee2e6; border-radius: 8px; padding: 0.5rem 1rem; background: white;">
+                {% if active_company %}
+                    {% if active_company.logo %}
+                    <img src="{{ active_company.logo.url }}" 
+                         alt="{{ active_company.name }}" 
+                         style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px; border-radius: 4px;">
                     {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+                    <i class="bi bi-building me-2 text-primary"></i>
                     {% endif %}
-                </ul>
+                    <span class="fw-semibold">{{ active_company.name }}</span>
+                {% else %}
+                    <i class="bi bi-building me-2"></i>
+                    <span>Select Company</span>
+                {% endif %}
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 280px;">
+                {% for membership in user_companies %}
+                <li>
+                    <form method="post" action="{% url 'set_company' %}" class="d-inline w-100">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" 
+                                name="company_id" 
+                                value="{{ membership.company.id }}" 
+                                class="dropdown-item {% if active_company.id == membership.company.id %}active{% endif %} py-2">
+                            <div class="d-flex align-items-center">
+                                {% if membership.company.logo %}
+                                <img src="{{ membership.company.logo.url }}" 
+                                     alt="" 
+                                     style="width: 32px; height: 32px; object-fit: contain; margin-right: 10px; border-radius: 4px;">
+                                {% else %}
+                                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; margin-right: 10px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-building text-white small"></i>
+                                </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">{{ membership.company.name }}</div>
+                                    <small class="text-muted">{{ membership.group }}</small>
+                                </div>
+                                {% if active_company.id == membership.company.id %}
+                                <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                                {% endif %}
+                            </div>
+                        </button>
+                    </form>
+                </li>
+                {% if not forloop.last %}
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+        </li>
+        {% endif %}
+        
+        <!-- USER DROPDOWN (existing) -->
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-primary fw-bold d-flex align-items-center gap-2"
+               href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-person-circle"></i>
+                {{ user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+                {% if user.is_superuser %}
+                <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin Panel</a></li>
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+
+                <!-- CHANGE PASSWORD -->
+                <li>
+                    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="bi bi-key me-2"></i>Change Password
+                    </a>
+                </li>
+                
+                <!-- UPDATE MOBILE -->
+                <li>
+                    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateMobileModal">
+                        <i class="bi bi-phone me-2"></i>Update Mobile Number
+                    </a>
+                </li>
+                
+                <!-- UPDATE SIGNATURE -->
+                <li>
+                    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateSignatureModal">
+                        <i class="bi bi-pen me-2"></i>Update Signature
+                    </a>
+                </li>
+                
+                <!-- LOGOUT -->
+                <li>
+                    <a class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                    </a>
+                </li>
+            </ul>
+        </li>
+    {% else %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+    {% endif %}
+</ul>
+
             </div>
         </div>
     </nav>
-    <!-- FLASH MESSAGES - BOOTSTRAP MODAL VERSION -->
+<!-- FLASH MESSAGES - BOOTSTRAP MODAL VERSION (FIXED ACCESSIBILITY) -->
 {% if messages %}
     {% for message in messages %}
     <div class="modal fade" id="messageModal{{ forloop.counter }}" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
@@ -116,21 +186,37 @@
                             <i class="bi bi-info-circle-fill me-2"></i>Information
                         {% endif %}
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center py-4">
                     <p class="mb-0 fs-6">{{ message }}</p>
                 </div>
                 <div class="modal-footer justify-content-center border-0">
-                    <button type="button" class="btn {% if message.tags == 'error' or message.tags == 'danger' %}btn-danger{% elif message.tags == 'warning' %}btn-warning{% elif message.tags == 'success' %}btn-success{% else %}btn-info{% endif %} px-5" data-bs-dismiss="modal">OK</button>
+                    <button type="button" 
+                            class="btn {% if message.tags == 'error' or message.tags == 'danger' %}btn-danger{% elif message.tags == 'warning' %}btn-warning{% elif message.tags == 'success' %}btn-success{% else %}btn-info{% endif %} px-5 message-ok-btn" 
+                            data-bs-dismiss="modal"
+                            data-modal-id="messageModal{{ forloop.counter }}">
+                        OK
+                    </button>
                 </div>
             </div>
         </div>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var modal{{ forloop.counter }} = new bootstrap.Modal(document.getElementById('messageModal{{ forloop.counter }}'));
+            const modalEl{{ forloop.counter }} = document.getElementById('messageModal{{ forloop.counter }}');
+            const modal{{ forloop.counter }} = new bootstrap.Modal(modalEl{{ forloop.counter }});
+            
+            // Show modal
             modal{{ forloop.counter }}.show();
+            
+            // ✅ FIX: Remove focus from button before modal closes
+            modalEl{{ forloop.counter }}.addEventListener('hide.bs.modal', function(e) {
+                const okBtn = this.querySelector('.message-ok-btn');
+                if (okBtn && document.activeElement === okBtn) {
+                    okBtn.blur(); // Remove focus before modal hides
+                }
+            });
         });
     </script>
     {% endfor %}
@@ -159,23 +245,23 @@
         </div>
     </div>
     {% endif %}
-    <!-- SUCCESS MODAL -->
-    <div class="modal fade" id="successModal" tabindex="-1">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title d-flex align-items-center gap-2">Success</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center py-4">
-                    <p class="mb-0 fs-5" id="successMessage">Voucher created successfully!</p>
-                </div>
-                <div class="modal-footer justify-content-center border-0">
-                    <button type="button" class="btn btn-success px-5" data-bs-dismiss="modal" id="successOkBtn">OK</button>
-                </div>
+    <!-- SUCCESS MODAL (FIXED ACCESSIBILITY) -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title d-flex align-items-center gap-2">Success</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="mb-0 fs-5" id="successMessage">Voucher created successfully!</p>
+            </div>
+            <div class="modal-footer justify-content-center border-0">
+                <button type="button" class="btn btn-success px-5" id="successOkBtn">OK</button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- CHANGE PASSWORD MODAL -->
 <div class="modal fade" id="changePasswordModal" tabindex="-1">
@@ -327,73 +413,45 @@
             </div>
         </div>
     </div>
+    
     <!-- CREATE USER MODAL (SUPERUSER ONLY) -->
-    {% if user.is_superuser %}
-    <div class="modal fade" id="createUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="createUserForm" enctype="multipart/form-data">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Create New User</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+{% if user.is_superuser %}
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createUserForm" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="user_username" class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="user_username" name="username" required maxlength="150">
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="user_username" class="form-label">Username <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="user_username" name="username" required maxlength="150">
-                        </div>
-                        <div class="mb-3">
-                            <label for="user_password" class="form-label">Password <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="user_password" name="password" required minlength="8">
-                        </div>
-                        <div class="mb-3">
-                            <label for="user_group" class="form-label">User Group <span class="text-danger">*</span></label>
-                            <select name="user_group" id="user_group" class="form-select" required>
-                                <option value="">-- Select Group --</option>
-                                <option value="Accountants">Accountants</option>
-                                <option value="Admin Staff">Admin Staff</option>
-                            </select>
-                        </div>
-                        <div class="mb-3" id="designation_field_user" style="display:none;">
-                            <label for="user_designation" class="form-label">Designation <span class="text-danger">*</span></label>
-                            <select name="designation" id="user_designation" class="form-select">
-                                <option value="">-- Select Designation --</option>
-                                {% for des in designations %}
-                                    <option value="{{ des.id }}">{{ des.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <!-- NEW: MOBILE NUMBER -->
-                        <div class="mb-3">
-                            <label for="user_mobile" class="form-label">Mobile Number <span class="text-danger">*</span></label>
-                            <input type="text" 
-                                class="form-control" 
-                                id="user_mobile" 
-                                name="mobile" 
-                                
-                                maxlength="10"
-                                
-                                required>
-                            
-                        </div>
+                    <div class="mb-3">
+                        <label for="user_password" class="form-label">Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="user_password" name="password" required minlength="8">
+                    </div>
 
-
-                        <!-- NEW: SIGNATURE UPLOAD -->
-                        <div class="mb-3">
-                            <label for="user_signature" class="form-label">Signature (Optional)</label>
-                            <input type="file" class="form-control form-control-sm" id="user_signature" name="signature" accept="image/png,image/jpeg">
-                            <div class="form-text">Upload a clear PNG/JPG of your signature (transparent background preferred).</div>
-                        </div>
+                    <!-- Signature Upload -->
+                    <div class="mb-3">
+                        <label for="user_signature" class="form-label">Signature (Optional)</label>
+                        <input type="file" class="form-control form-control-sm" id="user_signature" name="signature" accept="image/png,image/jpeg">
+                        <div class="form-text">Upload a clear PNG/JPG of signature (transparent background preferred).</div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">Create User</button>
-                    </div>
-                </form>
-            </div>
+                    
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Create User</button>
+                </div>
+            </form>
         </div>
     </div>
-    {% endif %}
+</div>
+{% endif %}
     <!-- CONTROL APPROVAL MODAL -->
     {% if user.is_superuser %}
     <div class="modal fade" id="approvalControlModal" tabindex="-1">
@@ -422,120 +480,102 @@
     </div>
     {% endif %}
     <!-- USER CONTROL MODAL (SUPERUSER ONLY) -->
-    {% if user.is_superuser %}
-    <div class="modal fade" id="userControlModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
+{% if user.is_superuser %}
+<div class="modal fade" id="userControlModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">User Control Panel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle" id="userControlTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Username</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>    
+                        <tbody>
+                            {% for u in all_users %}
+                            <tr data-user-id="{{ u.id }}">
+                                <td>{{ u.username }}</td>
+                                <td>
+                                    <span class="badge bg-{{ u.is_active|yesno:'success,danger' }}">
+                                        {{ u.is_active|yesno:'Active,Disabled' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary edit-user-btn"
+                                            data-id="{{ u.id }}"
+                                            data-username="{{ u.username }}"
+                                            data-active="{{ u.is_active|yesno:'true,false' }}"
+                                            data-signature="{% if u.userprofile.signature %}{{ u.userprofile.signature.url }}{% endif %}">
+                                        Edit
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted">No users found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- EDIT USER MODAL (inside User Control) -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editUserForm" enctype="multipart/form-data">
                 <div class="modal-header">
-                    <h5 class="modal-title">User Control Panel</h5>
+                    <h5 class="modal-title">Edit User</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle" id="userControlTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Group</th>
-                                    <th>Designation</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for u in all_users %}
-                                <tr data-user-id="{{ u.id }}">
-                                    <td>{{ u.username }}</td>
-                                    <td>{{ u.groups.all.0.name|default:"—" }}</td>
-                                    <td>{{ u.userprofile.designation.name|default:"—" }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ u.is_active|yesno:'success,danger' }}">
-                                            {{ u.is_active|yesno:'Active,Disabled' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary edit-user-btn"
-                                                data-id="{{ u.id }}"
-                                                data-username="{{ u.username }}"
-                                                data-group="{{ u.groups.all.0.name|default:'' }}"
-                                                data-designation="{{ u.userprofile.designation.id|default:'' }}"
-                                                data-active="{{ u.is_active|yesno:'true,false' }}"
-                                                data-signature="{% if u.userprofile.signature %}{{ u.userprofile.signature.url }}{% endif %}">
-                                            Edit
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="5" class="text-center text-muted">No users found.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <input type="hidden" id="edit_user_id">
+                    <div class="mb-3">
+                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_username" required maxlength="150">
                     </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit_user_active">
+                            <label class="form-check-label" for="edit_user_active">Active</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Signature Upload + Preview -->
+                    <div class="mb-3">
+                        <label class="form-label">Signature</label>
+                        <input type="file" class="form-control form-control-sm" id="edit_user_signature" name="signature" accept="image/png,image/jpeg">
+                        <div class="form-text">Leave blank to keep current signature.</div>
+                        <div id="currentSignaturePreview" class="mt-2 text-center" style="display:none;">
+                            <p class="small text-muted mb-1">Current Signature:</p>
+                            <img id="currentSignatureImg" src="" alt="Current Signature" style="max-height: 60px; border: 1px dashed #ccc; padding: 5px;">
+                        </div>
+                    </div>
+                    
+                    
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
-    <!-- EDIT USER MODAL (inside User Control) -->
-    <div class="modal fade" id="editUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="editUserForm" enctype="multipart/form-data">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit User</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" id="edit_user_id">
-                        <div class="mb-3">
-                            <label class="form-label">Username <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="edit_username" required maxlength="150">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Group <span class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_user_group" required>
-                                <option value="Accountants">Accountants</option>
-                                <option value="Admin Staff">Admin Staff</option>
-                            </select>
-                        </div>
-                        <div class="mb-3" id="edit_designation_field" style="display:none;">
-                            <label class="form-label">Designation <span class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_user_designation">
-                                <option value="">-- Select Designation --</option>
-                                {% for des in designations %}
-                                <option value="{{ des.id }}">{{ des.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="edit_user_active">
-                                <label class="form-check-label" for="edit_user_active">Active</label>
-                            </div>
-                        </div>
-                        <!-- NEW: SIGNATURE UPLOAD + PREVIEW -->
-                        <div class="mb-3">
-                            <label class="form-label">Signature</label>
-                            <input type="file" class="form-control form-control-sm" id="edit_user_signature" name="signature" accept="image/png,image/jpeg">
-                            <div class="form-text">Leave blank to keep current signature.</div>
-                            <div id="currentSignaturePreview" class="mt-2 text-center" style="display:none;">
-                                <p class="small text-muted mb-1">Current Signature:</p>
-                                <img id="currentSignatureImg" src="" alt="Current Signature" style="max-height: 60px; border: 1px dashed #ccc; padding: 5px;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+</div>
+{% endif %}
    
     <!-- NEW: ACCOUNT CONTROL MODAL (SUPERUSER ONLY) -->
     {% if user.is_superuser %}
@@ -885,66 +925,9 @@ function handlePermissionChange(event) {
 }
 </script>
 {% endif %}
-    <!-- UPDATED: COMPANY DETAILS MODAL (SUPERUSER ONLY) -->
-    {% if user.is_superuser %}
-    <div class="modal fade" id="companyDetailsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <form id="companyDetailsForm" enctype="multipart/form-data">
-                    <div class="modal-header">
-                        <h5 class="modal-title">View / Edit Company Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- No data message -->
-                        <div id="noCompanyMessage" class="alert alert-info text-center mb-3" style="display: none;">
-                            No company details have been added yet. Fill the form below to add.
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Company Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="company_name" name="name" required maxlength="200">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">GST No</label>
-                                <input type="text" class="form-control" id="company_gst" name="gst_no" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">PAN No</label>
-                                <input type="text" class="form-control" id="company_pan" name="pan_no" maxlength="10" placeholder="e.g. ABCDE1234F">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Address</label>
-                                <textarea class="form-control" id="company_address" name="address" rows="2"></textarea>
-                            </div>
-                            <!-- ADDED: EMAIL & PHONE -->
-                            <div class="col-md-6">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" id="company_email" name="email" placeholder="company@example.com">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Phone</label>
-                                <input type="text" class="form-control" id="company_phone" name="phone" placeholder="+91 9876543210">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Logo (PNG/JPG, max 2MB)</label>
-                                <input type="file" class="form-control form-control-sm" id="company_logo" name="logo" accept="image/png,image/jpeg">
-                                <div class="mt-2 text-center" id="currentLogoPreview" style="display:none;">
-                                    <p class="small text-muted mb-1">Current Logo:</p>
-                                    <img id="currentLogoImg" src="" alt="Current Logo" style="max-height: 80px; border: 1px dashed #ccc; padding: 5px;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Details</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+
+
+    
     <!-- CREATE VOUCHER MODAL - WORKS FOR ACCOUNTANTS, ADMIN STAFF & SUPERUSER -->
     {% if user.is_authenticated %}
         {% with user_group=user.groups.all.0.name %}
@@ -1015,6 +998,8 @@ function handlePermissionChange(event) {
                                             <!-- CHEQUE ATTACHMENTS - CORRECT -->
 <div class="col-md-2" id="chequeAttachmentField" style="display:none;">
     <label class="form-label">Cheque Attachments <span class="text-danger">*</span></label>
+    <div id="chequeFileName" class="text-muted small mt-1"></div>
+
     <input type="file"
            class="form-control form-control-sm"
            name="cheque_attachments"
@@ -1089,102 +1074,108 @@ function handlePermissionChange(event) {
         
     document.addEventListener('DOMContentLoaded', function () {
         const getCsrfToken = () => window.csrfToken;
-        // -------------------------------------------------
-        // GLOBAL: Load bank accounts into the dropdown (NO NULL)
-        // -------------------------------------------------
-        function loadAccounts() {
-            const select = document.getElementById('account_details');
-            if (!select) return;
-            select.innerHTML = ''; // Remove "Null" option
-            fetch("{% url 'account_list' %}")
-                .then(r => r.json())
-                .then(accounts => {
-                    if (accounts.length === 0) {
-                        const opt = document.createElement('option');
-                        opt.value = "";
-                        opt.textContent = "-- No Accounts --";
-                        opt.disabled = true;
-                        select.appendChild(opt);
-                    } else {
-                        accounts.forEach(acc => {
-                            const opt = document.createElement('option');
-                            opt.value = acc.value;
-                            opt.textContent = acc.label;
-                            select.appendChild(opt);
-                        });
-                    }
-                })
-                .catch(() => {
-                    const opt = document.createElement('option');
-                    opt.value = "";
-                    opt.textContent = "-- Load Failed --";
-                    opt.disabled = true;
-                    select.appendChild(opt);
-                });
+     // -------------------------------------------------
+// GLOBAL: Load bank accounts into the dropdown (NO NULL)
+// -------------------------------------------------
+function loadAccounts() {
+    const select = document.getElementById('account_details');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch("{% url 'account_list' %}", {
+        headers: {
+            'Accept': 'application/json'
         }
-        loadAccounts();
-        // -------------------------------------------------
-        // Auto-fill date
-        // -------------------------------------------------
-        const dateInput = document.getElementById('voucher_date');
-        if (dateInput) {
-            dateInput.value = window.today;
-            dateInput.max = window.today;
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
         }
+        return response.json();
+    })
+    .then(accounts => {
+        select.innerHTML = '';
+        
+        if (!Array.isArray(accounts) || accounts.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = "";
+            opt.textContent = "-- No Accounts for This Company --";
+            opt.disabled = true;
+            opt.selected = true;
+            select.appendChild(opt);
+            return;
+        }
+
+        // Placeholder
+        const placeholder = document.createElement('option');
+        placeholder.value = "";
+        placeholder.textContent = "-- Select Account --";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.appendChild(placeholder);
+
+        accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.value;
+            opt.textContent = acc.label;
+            select.appendChild(opt);
+        });
+    })
+    .catch(error => {
+        console.error('Error loading accounts:', error);
+        select.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.textContent = "-- Load Failed --";
+        opt.disabled = true;
+        opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+// ✅ LOAD ACCOUNTS ONLY IF COMPANY IS SELECTED
+const ACTIVE_COMPANY_ID = "{{ request.session.active_company_id|default:'' }}";
+if (ACTIVE_COMPANY_ID) {
+    loadAccounts();
+}
+
+// -------------------------------------------------
+// Auto-fill date
+// -------------------------------------------------
+const dateInput = document.getElementById('voucher_date');
+if (dateInput) {
+    dateInput.value = window.today;
+    dateInput.max = window.today;
+}
         // === CREATE USER ===
-        const userForm = document.getElementById('createUserForm');
-        if (userForm) {
-            const groupSelect = document.getElementById('user_group');
-            const designationField = document.getElementById('designation_field_user');
-            const designationSelect = document.getElementById('user_designation');
-            groupSelect.addEventListener('change', function() {
-                if (this.value === 'Admin Staff') {
-                    designationField.style.display = 'block';
-                    designationSelect.setAttribute('required', 'required');
-                } else {
-                    designationField.style.display = 'none';
-                    designationSelect.removeAttribute('required');
-                    designationSelect.value = '';
-                }
-            });
-            userForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const formData = new FormData();
-                formData.append('username', document.getElementById('user_username').value.trim());
-                formData.append('password', document.getElementById('user_password').value);
-                formData.append('user_group', document.getElementById('user_group').value);
-                
-                // ✅ FIXED: Mobile number validation and append
-                const mobile = document.getElementById('user_mobile').value.trim();
-                if (!mobile) {
-                    return alert('Mobile number is required');
-                }
-                formData.append('mobile', mobile);
-                
-                const designation = document.getElementById('user_designation').value;
-                if (document.getElementById('user_group').value === 'Admin Staff') {
-                    if (!designation) return alert('Designation required for Admin Staff');
-                    formData.append('designation', designation);
-                }
-                const signature = document.getElementById('user_signature').files[0];
-                if (signature) formData.append('signature', signature);
-                fetch("{% url 'user_create_api' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() },
-                    body: formData
-                })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.id) {
-                        alert('User created!');
-                        bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
-                        userForm.reset();
-                        document.getElementById('designation_field_user').style.display = 'none';
-                        location.reload();
-                    } else alert('Error: ' + (d.error || 'Failed'));
-                });
-            });
-        }
+const userForm = document.getElementById('createUserForm');
+if (userForm) {
+    userForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('username', document.getElementById('user_username').value.trim());
+        formData.append('password', document.getElementById('user_password').value);
+        
+        const signature = document.getElementById('user_signature').files[0];
+        if (signature) formData.append('signature', signature);
+        
+        fetch("{% url 'user_create_api' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.id) {
+                alert(d.message); // Shows message about assigning to companies
+                bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                userForm.reset();
+                location.reload();
+            } else alert('Error: ' + (d.error || 'Failed'));
+        });
+    });
+}
         // === APPROVAL CONTROL ===
         const controlModal = document.getElementById('approvalControlModal');
         if (controlModal) {
@@ -1318,162 +1309,283 @@ if (designationForm) {
         });
     });
 }
-        // === ACCOUNT CONTROL MODAL ===
-        const accountModal = document.getElementById('accountControlModal');
-        if (accountModal) {
-            const tableBody = accountModal.querySelector('#accountTable tbody');
-            const addForm = accountModal.querySelector('#addAccountForm');
-            function loadAccounts() {
-                fetch("{% url 'account_list' %}").then(r => r.json()).then(accounts => {
-                    tableBody.innerHTML = '';
-                    accounts.forEach(acc => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${acc.label.split(' / ')[0]}</td>
-                            <td>${acc.label.split(' / ')[1]}</td>
-                            <td>
-                                <button class="btn btn-sm btn-danger delete-account" data-id="${acc.value}">Delete</button>
+        // =============================================
+// ACCOUNT CONTROL MODAL - COMPANY-SPECIFIC
+// =============================================
+const accountModal = document.getElementById('accountControlModal');
+if (accountModal) {
+    const tableBody = accountModal.querySelector('#accountTable tbody');
+    const addForm = accountModal.querySelector('#addAccountForm');
+    
+    // ✅ LOAD ACCOUNTS FUNCTION - COMPANY-SPECIFIC
+    function loadAccountsModal() {
+        fetch("{% url 'account_list' %}")
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(accounts => {
+                tableBody.innerHTML = '';
+                
+                if (accounts.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">
+                                No bank accounts added yet for this company
                             </td>
-                        `;
-                        tableBody.appendChild(tr);
-                    });
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                accounts.forEach(acc => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${acc.label.split(' / ')[0]}</td>
+                        <td>${acc.label.split(' / ')[1]}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger delete-account" data-id="${acc.value}">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            })
+            .catch(err => {
+                console.error('Error loading accounts:', err);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center text-danger py-3">
+                            Failed to load accounts: ${err.message}
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+    
+    // ✅ LOAD ACCOUNTS WHEN MODAL OPENS
+    accountModal.addEventListener('show.bs.modal', function() {
+        console.log('🔄 Loading bank accounts for active company...');
+        loadAccountsModal();
+    });
+    
+    // ✅ ADD ACCOUNT FORM SUBMISSION
+    addForm.onsubmit = e => {
+        e.preventDefault();
+        const bank = document.getElementById('bank_name').value.trim();
+        const acc = document.getElementById('account_number').value.trim();
+        
+        if (!bank || !acc) {
+            alert('Please fill in both bank name and account number');
+            return;
+        }
+        
+        const submitBtn = addForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Adding...';
+        
+        fetch("{% url 'account_create' %}", {
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': getCsrfToken(), 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ 
+                bank_name: bank, 
+                account_number: acc 
+            })
+        })
+        .then(r => {
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(err.error || 'Failed to create account');
                 });
             }
-            accountModal.addEventListener('show.bs.modal', loadAccounts);
-            addForm.onsubmit = e => {
-                e.preventDefault();
-                const bank = document.getElementById('bank_name').value.trim();
-                const acc = document.getElementById('account_number').value.trim();
-                if (!bank || !acc) return;
-                fetch("{% url 'account_create' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bank_name: bank, account_number: acc })
-                })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.id) {
-                        addForm.reset();
-                        loadAccounts();
-                    } else alert('Error: ' + (d.error || 'Failed'));
-                });
-            };
-            tableBody.onclick = e => {
-                const btn = e.target.closest('.delete-account');
-                if (!btn) return;
-                if (!confirm('Delete this account?')) return;
-                const id = btn.dataset.id;
-                fetch(`/api/accounts/delete/${id}/`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRFToken': getCsrfToken() }
-                })
-                .then(r => {
-                    if (r.ok) {
-                        loadAccounts();
-                    } else {
-                        alert('Failed to delete');
-                    }
-                })
-                .catch(() => alert('Error deleting account'));
-            };
-        }
-                // === EDIT USER (USER CONTROL PANEL) ===
-        const editUserModalEl = document.getElementById('editUserModal');
-        if (editUserModalEl) {
-            const editModal = new bootstrap.Modal(editUserModalEl);
-            const form = document.getElementById('editUserForm');
-            const groupSelect = document.getElementById('edit_user_group');
-            const designationField = document.getElementById('edit_designation_field');
-            const designationSelect = document.getElementById('edit_user_designation');
-
-            // When clicking any "Edit" button in User Control table
-            document.querySelectorAll('.edit-user-btn').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const userId = this.dataset.id;
-                    const username = this.dataset.username;
-                    const group = this.dataset.group;
-                    const designationId = this.dataset.designation || '';
-                    const isActive = this.dataset.active === 'true';
-                    const signatureUrl = this.dataset.signature || '';
-
-                    // Fill the form
-                    document.getElementById('edit_user_id').value = userId;
-                    document.getElementById('edit_username').value = username;
-                    document.getElementById('edit_user_group').value = group || 'Accountants';
-                    document.getElementById('edit_user_active').checked = isActive;
-
-                    // Show/hide designation
-                    if (group === 'Admin Staff') {
-                        designationField.style.display = 'block';
-                        designationSelect.closest('.mb-3').querySelector('label').innerHTML = 'Designation <span class="text-danger">*</span>';
-                    } else {
-                        designationField.style.display = 'none';
-                    }
-                    designationSelect.value = designationId;
-
-                    // Show current signature preview if exists
-                    const preview = document.getElementById('currentSignaturePreview');
-                    const img = document.getElementById('currentSignatureImg');
-                    if (signatureUrl) {
-                        preview.style.display = 'block';
-                        img.src = signatureUrl + '?t=' + Date.now(); // cache bust
-                    } else {
-                        preview.style.display = 'none';
-                    }
-
-                    // Show modal
-                    editModal.show();
-                });
-            });
-
-            // Handle group change (show/hide designation)
-            groupSelect.addEventListener('change', function () {
-                if (this.value === 'Admin Staff') {
-                    designationField.style.display = 'block';
-                    designationSelect.setAttribute('required', 'required');
-                } else {
-                    designationField.style.display = 'none';
-                    designationSelect.removeAttribute('required');
-                    designationSelect.value = '';
+            return r.json();
+        })
+        .then(d => {
+            if (d.id) {
+                alert(d.message || 'Account added successfully!');
+                addForm.reset();
+                loadAccountsModal(); // ✅ Reload the table
+                
+                // ✅ ALSO reload accounts in voucher creation dropdown if modal is open
+                const voucherModal = document.getElementById('createVoucherModal');
+                if (voucherModal && voucherModal.classList.contains('show')) {
+                    loadAccountsForVoucher();
                 }
-            });
+            } else {
+                throw new Error(d.error || 'Failed to create account');
+            }
+        })
+        .catch(err => {
+            console.error('Error creating account:', err);
+            alert('Error: ' + err.message);
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    };
+    
+    // ✅ DELETE ACCOUNT
+    tableBody.onclick = e => {
+        const btn = e.target.closest('.delete-account');
+        if (!btn) return;
+        
+        const id = btn.dataset.id;
+        const row = btn.closest('tr');
+        const bankName = row.querySelector('td:first-child').textContent;
+        const accountNum = row.querySelector('td:nth-child(2)').textContent;
+        
+        if (!confirm(`Delete account ${bankName} / ${accountNum}?`)) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        
+        fetch(`/api/accounts/delete/${id}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        })
+        .then(r => {
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(err.error || 'Failed to delete');
+                });
+            }
+            return r.json();
+        })
+        .then(() => {
+            alert('Account deleted successfully');
+            loadAccountsModal(); // ✅ Reload the table
+            
+            // ✅ ALSO reload accounts in voucher creation dropdown if modal is open
+            const voucherModal = document.getElementById('createVoucherModal');
+            if (voucherModal && voucherModal.classList.contains('show')) {
+                loadAccountsForVoucher();
+            }
+        })
+        .catch(err => {
+            console.error('Error deleting account:', err);
+            alert('Error: ' + err.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Delete';
+        });
+    };
+}
 
-            // Submit edit form
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const formData = new FormData();
-                formData.append('user_id', document.getElementById('edit_user_id').value);
-                formData.append('username', document.getElementById('edit_username').value.trim());
-                formData.append('user_group', groupSelect.value);
-                formData.append('is_active', document.getElementById('edit_user_active').checked);
+// ✅ HELPER: Load accounts into voucher creation dropdown
+function loadAccountsForVoucher() {
+    const select = document.getElementById('account_details');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch("{% url 'account_list' %}")
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(accounts => {
+            select.innerHTML = '';
+            
+            if (accounts.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "-- No Accounts --";
+                opt.disabled = true;
+                opt.selected = true;
+                select.appendChild(opt);
+            } else {
+                // Add placeholder option
+                const placeholder = document.createElement('option');
+                placeholder.value = "";
+                placeholder.textContent = "-- Select Account --";
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                select.appendChild(placeholder);
+                
+                // Add actual accounts
+                accounts.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.value;
+                    opt.textContent = acc.label;
+                    select.appendChild(opt);
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Error loading accounts:', err);
+            select.innerHTML = '<option value="">-- Load Failed --</option>';
+        });
+}
 
-                if (groupSelect.value === 'Admin Staff') {
-                    const des = designationSelect.value;
-                    if (!des) return alert('Designation required for Admin Staff');
-                    formData.append('designation', des);
-                }
 
-                const signatureFile = document.getElementById('edit_user_signature').files[0];
-                if (signatureFile) formData.append('signature', signatureFile);
+// === EDIT USER (USER CONTROL PANEL) ===
+const editUserModalEl = document.getElementById('editUserModal');
+if (editUserModalEl) {
+    const editModal = new bootstrap.Modal(editUserModalEl);
+    const form = document.getElementById('editUserForm');
 
-                fetch("{% url 'user_update_api' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() },
-                    body: formData
-                })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.message) {
-                        alert('User updated successfully!');
-                        editModal.hide();
-                        location.reload();
-                    } else {
-                        alert('Error: ' + (d.error || 'Update failed'));
-                    }
-                })
-                .catch(() => alert('Network error'));
-            });
-        }
+    // When clicking any "Edit" button in User Control table
+    document.querySelectorAll('.edit-user-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const userId = this.dataset.id;
+            const username = this.dataset.username;
+            const isActive = this.dataset.active === 'true';
+            const signatureUrl = this.dataset.signature || '';
+
+            // Fill the form
+            document.getElementById('edit_user_id').value = userId;
+            document.getElementById('edit_username').value = username;
+            document.getElementById('edit_user_active').checked = isActive;
+
+            // Show current signature preview if exists
+            const preview = document.getElementById('currentSignaturePreview');
+            const img = document.getElementById('currentSignatureImg');
+            if (signatureUrl) {
+                preview.style.display = 'block';
+                img.src = signatureUrl + '?t=' + Date.now();
+            } else {
+                preview.style.display = 'none';
+            }
+
+            editModal.show();
+        });
+    });
+
+    // Submit edit form
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('user_id', document.getElementById('edit_user_id').value);
+        formData.append('username', document.getElementById('edit_username').value.trim());
+        formData.append('is_active', document.getElementById('edit_user_active').checked);
+
+        const signatureFile = document.getElementById('edit_user_signature').files[0];
+        if (signatureFile) formData.append('signature', signatureFile);
+
+        fetch("{% url 'user_update_api' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.message) {
+                alert('User updated successfully!');
+                editModal.hide();
+                location.reload();
+            } else {
+                alert('Error: ' + (d.error || 'Update failed'));
+            }
+        })
+        .catch(() => alert('Network error'));
+    });
+}
+
         // === CREATE VOUCHER ===
         const voucherModal = document.getElementById('createVoucherModal');
         if (voucherModal) {
@@ -1542,56 +1654,7 @@ toggleChequeFields();
             })
 
             
-            addBtn.onclick = () => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-    <td>
-        <strong>${escapeHtml(user.username)}</strong>
-        ${isCurrentUser ? '<span class="badge bg-info ms-2">You</span>' : ''}
-    </td>
-    <td>
-        <span class="badge bg-${getGroupColor(user.group)}">${escapeHtml(user.group)}</span>
-    </td>
-    <td>
-        <small class="text-muted">${escapeHtml(user.designation)}</small>
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_create_voucher', user.permissions.can_create_voucher)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_edit_voucher', user.permissions.can_edit_voucher)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_view_voucher_list', user.permissions.can_view_voucher_list)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_view_voucher_detail', user.permissions.can_view_voucher_detail)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_print_voucher', user.permissions.can_print_voucher)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_create_function', user.permissions.can_create_function)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_edit_function', user.permissions.can_edit_function)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_delete_function', user.permissions.can_delete_function)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_view_function_list', user.permissions.can_view_function_list)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_view_function_detail', user.permissions.can_view_function_detail)}
-    </td>
-    <td class="text-center">
-        ${createPermissionCheckbox(user.id, 'can_print_function', user.permissions.can_print_function)}
-    </td>
-`;
-    tbody.appendChild(row);
-    index++;
-};
+            
 
 
             tbody.onclick = e => {
@@ -1681,14 +1744,23 @@ toggleChequeFields();
                 })
                 .then(r => r.ok ? r.json() : r.json().then(err => Promise.reject(err)))
                 .then(data => {
-                    document.getElementById('successMessage').textContent =
-                        data.message || `Voucher ${data.voucher?.voucher_number || ''} created!`;
+                    // ✅ FIX: Check if element exists before setting textContent
+                    const successMessageEl = document.getElementById('successMessage');
+                    if (successMessageEl) {
+                        successMessageEl.textContent = data.message || `Voucher ${data.voucher?.voucher_number || ''} created!`;
+                    }
+                    
                     const successModal = new bootstrap.Modal(document.getElementById('successModal'));
                     successModal.show();
                     bootstrap.Modal.getInstance(voucherModal).hide();
                     form.reset();
-                    document.getElementById('fileName').textContent = '';
-                    document.getElementById('chequeFileName').textContent = '';
+                    
+                    const fileNameEl = document.getElementById('fileName');
+                    if (fileNameEl) fileNameEl.textContent = '';
+                    
+                    const chequeFileNameEl = document.getElementById('chequeFileName');
+                    if (chequeFileNameEl) chequeFileNameEl.textContent = '';
+                    
                     document.querySelectorAll('.particular-file-list').forEach(el => el.textContent = '');
                     tbody.innerHTML = `<tr>
                         <td><input type="text" class="form-control form-control-sm" name="particulars[0][description]" required></td>
@@ -1705,89 +1777,32 @@ toggleChequeFields();
                         <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
                     </tr>`;
                     index = 1;
-                    document.getElementById('successOkBtn').onclick = () => {
-    // Force full navigation to voucher list (this triggers fresh load with new voucher)
-    window.location.href = "{% url 'voucher_list' %}";
-};
-                    
-                })
-                
-            };
-        }
-
-           
-        // === COMPANY DETAILS SAVE - FIXED & WORKING ===
-        const companyForm = document.getElementById('companyDetailsForm');
-        if (companyForm) {
-            // Load existing company data when modal opens
-            const companyModal = document.getElementById('companyDetailsModal');
-            companyModal.addEventListener('show.bs.modal', function () {
-                fetch("{% url 'company_detail_api' %}")
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.id) {
-                            document.getElementById('company_name').value = data.name || '';
-                            document.getElementById('company_gst').value = data.gst_no || '';
-                            document.getElementById('company_pan').value = data.pan_no || '';
-                            document.getElementById('company_address').value = data.address || '';
-                            document.getElementById('company_email').value = data.email || '';
-                            document.getElementById('company_phone').value = data.phone || '';
-
-                            const logoPreview = document.getElementById('currentLogoPreview');
-                            const logoImg = document.getElementById('currentLogoImg');
-                            if (data.logo) {
-                                logoPreview.style.display = 'block';
-                                logoImg.src = data.logo + '?t=' + Date.now();
-                            } else {
-                                logoPreview.style.display = 'none';
-                            }
-                            document.getElementById('noCompanyMessage').style.display = 'none';
-                        } else {
-                            // No company yet
-                            companyForm.reset();
-                            document.getElementById('currentLogoPreview').style.display = 'none';
-                            document.getElementById('noCompanyMessage').style.display = 'block';
-                        }
-                    })
-                    .catch(() => {
-                        alert('Failed to load company details');
-                    });
-            });
-
-            // Save form
-            companyForm.onsubmit = function(e) {
-                e.preventDefault();
-                const fd = new FormData(this);
-
-                fetch("{% url 'company_detail_api' %}", {
-                    method: 'POST',
-                    body: fd,
-                    headers: {
-                        'X-CSRFToken': window.csrfToken || "{{ csrf_token }}"
-                    }
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.message) {
-                        alert(data.message);
-                        // Update logo preview if new logo uploaded
-                        if (data.company && data.company.logo) {
-                            const logoImg = document.getElementById('currentLogoImg');
-                            if (logoImg) logoImg.src = data.company.logo + '?t=' + Date.now();
-                            document.getElementById('currentLogoPreview').style.display = 'block';
-                        }
-                        document.getElementById('noCompanyMessage').style.display = 'none';
-                        bootstrap.Modal.getInstance(companyModal).hide();
-                    } else {
-                        alert('Error: ' + (data.error || 'Failed to save'));
-                    }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert('Failed to save company details.');
+                    alert('Error: ' + (err.error || 'Failed to create voucher'));
                 });
             };
         }
+
+        // ✅ FIX: Proper focus management for success modal (MOVED OUTSIDE form.onsubmit)
+        document.getElementById('successOkBtn')?.addEventListener('click', function() {
+            // Blur the button first
+            this.blur();
+            
+            // Then close modal and redirect
+            const modal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Wait for modal to fully close before redirecting
+            setTimeout(() => {
+                window.location.href = "{% url 'voucher_list' %}";
+            }, 300);
+        });
+           
+        
         // === CHANGE PASSWORD MODAL - FIXED & WORKING 100% ===
         const passwordForm = document.getElementById('changePasswordForm');
         if (passwordForm) {
@@ -1923,5 +1938,965 @@ toggleChequeFields();
 
    
     {% block extra_js %}{% endblock %}
+{% if user.is_superuser %}
+<!-- =============================================
+     COMPANY MANAGEMENT MODAL
+     ============================================= -->
+<div class="modal fade" id="companyManagementModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-building me-2"></i>Company Management
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Add Company Button -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">All Companies</h6>
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createCompanyModal">
+                        <i class="bi bi-plus-circle me-1"></i>Add New Company
+                    </button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="companyListLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading companies...</p>
+                </div>
+
+                <!-- Companies List -->
+                <div id="companyListContent" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 60px;">Logo</th>
+                                    <th>Company Name</th>
+                                    <th>GST No</th>
+                                    <th>Members</th>
+                                    <th>Data</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th style="width: 150px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companyListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div id="companyListError" class="text-center py-5" style="display: none;">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    <p class="text-danger mt-3" id="companyListErrorMsg"></p>
+                    <button class="btn btn-outline-danger btn-sm" onclick="loadCompanies()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CREATE COMPANY MODAL -->
+<div class="modal fade" id="createCompanyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="createCompanyForm" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Company</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Company Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" required maxlength="200">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">GST No</label>
+                            <input type="text" class="form-control" name="gst_no" maxlength="20" placeholder="22AAAAA0000A1Z5">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">PAN No</label>
+                            <input type="text" class="form-control" name="pan_no" maxlength="15" placeholder="ABCDE1234F">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" placeholder="company@example.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" name="phone" placeholder="+91 9876543210">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" name="address" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Logo (PNG/JPG, max 2MB)</label>
+                            <input type="file" class="form-control" name="logo" accept="image/png,image/jpeg">
+                            <div class="form-text">Recommended: Square logo, transparent background</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>Create Company
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT COMPANY MODAL -->
+<div class="modal fade" id="editCompanyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="editCompanyForm" enctype="multipart/form-data">
+                <input type="hidden" id="edit_company_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Company</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Company Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_company_name" name="name" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">GST No</label>
+                            <input type="text" class="form-control" id="edit_company_gst" name="gst_no">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">PAN No</label>
+                            <input type="text" class="form-control" id="edit_company_pan" name="pan_no">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit_company_email" name="email">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="edit_company_phone" name="phone">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" id="edit_company_address" name="address" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Logo</label>
+                            <input type="file" class="form-control" name="logo" accept="image/png,image/jpeg">
+                            <div id="edit_company_logo_preview" class="mt-2 text-center" style="display: none;">
+                                <p class="small text-muted mb-1">Current Logo:</p>
+                                <img id="edit_company_logo_img" src="" alt="Current Logo" style="max-height: 80px; border: 1px solid #dee2e6; border-radius: 4px; padding: 5px;">
+                            </div>
+                            <div class="form-text">Leave blank to keep current logo</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- =============================================
+     USER-COMPANY MEMBERSHIP MANAGEMENT MODAL
+     ============================================= -->
+<div class="modal fade" id="membershipManagementModal" tabindex="-1">
+    <div class="modal-dialog modal-xl" style="max-width: 90vw;">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-people me-2"></i>User-Company Assignments
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading State -->
+                <div id="membershipListLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading user memberships...</p>
+                </div>
+
+                <!-- Content -->
+                <div id="membershipListContent" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 150px;">Username</th>
+                                    <th>Company Assignments</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membershipListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div id="membershipListError" class="text-center py-5" style="display: none;">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    <p class="text-danger mt-3" id="membershipListErrorMsg"></p>
+                    <button class="btn btn-outline-danger btn-sm" onclick="loadMemberships()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADD MEMBERSHIP MODAL -->
+<div class="modal fade" id="addMembershipModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="addMembershipForm">
+                <input type="hidden" id="add_membership_user_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign User to Company</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Assigning: <strong id="add_membership_username"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Company <span class="text-danger">*</span></label>
+                        <select class="form-select" id="add_membership_company" required>
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Group <span class="text-danger">*</span></label>
+                        <select class="form-select" id="add_membership_group" required>
+                            <option value="">-- Select Group --</option>
+                            <option value="Accountants">Accountants</option>
+                            <option value="Admin Staff">Admin Staff</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="add_membership_designation_field" style="display: none;">
+                        <label class="form-label">Designation <span class="text-danger">*</span></label>
+                        <select class="form-select" id="add_membership_designation">
+                            <option value="">-- Select Designation --</option>
+                            {% for des in designations %}
+                            <option value="{{ des.id }}">{{ des.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Mobile Number</label>
+                        <input type="text" class="form-control" id="add_membership_mobile" maxlength="15" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>Assign
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MEMBERSHIP MODAL -->
+<div class="modal fade" id="editMembershipModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editMembershipForm">
+                <input type="hidden" id="edit_membership_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Membership</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        User: <strong id="edit_membership_username"></strong><br>
+                        Company: <strong id="edit_membership_company"></strong>
+                    </p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Group <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit_membership_group" required>
+                            <option value="Accountants">Accountants</option>
+                            <option value="Admin Staff">Admin Staff</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="edit_membership_designation_field" style="display: none;">
+                        <label class="form-label">Designation <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit_membership_designation">
+                            <option value="">-- Select Designation --</option>
+                            {% for des in designations %}
+                            <option value="{{ des.id }}">{{ des.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Mobile Number</label>
+                        <input type="text" class="form-control" id="edit_membership_mobile" maxlength="15">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// =============================================
+// COMPANY MANAGEMENT JAVASCRIPT
+// =============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const companyModal = document.getElementById('companyManagementModal');
+    if (companyModal) {
+        companyModal.addEventListener('show.bs.modal', loadCompanies);
+    }
+
+    // Create Company Form
+    const createForm = document.getElementById('createCompanyForm');
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalHTML = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+
+            fetch('/api/companies/create/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': window.csrfToken },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('createCompanyModal')).hide();
+                    createForm.reset();
+                    loadCompanies();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error occurred');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHTML;
+            });
+        });
+    }
+
+    // Edit Company Form
+    const editForm = document.getElementById('editCompanyForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const companyId = document.getElementById('edit_company_id').value;
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
+            fetch(`/api/companies/${companyId}/update/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': window.csrfToken },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('editCompanyModal')).hide();
+                    loadCompanies();
+                    if (data.company && data.company.logo) {
+                        location.reload();
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error occurred');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+            });
+        });
+    }
+
+    // Membership Management
+    const membershipModal = document.getElementById('membershipManagementModal');
+    if (membershipModal) {
+        membershipModal.addEventListener('show.bs.modal', loadMemberships);
+    }
+
+    // Add Membership Form
+    const addForm = document.getElementById('addMembershipForm');
+    if (addForm) {
+        const groupSelect = document.getElementById('add_membership_group');
+        const designationField = document.getElementById('add_membership_designation_field');
+        const designationSelect = document.getElementById('add_membership_designation');
+
+        groupSelect.addEventListener('change', function() {
+            if (this.value === 'Admin Staff') {
+                designationField.style.display = 'block';
+                designationSelect.required = true;
+            } else {
+                designationField.style.display = 'none';
+                designationSelect.required = false;
+                designationSelect.value = '';
+            }
+        });
+
+        addForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const userId = document.getElementById('add_membership_user_id').value;
+            const companyId = document.getElementById('add_membership_company').value;
+            const group = document.getElementById('add_membership_group').value;
+            const designationId = document.getElementById('add_membership_designation').value;
+            const mobile = document.getElementById('add_membership_mobile').value;
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
+            fetch('/api/memberships/create/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    company_id: companyId,
+                    group: group,
+                    designation_id: designationId || null,
+                    mobile: mobile
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('addMembershipModal')).hide();
+                    addForm.reset();
+                    designationField.style.display = 'none';
+                    loadMemberships();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => alert('Network error: ' + err))
+            .finally(() => {
+                submitBtn.disabled = false;
+            });
+        });
+    }
+
+    // Edit Membership Form
+    const editMembershipForm = document.getElementById('editMembershipForm');
+    if (editMembershipForm) {
+        const groupSelect = document.getElementById('edit_membership_group');
+        const designationField = document.getElementById('edit_membership_designation_field');
+        const designationSelect = document.getElementById('edit_membership_designation');
+
+        groupSelect.addEventListener('change', function() {
+            if (this.value === 'Admin Staff') {
+                designationField.style.display = 'block';
+                designationSelect.required = true;
+            } else {
+                designationField.style.display = 'none';
+                designationSelect.required = false;
+                designationSelect.value = '';
+            }
+        });
+
+        editMembershipForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const membershipId = document.getElementById('edit_membership_id').value;
+            const group = document.getElementById('edit_membership_group').value;
+            const designationId = document.getElementById('edit_membership_designation').value;
+            const mobile = document.getElementById('edit_membership_mobile').value;
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
+            fetch(`/api/memberships/${membershipId}/update/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    group: group,
+                    designation_id: designationId || null,
+                    mobile: mobile
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('editMembershipModal')).hide();
+                    loadMemberships();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => alert('Network error: ' + err))
+            .finally(() => {
+                submitBtn.disabled = false;
+            });
+        });
+    }
+});
+
+function loadCompanies() {
+    const loading = document.getElementById('companyListLoading');
+    const content = document.getElementById('companyListContent');
+    const error = document.getElementById('companyListError');
+    const tbody = document.getElementById('companyListBody');
+
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    error.style.display = 'none';
+
+    fetch('/api/companies/')
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            tbody.innerHTML = '';
+
+            if (!data.companies || data.companies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No companies found. Click "Add New Company" to create one.</td></tr>';
+            } else {
+                data.companies.forEach(company => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="text-center">
+                            ${company.logo ? 
+                                `<img src="${company.logo}" alt="${escapeHtml(company.name)}" style="width: 40px; height: 40px; object-fit: contain; border-radius: 4px;">` :
+                                `<div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-building text-white"></i>
+                                </div>`
+                            }
+                        </td>
+                        <td><strong>${escapeHtml(company.name)}</strong></td>
+                        <td><small class="text-muted">${company.gst_no || '—'}</small></td>
+                        <td><span class="badge bg-info">${company.member_count}</span></td>
+                        <td><small class="text-muted">${company.voucher_count}V / ${company.function_count}F</small></td>
+                        <td>
+                            <span class="badge bg-${company.is_active ? 'success' : 'secondary'}">
+                                ${company.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td><small class="text-muted">${company.created_at}</small></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editCompany(${company.id})" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-${company.is_active ? 'warning' : 'success'}" 
+                                        onclick="toggleCompany(${company.id})" 
+                                        title="${company.is_active ? 'Deactivate' : 'Activate'}">
+                                    <i class="bi bi-${company.is_active ? 'pause' : 'play'}-circle"></i>
+                                </button>
+                                ${company.voucher_count === 0 && company.function_count === 0 ? 
+                                    `<button class="btn btn-outline-danger" 
+                                             onclick="deleteCompany(${company.id}, '${escapeHtml(company.name)}')" 
+                                             title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>` : ''
+                                }
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            loading.style.display = 'none';
+            content.style.display = 'block';
+        })
+        .catch(err => {
+            console.error('Error loading companies:', err);
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            document.getElementById('companyListErrorMsg').textContent = 'Failed to load companies: ' + err.message;
+        });
+}
+
+function editCompany(id) {
+    fetch('/api/companies/')
+        .then(r => r.json())
+        .then(data => {
+            const company = data.companies.find(c => c.id === id);
+            if (!company) return alert('Company not found');
+
+            document.getElementById('edit_company_id').value = company.id;
+            document.getElementById('edit_company_name').value = company.name;
+            document.getElementById('edit_company_gst').value = company.gst_no;
+            document.getElementById('edit_company_pan').value = company.pan_no;
+            document.getElementById('edit_company_email').value = company.email;
+            document.getElementById('edit_company_phone').value = company.phone;
+            document.getElementById('edit_company_address').value = company.address;
+
+            const logoPreview = document.getElementById('edit_company_logo_preview');
+            const logoImg = document.getElementById('edit_company_logo_img');
+            if (company.logo) {
+                logoImg.src = company.logo + '?t=' + Date.now();
+                logoPreview.style.display = 'block';
+            } else {
+                logoPreview.style.display = 'none';
+            }
+
+            new bootstrap.Modal(document.getElementById('editCompanyModal')).show();
+        });
+}
+
+function toggleCompany(id) {
+    if (!confirm('Toggle company active status?')) return;
+
+    fetch(`/api/companies/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': window.csrfToken, 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadCompanies();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => alert('Network error: ' + err));
+}
+
+function deleteCompany(id, name) {
+    if (!confirm(`Permanently delete company "${name}"?\n\nThis action cannot be undone.`)) return;
+
+    fetch(`/api/companies/${id}/delete/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadCompanies();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => alert('Network error: ' + err));
+}
+
+function loadMemberships() {
+    const loading = document.getElementById('membershipListLoading');
+    const content = document.getElementById('membershipListContent');
+    const error = document.getElementById('membershipListError');
+    const tbody = document.getElementById('membershipListBody');
+
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    error.style.display = 'none';
+fetch('/api/memberships/')
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(data => {
+        tbody.innerHTML = '';
+
+        if (!data.users || data.users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">No users found</td></tr>';
+        } else {
+            window.availableCompanies = data.companies;
+
+            data.users.forEach(user => {
+                const row = document.createElement('tr');
+                
+                let membershipsHTML = '';
+                if (user.memberships.length === 0) {
+                    membershipsHTML = '<span class="text-muted small">No company assignments</span>';
+                } else {
+                    membershipsHTML = '<div class="d-flex flex-wrap gap-2">';
+                    user.memberships.forEach(m => {
+                        membershipsHTML += `
+                            <div class="border rounded p-2" style="min-width: 250px;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="d-block">${escapeHtml(m.company_name)}</strong>
+                                        <span class="badge bg-primary">${m.group}</span>
+                                        ${m.designation_name ? `<span class="badge bg-secondary">${escapeHtml(m.designation_name)}</span>` : ''}
+                                        ${m.mobile ? `<br><small class="text-muted"><i class="bi bi-phone"></i> ${escapeHtml(m.mobile)}</small>` : ''}
+                                    </div>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <button class="btn btn-outline-primary btn-sm" 
+                                                onclick="editMembership(${m.id}, '${escapeHtml(user.username)}', '${escapeHtml(m.company_name)}', '${m.group}', ${m.designation_id || 'null'}, '${escapeHtml(m.mobile || '')}')" 
+                                                title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" 
+                                                onclick="deleteMembership(${m.id}, '${escapeHtml(user.username)}', '${escapeHtml(m.company_name)}')" 
+                                                title="Remove">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    membershipsHTML += '</div>';
+                }
+
+                row.innerHTML = `
+                    <td>
+                        <strong>${escapeHtml(user.username)}</strong>
+                        ${user.is_superuser ? '<span class="badge bg-danger ms-1">Superuser</span>' : ''}
+                    </td>
+                    <td>${membershipsHTML}</td>
+                    <td>
+                        <button class="btn btn-success btn-sm" 
+                                onclick="showAddMembership(${user.id}, '${escapeHtml(user.username)}')" 
+                                title="Add to company">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        loading.style.display = 'none';
+        content.style.display = 'block';
+    })
+    .catch(err => {
+        console.error('Error loading memberships:', err);
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        document.getElementById('membershipListErrorMsg').textContent = 'Failed to load memberships: ' + err.message;
+    });
+    }
+function showAddMembership(userId, username) {
+    document.getElementById('add_membership_user_id').value = userId;
+    document.getElementById('add_membership_username').textContent = username;
+    
+    // ✅ ONLY ONCE - populate company dropdown
+    const companySelect = document.getElementById('add_membership_company');
+    companySelect.innerHTML = '<option value="">-- Select Company --</option>';
+
+    if (window.availableCompanies) {
+        window.availableCompanies.forEach(company => {
+            const option = document.createElement('option');
+            option.value = company.id;
+            option.textContent = company.name;
+            companySelect.appendChild(option);
+        });
+    }
+
+    document.getElementById('addMembershipForm').reset();
+    document.getElementById('add_membership_user_id').value = userId; // Re-set after reset
+    document.getElementById('add_membership_username').textContent = username;
+    document.getElementById('add_membership_designation_field').style.display = 'none';
+
+    new bootstrap.Modal(document.getElementById('addMembershipModal')).show();
+}
+
+function editMembership(id, username, companyName, group, designationId, mobile) {
+    document.getElementById('edit_membership_id').value = id;
+    document.getElementById('edit_membership_username').textContent = username;
+    document.getElementById('edit_membership_company').textContent = companyName;
+    document.getElementById('edit_membership_group').value = group;
+    document.getElementById('edit_membership_mobile').value = mobile || '';
+    
+    const designationField = document.getElementById('edit_membership_designation_field');
+    const designationSelect = document.getElementById('edit_membership_designation');
+
+    if (group === 'Admin Staff') {
+        designationField.style.display = 'block';
+        designationSelect.required = true;
+        designationSelect.value = designationId || '';
+    } else {
+        designationField.style.display = 'none';
+        designationSelect.required = false;
+    }
+
+    new bootstrap.Modal(document.getElementById('editMembershipModal')).show();
+}
+
+function deleteMembership(id, username, companyName) {
+    if (!confirm(`Remove ${username} from ${companyName}?`)) return;
+    
+    fetch(`/api/memberships/${id}/delete/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadMemberships();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => alert('Network error: ' + err));
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+<script>
+// ============================================
+// FORCE RELOAD ON COMPANY SWITCH
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Store current company ID in sessionStorage to detect changes
+    const currentCompanyId = '{{ active_company.id|default:"" }}';
+    const storedCompanyId = sessionStorage.getItem('last_company_id');
+    
+    // If company changed, clear any cached data
+    if (storedCompanyId && storedCompanyId !== currentCompanyId) {
+        console.log('✅ Company switched - clearing cached data');
+        // You could clear specific cached data here if needed
+    }
+    
+    // Update stored company ID
+    if (currentCompanyId) {
+        sessionStorage.setItem('last_company_id', currentCompanyId);
+    }
+});
+
+// ============================================
+// RELOAD MODALS WHEN OPENED
+// ============================================
+
+// Control Approval Modal - Reload data when opened
+const approvalControlModal = document.getElementById('approvalControlModal');
+if (approvalControlModal) {
+    approvalControlModal.addEventListener('show.bs.modal', function() {
+        console.log('🔄 Reloading approval levels for current company...');
+        loadApprovalLevels(); // This function should already exist in your base.html
+    });
+}
+
+// User Rights Modal - Reload data when opened
+const userRightsModal = document.getElementById('userRightsModal');
+if (userRightsModal) {
+    userRightsModal.addEventListener('show.bs.modal', function() {
+        console.log('🔄 Reloading user rights for current company...');
+        loadUserRights(); // This function should already exist in your base.html
+    });
+}
+
+// ============================================
+// HELPER: Load Approval Levels from API
+// ============================================
+function loadApprovalLevels() {
+    fetch('/api/approval/control/', {
+        headers: {
+            'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        }
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(data => {
+        console.log('✅ Approval levels loaded:', data);
+        // Update the modal UI with new data
+        renderApprovalLevels(data);
+    })
+    .catch(err => {
+        console.error('❌ Error loading approval levels:', err);
+        alert('Failed to load approval levels: ' + err.message);
+    });
+}
+
+function renderApprovalLevels(data) {
+    const list = document.getElementById('approvalLevelsList');
+    const select = document.getElementById('addDesignationSelect');
+    
+    if (!list || !select) return;
+    
+    const allDesignations = data.all_designations || [];
+    const currentLevels = data.levels || [];
+    
+    // Clear and rebuild list
+    list.innerHTML = '';
+    currentLevels.forEach((lvl, idx) => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.draggable = true;
+        item.dataset.id = lvl.id;
+        item.innerHTML = `
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-grip-vertical grip-handle"></i>
+                <strong>${idx + 1}.</strong>
+                <span>${lvl.name}</span>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-danger ms-2 remove-level">Remove</button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+    
+    // Update dropdown
+    const usedIds = currentLevels.map(l => l.id);
+    select.innerHTML = '<option value="">-- Add Designation --</option>';
+    allDesignations.forEach(d => {
+        if (!usedIds.includes(d.id)) {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.name;
+            select.appendChild(opt);
+        }
+    });
+}
+</script>
+{% endif %}
+
 </body>
 </html>

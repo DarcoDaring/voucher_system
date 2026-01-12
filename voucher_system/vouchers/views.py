@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import (
     Voucher, Particular, VoucherApproval, Designation,
-    ApprovalLevel, UserProfile, AccountDetail, CompanyDetail,
+    ApprovalLevel, UserProfile, AccountDetail, Company, CompanyMembership,  # ✅ NEW
     MainAttachment, ChequeAttachment, ParticularAttachment, FunctionBooking
 )
 from .serializers import VoucherSerializer, VoucherApprovalSerializer, AccountDetailSerializer
@@ -23,19 +23,53 @@ from decimal import Decimal, InvalidOperation
 import time
 from datetime import datetime
 from django.utils import timezone
-from .models import UserPermission
+from .models import UserPermission,CompanyMembership
+from django.views import View  # ✅ ADD THIS LINE
+from django.contrib.auth import authenticate, login as auth_login, logout
 
-
-def check_user_permission(user, permission_name):
+def get_user_designation_for_company(user, company_id):
     """
-    Check if user has a specific permission.
+    Helper function to get a user's designation for a specific company.
+    Returns the designation object or None.
+    """
+    if not company_id:
+        return None
+    
+    membership = CompanyMembership.objects.filter(
+        user=user,
+        company_id=company_id,
+        is_active=True
+    ).select_related('designation').first()
+    
+    return membership.designation if membership else None
+
+def check_user_permission(user, permission_name, company_id=None):
+    """
+    Check if user has a specific permission IN ACTIVE COMPANY.
     Returns tuple: (has_permission: bool, error_message: str or None)
     """
     if user.is_superuser:
         return True, None
     
+    # ✅ If no company_id provided, return False
+    if not company_id:
+        return False, "No active company selected."
+    
     try:
-        perms = UserPermission.objects.get(user=user)
+        # ✅ Get permission record for THIS user in THIS company
+        perms = UserPermission.objects.filter(
+            user=user,
+            company_id=company_id
+        ).first()
+        
+        if not perms:
+            # Default permissions if record doesn't exist
+            if permission_name in ['can_create_voucher', 'can_create_function', 
+                                   'can_view_voucher_list', 'can_view_voucher_detail', 'can_print_voucher',
+                                   'can_view_function_list', 'can_view_function_detail', 'can_print_function']:
+                return True, None
+            return False, "You don't have permission to perform this action."
+        
         has_perm = getattr(perms, permission_name, False)
         
         if not has_perm:
@@ -56,6 +90,15 @@ def check_user_permission(user, permission_name):
             return False, f"You don't have permission to {label}."
         
         return True, None
+        
+    except Exception as e:
+        print(f"Error checking permission: {e}")
+        # Default permissions if error occurs
+        if permission_name in ['can_create_voucher', 'can_create_function', 
+                               'can_view_voucher_list', 'can_view_voucher_detail', 'can_print_voucher',
+                               'can_view_function_list', 'can_view_function_detail', 'can_print_function']:
+            return True, None
+        return False, "You don't have permission to perform this action."
         
     except UserPermission.DoesNotExist:
         # Default permissions if record doesn't exist
@@ -118,6 +161,222 @@ class AdminStaffRequiredMixin(LoginRequiredMixin):
 
 
 # === VIEWS ===
+# =============================================
+# AUTHENTICATION & COMPANY SELECTION VIEWS
+# =============================================
+
+class CustomLoginView(View):
+    """Custom login view that handles company selection after authentication"""
+    
+    def get(self, request):
+        # If already logged in, redirect to company selection or home
+        if request.user.is_authenticated:
+            if request.user.is_superuser:
+                return redirect('home')  # Superusers go directly to home
+            return redirect('select_company')
+        return render(request, 'login.html')
+    
+    def post(self, request):
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        
+        if not username or not password:
+            messages.error(request, "Please enter both username and password")
+            return redirect('login')
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            auth_login(request, user)
+            
+            # ✅ SUPERUSER: Skip company selection entirely
+            if user.is_superuser:
+                # Auto-select first available company or create one
+                company = Company.objects.filter(is_active=True).first()
+                
+                if not company:
+                    # No companies exist - create default
+                    company = Company.objects.create(
+                        name='Default Company',
+                        is_active=True,
+                        created_by=user
+                    )
+                    messages.info(request, f"Created default company: {company.name}")
+                
+                # Ensure superuser has membership
+                membership, created = CompanyMembership.objects.get_or_create(
+                    user=user,
+                    company=company,
+                    defaults={
+                        'group': 'Admin Staff',
+                        'is_active': True
+                    }
+                )
+                
+                # Set active company
+                request.session['active_company_id'] = company.id
+                messages.success(request, f"Welcome, {user.username}! Currently viewing: {company.name}")
+                return redirect('home')
+            
+            # ✅ REGULAR USER: Must have company assignment
+            memberships = CompanyMembership.objects.filter(
+                user=user,
+                is_active=True,
+                company__is_active=True
+            ).select_related('company')
+            
+            if not memberships.exists():
+                messages.error(request, "You are not assigned to any company. Please contact your administrator.")
+                logout(request)
+                return redirect('login')
+            
+            # If user has only 1 company, auto-select it
+            if memberships.count() == 1:
+                request.session['active_company_id'] = memberships.first().company.id
+                messages.success(request, f"Welcome! Logged in to {memberships.first().company.name}")
+                return redirect('home')
+            
+            # Multiple companies - show selector
+            return redirect('select_company')
+        else:
+            messages.error(request, "Invalid username or password")
+            return redirect('login')
+
+
+class SelectCompanyView(LoginRequiredMixin, View):
+    """Show company selection page for users with multiple company access"""
+    
+    def get(self, request):
+        # ✅ Superusers can access all active companies
+        if request.user.is_superuser:
+            # Get all active companies
+            all_companies = Company.objects.filter(is_active=True).order_by('name')
+            
+            if not all_companies.exists():
+                # No companies exist - create default
+                company = Company.objects.create(
+                    name='Default Company',
+                    is_active=True,
+                    created_by=request.user
+                )
+                request.session['active_company_id'] = company.id
+                messages.success(request, f"Created and switched to {company.name}")
+                return redirect('home')
+            
+            # Create temporary membership objects for display
+            memberships = []
+            for company in all_companies:
+                membership, _ = CompanyMembership.objects.get_or_create(
+                    user=request.user,
+                    company=company,
+                    defaults={
+                        'group': 'Admin Staff',
+                        'is_active': True
+                    }
+                )
+                memberships.append(membership)
+            
+            # If only one company, auto-select
+            if len(memberships) == 1:
+                request.session['active_company_id'] = memberships[0].company.id
+                messages.success(request, f"Switched to {memberships[0].company.name}")
+                return redirect('home')
+            
+            # Show selection page with all companies
+            return render(request, 'select_company.html', {
+                'memberships': memberships
+            })
+        
+        # ✅ Regular users - only their assigned companies
+        memberships = CompanyMembership.objects.filter(
+            user=request.user,
+            is_active=True,
+            company__is_active=True
+        ).select_related('company', 'designation')
+        
+        if not memberships.exists():
+            messages.error(request, "You are not assigned to any company. Please contact your administrator.")
+            logout(request)
+            return redirect('login')
+        
+        # If only one company, auto-select it
+        if memberships.count() == 1:
+            request.session['active_company_id'] = memberships.first().company.id
+            messages.success(request, f"Switched to {memberships.first().company.name}")
+            return redirect('home')
+        
+        # Show selection page
+        return render(request, 'select_company.html', {
+            'memberships': memberships
+        })
+
+class SetCompanyView(LoginRequiredMixin, View):
+    """Handle company selection from dropdown or selection page"""
+    
+    def post(self, request):
+        company_id = request.POST.get('company_id')
+        
+        if not company_id:
+            messages.error(request, "Please select a company")
+            return redirect('select_company')
+        
+        try:
+            company_id = int(company_id)
+        except ValueError:
+            messages.error(request, "Invalid company selected")
+            return redirect('select_company')
+        
+        # ✅ Superusers can switch to any active company
+        if request.user.is_superuser:
+            try:
+                company = Company.objects.get(id=company_id, is_active=True)
+                
+                # Ensure membership exists
+                CompanyMembership.objects.get_or_create(
+                    user=request.user,
+                    company=company,
+                    defaults={
+                        'group': 'Admin Staff',
+                        'is_active': True
+                    }
+                )
+                
+                request.session['active_company_id'] = company_id
+                messages.success(request, f"Switched to {company.name}")
+                
+                redirect_url = request.POST.get('next', 'home')
+                if redirect_url.startswith('/'):
+                    from django.http import HttpResponseRedirect
+                    return HttpResponseRedirect(redirect_url)
+                else:
+                    return redirect(redirect_url)
+                    
+            except Company.DoesNotExist:
+                messages.error(request, "Company not found or inactive")
+                return redirect('select_company')
+        
+        # ✅ Regular users - verify membership
+        membership = CompanyMembership.objects.filter(
+            user=request.user,
+            company_id=company_id,
+            is_active=True,
+            company__is_active=True
+        ).select_related('company').first()
+        
+        if membership:
+            request.session['active_company_id'] = company_id
+            messages.success(request, f"Switched to {membership.company.name}")
+            
+            redirect_url = request.POST.get('next', 'home')
+            if redirect_url.startswith('/'):
+                from django.http import HttpResponseRedirect
+                return HttpResponseRedirect(redirect_url)
+            else:
+                return redirect(redirect_url)
+        else:
+            messages.error(request, "You do not have access to this company")
+            return redirect('select_company')
+
 class HomeView(TemplateView):
     template_name = 'vouchers/home.html'
 
@@ -126,16 +385,58 @@ class HomeView(TemplateView):
         user = self.request.user
 
         context['can_create_voucher'] = user.is_authenticated
-        context['is_admin_staff'] = user.is_authenticated and (user.groups.filter(name='Admin Staff').exists() or user.is_superuser)
+        context['is_admin_staff'] = user.is_authenticated and (
+            user.groups.filter(name='Admin Staff').exists() or user.is_superuser
+        )
         context['is_superuser'] = user.is_superuser
-        context['designations'] = Designation.objects.all()
+
+        # ✅ GET ACTIVE COMPANY FROM SESSION
+        active_company_id = self.request.session.get('active_company_id')
+        
+        # ✅ LOAD DESIGNATIONS FOR ACTIVE COMPANY ONLY
+        if active_company_id:
+            context['designations'] = Designation.objects.filter(
+                company_id=active_company_id
+            ).order_by('name')
+            
+            try:
+                context['active_company'] = Company.objects.get(id=active_company_id)
+                context['company_logo_url'] = context['active_company'].logo.url if context['active_company'].logo else None
+            except Company.DoesNotExist:
+                context['active_company'] = None
+                context['company_logo_url'] = None
+        else:
+            context['designations'] = Designation.objects.none()
+            context['active_company'] = None
+            context['company_logo_url'] = None
+
+        # ✅ GET USER'S COMPANIES FOR SWITCHER
+        if user.is_authenticated:
+            context['user_companies'] = CompanyMembership.objects.filter(
+                user=user,
+                is_active=True,
+                company__is_active=True
+            ).select_related('company', 'designation').order_by('company__name')
 
         if user.is_superuser:
-            context['all_users'] = User.objects.select_related('userprofile__designation').all()
-            company = CompanyDetail.load()
-            context['company'] = company
-            # ADDED: Pass company logo URL for dashboard icon
-            context['company_logo_url'] = company.logo.url if company.logo else None
+            # ✅ LOAD ALL COMPANIES FOR MANAGEMENT
+            context['all_companies'] = Company.objects.all().order_by('-is_active', 'name')
+            
+            # Get all users with their company memberships
+            all_users = User.objects.select_related('userprofile').prefetch_related(
+                'company_memberships__designation',
+                'company_memberships__company'
+            ).all()
+            
+            # Attach active company membership for easy template access
+            if active_company_id:
+                for u in all_users:
+                    u.active_membership = u.company_memberships.filter(
+                        company_id=active_company_id,
+                        is_active=True
+                    ).first()
+            
+            context['all_users'] = all_users
 
         return context
 
@@ -145,16 +446,23 @@ class VoucherListView(LoginRequiredMixin, ListView):
     template_name = 'vouchers/voucher_list.html'
     context_object_name = 'vouchers'
     ordering = ['-created_at']
+    
     def dispatch(self, request, *args, **kwargs):
-        # ADD THIS PERMISSION CHECK
-        has_perm, error = check_user_permission(request.user, 'can_view_voucher_list')
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_view_voucher_list', active_company_id)
         if not has_perm:
             messages.error(request, error)
             return redirect('home')
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        qs = super().get_queryset().select_related('created_by')
+        # ✅ FILTER BY ACTIVE COMPANY
+        active_company_id = self.request.session.get('active_company_id')
+        if not active_company_id:
+            return Voucher.objects.none()
+        
+        qs = super().get_queryset().filter(company_id=active_company_id)
+        qs = qs.select_related('created_by')
         qs = qs.prefetch_related('particulars', 'approvals', 'approvals__approver')
         return qs.annotate(
             approved_count=Count(Case(When(approvals__status='APPROVED', then=1)), output_field=IntegerField()),
@@ -165,16 +473,22 @@ class VoucherListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         context['can_create_voucher'] = user.is_authenticated
-        context['is_admin_staff'] = user.is_authenticated and (user.groups.filter(name='Admin Staff').exists() or user.is_superuser)
-        context['designations'] = Designation.objects.all()
+        context['is_admin_staff'] = user.is_authenticated and (
+            user.groups.filter(name='Admin Staff').exists() or user.is_superuser
+        )
+        
+        # ✅ FIXED: Only show designations for active company
+        active_company_id = self.request.session.get('active_company_id')
+        if active_company_id:
+            context['designations'] = Designation.objects.filter(
+                company_id=active_company_id
+            ).order_by('name')
+        else:
+            context['designations'] = Designation.objects.none()
 
+        # Add waiting_for_username logic for each voucher
         for voucher in context['vouchers']:
-            try:
-                voucher.user_approval = voucher.approvals.get(approver=user)
-            except VoucherApproval.DoesNotExist:
-                voucher.user_approval = None
-
-            # === REQUIRED APPROVERS (SNAPSHOT) ===
+            # Get approval data
             required_snapshot = voucher.required_approvers_snapshot or []
             approved_usernames = set(
                 voucher.approvals.filter(status='APPROVED')
@@ -195,74 +509,46 @@ class VoucherListView(LoginRequiredMixin, ListView):
                     if name in approved_usernames
                 ]
 
-            # === APPROVAL LEVELS PROGRESS ===
-            if voucher.status == 'PENDING':
-                levels = ApprovalLevel.objects.filter(is_active=True) \
-                    .select_related('designation').order_by('order')
-                level_data = []
-                for level in levels:
-                    level_users = UserProfile.objects.filter(
-                        designation=level.designation,
-                        user__groups__name='Admin Staff'
-                    ).values_list('user__username', flat=True)
-                    all_approved = any(u in approved_usernames for u in level_users)  # Now "complete" if ANY approved
-                    some_approved = any(u in approved_usernames for u in level_users)
-                    level_data.append({
-                        'designation': level.designation,
-                        'all_approved': all_approved,
-                        'some_approved': some_approved,
-                        'is_next': False
-                    })
-                for lvl in level_data:
-                    if not lvl['all_approved']:  # i.e., no one has approved yet in this level
-                        lvl['is_next'] = True
-                        break
-                else:
-                    # All levels have at least one approval → approved
-                    pass
-                voucher.approval_levels = level_data
-            else:
-                level_data = [
-                    {
-                        'designation': {'name': name},
-                        'all_approved': True,
-                        'some_approved': True,
-                        'is_next': False
-                    }
-                    for name in required_snapshot
-                    if name in approved_usernames
-                ]
-                voucher.approval_levels = level_data
-
-            # === CAN APPROVE & WAITING FOR ===
+            # Calculate can_approve and waiting_for_username
             can_approve = False
             waiting_for_username = None
 
             if voucher.status == 'PENDING':
                 first_pending_level = None
-                levels = ApprovalLevel.objects.filter(is_active=True).order_by('order')
+                levels = ApprovalLevel.objects.filter(
+                    company_id=active_company_id,
+                    is_active=True
+                ).order_by('order')
+                
                 for lvl in levels:
-                    level_users = UserProfile.objects.filter(
+                    level_users = CompanyMembership.objects.filter(
+                        company_id=active_company_id,
                         designation=lvl.designation,
-                        user__groups__name='Admin Staff',
+                        group='Admin Staff',
+                        is_active=True,
                         user__is_active=True
                     ).values_list('user__id', flat=True)
+                    
                     approved_in_level = voucher.approvals.filter(
                         status='APPROVED',
                         approver__id__in=level_users
                     ).count()
+                    
                     if approved_in_level < len(level_users):
                         first_pending_level = lvl
                         break
 
                 if first_pending_level:
-                    pending_users = UserProfile.objects.filter(
+                    pending_users = CompanyMembership.objects.filter(
+                        company_id=active_company_id,
                         designation=first_pending_level.designation,
-                        user__groups__name='Admin Staff',
+                        group='Admin Staff',
+                        is_active=True,
                         user__is_active=True
                     ).exclude(
-                        id__in=voucher.approvals.filter(status='APPROVED').values_list('approver__id', flat=True)
+                        user__id__in=voucher.approvals.filter(status='APPROVED').values_list('approver__id', flat=True)
                     ).values_list('user__username', flat=True)
+                    
                     waiting_for_username = ", ".join(pending_users) if pending_users else "next level"
                 else:
                     waiting_for_username = "Approved"
@@ -272,14 +558,18 @@ class VoucherListView(LoginRequiredMixin, ListView):
             if voucher.status == 'PENDING' and (user.groups.filter(name='Admin Staff').exists() or user.is_superuser):
                 current_level = None
                 for lvl in levels:
-                    users_in_level = UserProfile.objects.filter(
+                    users_in_level = CompanyMembership.objects.filter(
+                        company_id=active_company_id,
                         designation=lvl.designation,
-                        user__groups__name='Admin Staff',
+                        group='Admin Staff',
+                        is_active=True,
                         user__is_active=True
                     ).values_list('user__username', flat=True)
+                    
                     if user.username in users_in_level:
                         current_level = lvl
                         break
+                
                 if current_level and first_pending_level == current_level:
                     can_approve = True
 
@@ -293,17 +583,24 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
     model = Voucher
     template_name = 'vouchers/voucher_detail.html'
     context_object_name = 'voucher'
+    
     def dispatch(self, request, *args, **kwargs):
-        # ADD THIS PERMISSION CHECK
-        has_perm, error = check_user_permission(request.user, 'can_view_voucher_detail')
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_view_voucher_detail', active_company_id)
         if not has_perm:
             messages.error(request, error)
             return redirect('home')
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        qs = super().get_queryset().select_related('created_by') \
-            .prefetch_related('particulars', 'approvals__approver')
+        # ✅ FILTER BY ACTIVE COMPANY
+        active_company_id = self.request.session.get('active_company_id')
+        if not active_company_id:
+            return Voucher.objects.none()
+        
+        qs = super().get_queryset().filter(company_id=active_company_id)
+        qs = qs.select_related('created_by')
+        qs = qs.prefetch_related('particulars', 'approvals__approver')
         return qs.annotate(
             approved_count=Count(Case(When(approvals__status='APPROVED', then=1)), output_field=IntegerField()),
             rejected_count=Count(Case(When(approvals__status='REJECTED', then=1)), output_field=IntegerField())
@@ -315,8 +612,14 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
         voucher = context['voucher']
 
         context['can_create_voucher'] = user.is_authenticated
-        context['is_admin_staff'] = user.is_authenticated and (user.groups.filter(name='Admin Staff').exists() or user.is_superuser)
-        context['designations'] = Designation.objects.all()
+        context['is_admin_staff'] = user.is_authenticated and (
+            user.groups.filter(name='Admin Staff').exists() or user.is_superuser
+        )
+        
+        active_company_id = self.request.session.get('active_company_id')
+        context['designations'] = Designation.objects.filter(
+            company_id=active_company_id
+        ).order_by('name') if active_company_id else Designation.objects.none()
 
         try:
             context['user_approval'] = voucher.approvals.get(approver=user)
@@ -347,29 +650,34 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
             ]
 
         if voucher.status == 'PENDING':
-            levels = ApprovalLevel.objects.filter(is_active=True) \
-                .select_related('designation').order_by('order')
+            levels = ApprovalLevel.objects.filter(
+                company_id=active_company_id,
+                is_active=True
+            ).select_related('designation').order_by('order')
+            
             level_data = []
             for level in levels:
-                level_users = UserProfile.objects.filter(
+                level_users = CompanyMembership.objects.filter(
+                    company_id=active_company_id,
                     designation=level.designation,
-                    user__groups__name='Admin Staff'
+                    group='Admin Staff'
                 ).values_list('user__username', flat=True)
-                all_approved = any(u in approved_usernames for u in level_users)  # Now "complete" if ANY approved
+                
+                all_approved = any(u in approved_usernames for u in level_users)
                 some_approved = any(u in approved_usernames for u in level_users)
+                
                 level_data.append({
                     'designation': level.designation,
                     'all_approved': all_approved,
                     'some_approved': some_approved,
                     'is_next': False
                 })
-                for lvl in level_data:
-                    if not lvl['all_approved']:  # i.e., no one has approved yet in this level
-                        lvl['is_next'] = True
-                        break
-                else:
-                    # All levels have at least one approval → approved
-                    pass
+            
+            for lvl in level_data:
+                if not lvl['all_approved']:
+                    lvl['is_next'] = True
+                    break
+            
             context['approval_levels'] = level_data
         else:
             snapshot = voucher.required_approvers_snapshot or []
@@ -389,29 +697,40 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
 
         if voucher.status == 'PENDING':
             first_pending_level = None
-            levels = ApprovalLevel.objects.filter(is_active=True).order_by('order')
+            levels = ApprovalLevel.objects.filter(
+                company_id=active_company_id,
+                is_active=True
+            ).order_by('order')
+            
             for lvl in levels:
-                level_users = UserProfile.objects.filter(
+                level_users = CompanyMembership.objects.filter(
+                    company_id=active_company_id,
                     designation=lvl.designation,
-                    user__groups__name='Admin Staff',
+                    group='Admin Staff',
+                    is_active=True,
                     user__is_active=True
                 ).values_list('user__id', flat=True)
+                
                 approved_in_level = voucher.approvals.filter(
                     status='APPROVED',
                     approver__id__in=level_users
                 ).count()
+                
                 if approved_in_level < len(level_users):
                     first_pending_level = lvl
                     break
 
             if first_pending_level:
-                pending_users = UserProfile.objects.filter(
+                pending_users = CompanyMembership.objects.filter(
+                    company_id=active_company_id,
                     designation=first_pending_level.designation,
-                    user__groups__name='Admin Staff',
+                    group='Admin Staff',
+                    is_active=True,
                     user__is_active=True
                 ).exclude(
-                    id__in=voucher.approvals.filter(status='APPROVED').values_list('approver__id', flat=True)
+                    user__id__in=voucher.approvals.filter(status='APPROVED').values_list('approver__id', flat=True)
                 ).values_list('user__username', flat=True)
+                
                 waiting_for_username = ", ".join(pending_users) if pending_users else "next level"
             else:
                 waiting_for_username = "Approved"
@@ -421,14 +740,18 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
         if voucher.status == 'PENDING' and (user.groups.filter(name='Admin Staff').exists() or user.is_superuser):
             current_level = None
             for lvl in levels:
-                users_in_level = UserProfile.objects.filter(
+                users_in_level = CompanyMembership.objects.filter(
+                    company_id=active_company_id,
                     designation=lvl.designation,
-                    user__groups__name='Admin Staff',
+                    group='Admin Staff',
+                    is_active=True,
                     user__is_active=True
                 ).values_list('user__username', flat=True)
+                
                 if user.username in users_in_level:
                     current_level = lvl
                     break
+            
             if current_level and first_pending_level == current_level:
                 can_approve = True
 
@@ -436,12 +759,23 @@ class VoucherDetailView(LoginRequiredMixin, DetailView):
         context['waiting_for_username'] = waiting_for_username
         context['user_profile'] = user.userprofile if hasattr(user, 'userprofile') else None
         
+        if active_company_id:
+            context['user_membership'] = CompanyMembership.objects.filter(
+                user=user,
+                company_id=active_company_id,
+                is_active=True
+            ).select_related('designation').first()
+        else:
+            context['user_membership'] = None
+        
         # Safely load company details
-        try:
-            context['company'] = CompanyDetail.load()
-        except Exception as e:
+        if active_company_id:
+            try:
+                context['company'] = Company.objects.get(id=active_company_id)
+            except Company.DoesNotExist:
+                context['company'] = None
+        else:
             context['company'] = None
-            print(f"Error loading company details: {e}")
 
         return context
 # === FINAL VOUCHER CREATE/EDIT API – FULLY WORKING EDIT MODE ===
@@ -455,16 +789,29 @@ class VoucherCreateAPI(APIView):
         voucher_id = data.get('voucher_id')
         is_edit = bool(voucher_id)
 
+        # ✅ GET ACTIVE COMPANY FIRST
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+
         if is_edit:
-        # Editing existing voucher
-            has_perm, error = check_user_permission(request.user, 'can_edit_voucher')
+            has_perm, error = check_user_permission(request.user, 'can_edit_voucher', active_company_id)
             if not has_perm:
                 return Response({'error': error}, status=403)
         else:
-            # Creating new voucher
-            has_perm, error = check_user_permission(request.user, 'can_create_voucher')
+            has_perm, error = check_user_permission(request.user, 'can_create_voucher', active_company_id)
             if not has_perm:
                 return Response({'error': error}, status=403)
+
+        # ✅ GET ACTIVE COMPANY - REQUIRED FOR CREATE & EDIT
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=404)
 
         try:
             with transaction.atomic():
@@ -475,11 +822,13 @@ class VoucherCreateAPI(APIView):
                     voucher = Voucher.objects.select_for_update().get(
                         id=voucher_id,
                         created_by=request.user,
+                        company=company,  # ✅ VERIFY BELONGS TO ACTIVE COMPANY
                         status='PENDING',
                         approvals__isnull=True  # only editable if no one approved yet
                     )
                 else:
-                    voucher = Voucher(created_by=request.user)
+                    # ✅ CREATE WITH COMPANY
+                    voucher = Voucher(created_by=request.user, company=company)
 
                 # Basic fields
                 voucher.voucher_date = data['voucher_date']
@@ -524,6 +873,7 @@ class VoucherCreateAPI(APIView):
                         for f in main_files:
                             MainAttachment.objects.create(voucher=voucher, file=f)
                     # If no files uploaded → that's OK, main attachments are optional
+                
                 # -------------------------------------------------
                 # 3. Cheque attachments – FINAL FIXED VERSION (Create + Edit)
                 # -------------------------------------------------
@@ -553,15 +903,13 @@ class VoucherCreateAPI(APIView):
                 else:
                     # Not cheque → remove any old cheque attachments
                     ChequeAttachment.objects.filter(voucher=voucher).delete()
+                
                 # -------------------------------------------------
                 # 4. Particulars + attachments (UPDATED FOR PROPER EDIT SUPPORT)
                 # -------------------------------------------------
-                # REMOVED: Unconditional deletion of old particulars in edit mode
-                # Now: Update/create/delete based on sent data (assumes frontend sends in existing order)
-
                 i = 0
                 if is_edit:
-                    # Get existing particulars in consistent order (adjust order_by if needed, e.g., 'created_at')
+                    # Get existing particulars in consistent order
                     existing_particulars = list(voucher.particulars.order_by('id'))
                 else:
                     existing_particulars = []
@@ -632,7 +980,7 @@ class VoucherCreateAPI(APIView):
                 if voucher.particulars.count() == 0:
                     return Response({'error': 'At least one particular is required.'}, status=400)
                 
-                # Optional: Ensure every particular has at least one attachment (catches edge cases like replacing with empty)
+                # Optional: Ensure every particular has at least one attachment
                 for particular in voucher.particulars.all():
                     if not particular.attachments.exists():
                         return Response({
@@ -655,15 +1003,29 @@ class VoucherCreateAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': str(e)}, status=500)
+        
 class AccountDetailListAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        accounts = AccountDetail.objects.all().order_by('bank_name')
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=404)
+        
+        # ✅ FILTER ACCOUNTS BY COMPANY
+        accounts = AccountDetail.objects.filter(
+            company=company
+        ).order_by('bank_name')
+        
         serializer = AccountDetailSerializer(accounts, many=True)
         return Response(serializer.data)
-
-
+    
 class AccountDetailCreateAPI(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -671,25 +1033,45 @@ class AccountDetailCreateAPI(APIView):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=403)
 
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=404)
+
         bank_name = request.data.get('bank_name', '').strip()
         account_number = request.data.get('account_number', '').strip()
 
         if not bank_name or not account_number:
             return Response({'error': 'Bank name and account number are required'}, status=400)
 
-        if AccountDetail.objects.filter(bank_name=bank_name, account_number=account_number).exists():
-            return Response({'error': 'This account already exists'}, status=400)
+        # ✅ CHECK IF ACCOUNT EXISTS IN THIS COMPANY
+        if AccountDetail.objects.filter(
+            company=company,
+            bank_name=bank_name,
+            account_number=account_number
+        ).exists():
+            return Response({
+                'error': f'This account already exists in {company.name}'
+            }, status=400)
 
+        # ✅ CREATE ACCOUNT FOR THIS COMPANY
         account = AccountDetail.objects.create(
+            company=company,
             bank_name=bank_name,
             account_number=account_number,
             created_by=request.user
         )
+        
         return Response({
             'id': account.id,
-            'label': str(account)
+            'label': str(account),
+            'message': f'Account created successfully in {company.name}'
         }, status=201)
-
 
 class AccountDetailDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -698,12 +1080,24 @@ class AccountDetailDeleteAPI(APIView):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=403)
 
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+
         try:
-            account = AccountDetail.objects.get(pk=pk)
+            # ✅ VERIFY ACCOUNT BELONGS TO ACTIVE COMPANY
+            account = AccountDetail.objects.get(
+                pk=pk,
+                company_id=active_company_id
+            )
             account.delete()
             return Response({'message': 'Account deleted successfully'}, status=200)
         except AccountDetail.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=404)
+            return Response({
+                'error': 'Account not found or does not belong to active company'
+            }, status=404)
+
 
 
 class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
@@ -727,6 +1121,14 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
             try:
                 with transaction.atomic():
                     voucher = Voucher.objects.select_for_update(nowait=True).get(pk=pk)
+                    
+                    # ✅ GET ACTIVE COMPANY
+                    active_company_id = request.session.get('active_company_id')
+                    if not active_company_id:
+                        return Response(
+                            {'error': 'No active company selected'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                     if request.user.username not in voucher.required_approvers:
                         return Response(
@@ -740,7 +1142,12 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-                    levels = ApprovalLevel.objects.filter(is_active=True).order_by('order')
+                    # ✅ FILTER LEVELS BY COMPANY
+                    levels = ApprovalLevel.objects.filter(
+                        company_id=active_company_id,
+                        is_active=True
+                    ).order_by('order')
+                    
                     approved_usernames = set(
                         voucher.approvals.filter(status='APPROVED')
                         .values_list('approver__username', flat=True)
@@ -748,10 +1155,15 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
 
                     current_user_level = None
                     for level in levels:
-                        users_in_level = UserProfile.objects.filter(
+                        # ✅ USE COMPANYMEMBERSHIP INSTEAD OF USERPROFILE
+                        users_in_level = CompanyMembership.objects.filter(
+                            company_id=active_company_id,
                             designation=level.designation,
-                            user__groups__name='Admin Staff'
+                            group='Admin Staff',
+                            is_active=True,
+                            user__is_active=True
                         ).values_list('user__username', flat=True)
+                        
                         if request.user.username in users_in_level:
                             current_user_level = level
                             break
@@ -763,19 +1175,24 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
                         )
 
                     prev_level = ApprovalLevel.objects.filter(
-                        order__lt=current_user_level.order, is_active=True
+                        company_id=active_company_id,
+                        order__lt=current_user_level.order,
+                        is_active=True
                     ).order_by('-order').first()
 
                     can_approve = True
                     waiting_for = None
                     if prev_level:
-                        prev_users = UserProfile.objects.filter(
+                        # ✅ USE COMPANYMEMBERSHIP INSTEAD OF USERPROFILE
+                        prev_users = CompanyMembership.objects.filter(
+                            company_id=active_company_id,
                             designation=prev_level.designation,
-                            user__groups__name='Admin Staff',
+                            group='Admin Staff',
+                            is_active=True,
                             user__is_active=True
                         ).values_list('user__username', flat=True)
 
-                        # Now: Only ONE approval needed from previous level
+                        # Only ONE approval needed from previous level
                         has_any_approval = any(
                             username in approved_usernames for username in prev_users
                         )
@@ -804,7 +1221,7 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
 
                 serializer = VoucherSerializer(voucher, context={'request': request})
                 response_data = serializer.data
-                response_data['status'] = status_choice
+                response_data['status'] = voucher.status  # ✅ Return actual voucher status
                 response_data['approval'] = {
                     'approver': request.user.username,
                     'approved_at': approval.approved_at.strftime('%d %b %H:%M'),
@@ -822,15 +1239,21 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
             except Voucher.DoesNotExist:
-                return Response({'error': 'Voucher not found.'}, status=404)
+                return Response({'error': 'Voucher not found.'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                # ✅ ADD GENERAL EXCEPTION HANDLER
+                import traceback
+                traceback.print_exc()
+                return Response(
+                    {'error': f'An error occurred: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         return Response(
             {'error': 'Failed to process approval due to database lock.'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
 
-
-# === ALL OTHER APIs BELOW ARE 100% UNCHANGED ===
 class DesignationCreateAPI(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -838,18 +1261,55 @@ class DesignationCreateAPI(APIView):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=status.HTTP_403_FORBIDDEN)
 
+        # ✅ GET ACTIVE COMPANY FROM SESSION
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=status.HTTP_400_BAD_REQUEST)
+
         name = request.data.get('name', '').strip()
         if not name:
             return Response({'error': 'Name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if Designation.objects.filter(name=name).exists():
-            return Response({'error': 'Designation already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=status.HTTP_404_NOT_FOUND)
 
-        designation = Designation.objects.create(name=name, created_by=request.user)
+        # ✅ CHECK IF DESIGNATION EXISTS IN THIS COMPANY
+        if Designation.objects.filter(company=company, name=name).exists():
+            return Response({
+                'error': f'Designation "{name}" already exists in {company.name}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ CREATE DESIGNATION FOR THIS COMPANY
+        designation = Designation.objects.create(
+            name=name,
+            company=company,
+            created_by=request.user
+        )
+
         return Response({
-            'message': f"Designation '{designation.name}' created.",
+            'message': f"Designation '{designation.name}' created for {company.name}.",
             'id': designation.id
         }, status=status.HTTP_201_CREATED)
+
+
+# ✅ NEW: API to list designations for active company
+class DesignationListAPI(APIView):
+    """Get all designations for active company"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'designations': []})
+
+        designations = Designation.objects.filter(
+            company_id=active_company_id
+        ).order_by('name')
+
+        data = [{'id': d.id, 'name': d.name} for d in designations]
+        return Response({'designations': data})
 
 
 class ApprovalControlAPI(APIView):
@@ -859,7 +1319,26 @@ class ApprovalControlAPI(APIView):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=status.HTTP_403_FORBIDDEN)
 
-        levels = ApprovalLevel.objects.select_related('designation').order_by('order')
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=status.HTTP_404_NOT_FOUND)
+
+        # ✅ GET APPROVAL LEVELS FOR THIS COMPANY
+        levels = ApprovalLevel.objects.filter(
+            company=company
+        ).select_related('designation').order_by('order')
+
+        # ✅ GET ALL DESIGNATIONS FOR THIS COMPANY
+        all_designations = Designation.objects.filter(
+            company=company
+        ).values('id', 'name').order_by('name')
+
         return Response({
             'levels': [
                 {
@@ -870,52 +1349,79 @@ class ApprovalControlAPI(APIView):
                 }
                 for l in levels
             ],
-            'all_designations': list(Designation.objects.values('id', 'name'))
+            'all_designations': list(all_designations)
         })
 
     def post(self, request):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=status.HTTP_403_FORBIDDEN)
 
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=status.HTTP_404_NOT_FOUND)
+
         levels_data = request.data.get('levels', [])
         if not isinstance(levels_data, list):
             return Response({'error': 'levels must be a list'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
-            # 1. Save new workflow
-            ApprovalLevel.objects.all().delete()
+            # ✅ DELETE OLD LEVELS FOR THIS COMPANY ONLY
+            ApprovalLevel.objects.filter(company=company).delete()
+
+            # ✅ CREATE NEW LEVELS FOR THIS COMPANY
             for idx, item in enumerate(levels_data):
                 des_id = item.get('id')
                 is_active = item.get('is_active', True)
                 if not des_id:
                     continue
+                
                 try:
-                    des = Designation.objects.get(id=des_id)
+                    # ✅ VERIFY DESIGNATION BELONGS TO THIS COMPANY
+                    designation = Designation.objects.get(
+                        id=des_id,
+                        company=company
+                    )
+                    
                     ApprovalLevel.objects.create(
-                        designation=des,
+                        company=company,  # ✅ SET COMPANY
+                        designation=designation,
                         order=idx + 1,
                         is_active=is_active,
                         updated_by=request.user
                     )
                 except Designation.DoesNotExist:
-                    pass
+                    return Response({
+                        'error': f'Designation with ID {des_id} not found in {company.name}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-            # 2. RECALCULATE ALL EXISTING VOUCHERS WITH LOCKING (PREVENTS RACE CONDITIONS)
+            # ✅ RECALCULATE VOUCHERS FOR THIS COMPANY ONLY
             current_required_designation_ids = list(
                 ApprovalLevel.objects
-                .filter(is_active=True)
+                .filter(company=company, is_active=True)
                 .order_by('order')
                 .values_list('designation_id', flat=True)
             )
 
-            vouchers_to_check = Voucher.objects.filter(status__in=['PENDING', 'APPROVED']).select_for_update()
+            vouchers_to_check = Voucher.objects.filter(
+                company=company,  # ✅ ONLY THIS COMPANY'S VOUCHERS
+                status__in=['PENDING', 'APPROVED']
+            ).select_for_update()
 
             for voucher in vouchers_to_check:
+                # ✅ Use CompanyMembership instead of UserProfile
                 approved_count = VoucherApproval.objects.filter(
                     voucher=voucher,
                     status='APPROVED',
-                    approver__userprofile__designation_id__in=current_required_designation_ids
-                ).values('approver__userprofile__designation_id').distinct().count()
+                    approver__company_memberships__designation_id__in=current_required_designation_ids,
+                    approver__company_memberships__company=company,
+                    approver__company_memberships__is_active=True
+                ).values('approver__company_memberships__designation_id').distinct().count()
 
                 required_count = len(current_required_designation_ids)
 
@@ -927,62 +1433,45 @@ class ApprovalControlAPI(APIView):
                     voucher.save(update_fields=['status'])
 
         return Response({
-            'message': 'Approval workflow updated and all vouchers recalculated!'
+            'message': f'Approval workflow updated for {company.name} and all vouchers recalculated!'
         }, status=status.HTTP_200_OK)
+    
 class UserCreateAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if not request.user.is_superuser:
-            return Response({'error': 'Superuser only'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Superuser only'}, status=403)
 
         username = request.data.get('username', '').strip()
         password = request.data.get('password', '')
-        user_group = request.data.get('user_group', '')
-        designation_id = request.data.get('designation')
         signature = request.FILES.get('signature')
 
-        if not username or not password or not user_group:
-            return Response({'error': 'Username, password, and group are required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not username or not password:
+            return Response({'error': 'Username and password are required'}, status=400)
         if User.objects.filter(username=username).exists():
-            return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
-        if user_group not in ['Accountants', 'Admin Staff']:
-            return Response({'error': 'Invalid group'}, status=status.HTTP_400_BAD_REQUEST)
-        if user_group == 'Admin Staff' and not designation_id:
-            return Response({'error': 'Designation is required for Admin Staff'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Username already exists'}, status=400)
         if len(password) < 8:
-            return Response({'error': 'Password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Password must be at least 8 characters'}, status=400)
 
         try:
+            # ✅ Create user WITHOUT group - groups assigned via CompanyMembership
             user = User.objects.create(username=username, password=make_password(password))
-            group = Group.objects.get(name=user_group)
-            user.groups.add(group)
 
+            # Create basic profile
             profile = UserProfile.objects.create(user=user)
-            if user_group == 'Admin Staff':
-                designation = Designation.objects.get(id=designation_id)
-                profile.designation = designation
-                # NEW: Save mobile number
-            mobile = request.data.get('mobile', '').strip()
-            if mobile:
-                profile.mobile = mobile
-            elif user_group == 'Admin Staff':  # or make it always required
-                return Response({'error': 'Mobile number is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
             if signature:
                 profile.signature = signature
             profile.save()
 
             return Response({
-                'message': f'User "{username}" created successfully.',
+                'message': f'User "{username}" created successfully. Assign to companies in User Assignments.',
                 'id': user.id
-            }, status=status.HTTP_201_CREATED)
+            }, status=201)
 
-        except Group.DoesNotExist:
-            return Response({'error': 'Group does not exist'}, status=status.HTTP_400_BAD_REQUEST)
-        except Designation.DoesNotExist:
-            return Response({'error': 'Invalid designation'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=500)
 
 
 class VoucherDeleteAPI(APIView):
@@ -1010,11 +1499,9 @@ class UserUpdateAPI(APIView):
         if request.user.is_superuser and request.data.get('user_id'):
             user_id = request.data.get('user_id')
             username = request.data.get('username', '').strip()
-            group_name = request.data.get('user_group')
-            designation_id = request.data.get('designation')
             is_active = request.data.get('is_active') in [True, 'true', 'True']
 
-            if not user_id or not group_name or not username:
+            if not user_id or not username:
                 return Response({'error': 'Missing required fields'}, status=400)
 
             try:
@@ -1029,31 +1516,18 @@ class UserUpdateAPI(APIView):
             user.is_active = is_active
             user.save()
 
-            user.groups.clear()
-            try:
-                group = Group.objects.get(name=group_name)
-                user.groups.add(group)
-            except Group.DoesNotExist:
-                return Response({'error': 'Invalid group'}, status=400)
+            # ✅ REMOVED: No longer editing groups here
+            # Groups are managed ONLY through CompanyMembership
 
             profile, _ = UserProfile.objects.get_or_create(user=user)
-            if group_name == 'Admin Staff':
-                if not designation_id:
-                    return Response({'error': 'Designation required for Admin Staff'}, status=400)
-                try:
-                    designation = Designation.objects.get(id=designation_id)
-                    profile.designation = designation
-                except Designation.DoesNotExist:
-                    return Response({'error': 'Invalid designation'}, status=400)
-            else:
-                profile.designation = None
-
+            
             if signature:
                 profile.signature = signature
             profile.save()
 
             return Response({'message': 'User updated successfully'}, status=200)
-        # CASE 3: Any logged-in user updating their OWN mobile number
+            
+        # CASE 2: Any logged-in user updating their OWN mobile number
         elif 'mobile' in request.data:
             mobile = request.data.get('mobile', '').strip()
             if not mobile:
@@ -1066,7 +1540,7 @@ class UserUpdateAPI(APIView):
                 'mobile': profile.mobile
             }, status=200)
 
-        # CASE 2: Any logged-in user updating ONLY their OWN signature
+        # CASE 3: Any logged-in user updating ONLY their OWN signature
         else:
             if not signature:
                 return Response({'error': 'Please select a signature image'}, status=400)
@@ -1077,46 +1551,8 @@ class UserUpdateAPI(APIView):
 
             return Response({
                 'message': 'Signature updated successfully!',
-                'signature_url': profile.signature.url}, status=200)
-        
-class CompanyDetailAPI(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        if not request.user.is_superuser:
-            return Response({'error': 'Superuser only'}, status=403)
-        company = CompanyDetail.load()
-        from .serializers import CompanyDetailSerializer
-        serializer = CompanyDetailSerializer(company, context={'request': request})
-        return Response(serializer.data)
-
-    def post(self, request):
-        if not request.user.is_superuser:
-            return Response({'error': 'Superuser only'}, status=403)
-
-        company = CompanyDetail.load()
-        data = request.POST.copy()
-        files = request.FILES
-
-        company.name = data.get('name', company.name).strip()
-        company.gst_no = data.get('gst_no', company.gst_no or '').strip()
-        company.pan_no = data.get('pan_no', company.pan_no or '').strip()
-        company.address = data.get('address', company.address or '').strip()
-        company.email = data.get('email', company.email or '').strip()
-        company.phone = data.get('phone', company.phone or '').strip()
-
-        if 'logo' in files:
-            company.logo = files['logo']
-
-        company.updated_by = request.user
-        company.save()
-
-        from .serializers import CompanyDetailSerializer
-        serializer = CompanyDetailSerializer(company, context={'request': request})
-        return Response({
-            'message': 'Company details saved successfully.',
-            'company': serializer.data
-        })
+                'signature_url': profile.signature.url
+            }, status=200)
 
 # Add this view to views.py
 
@@ -1124,8 +1560,8 @@ class FunctionDetailsView(LoginRequiredMixin, TemplateView):
     template_name = 'vouchers/function.html'
     
     def dispatch(self, request, *args, **kwargs):
-        # ADD THIS PERMISSION CHECK
-        has_perm, error = check_user_permission(request.user, 'can_view_function_list')
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_view_function_list', active_company_id)
         if not has_perm:
             messages.error(request, error)
             return redirect('home')
@@ -1148,11 +1584,21 @@ class FunctionGenerateNumberAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        last_function = FunctionBooking.objects.order_by('-id').first()
-        if last_function and last_function.function_number.startswith('FN'):
-            num = int(last_function.function_number[2:]) + 1
-            function_number = f'FN{num:04d}'
-        else:
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'function_number': 'FN0001'})  # Fallback
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+            # ✅ FILTER BY COMPANY
+            last_function = FunctionBooking.objects.filter(company=company).order_by('-id').first()
+            if last_function and last_function.function_number.startswith('FN'):
+                num = int(last_function.function_number[2:]) + 1
+                function_number = f'FN{num:04d}'
+            else:
+                function_number = 'FN0001'
+        except Company.DoesNotExist:
             function_number = 'FN0001'
         
         return Response({'function_number': function_number})
@@ -1164,9 +1610,20 @@ class FunctionCreateAPI(APIView):
     def post(self, request):
         try:
             import json
-            has_perm, error = check_user_permission(request.user, 'can_create_function')
+            
+            # ✅ GET ACTIVE COMPANY FIRST
+            active_company_id = request.session.get('active_company_id')
+            if not active_company_id:
+                return Response({'error': 'No active company selected'}, status=400)
+            
+            has_perm, error = check_user_permission(request.user, 'can_create_function', active_company_id)
             if not has_perm:
                 return Response({'error': error}, status=403)
+            
+            try:
+                company = Company.objects.get(id=active_company_id)
+            except Company.DoesNotExist:
+                return Response({'error': 'Invalid company'}, status=404)
             
             function_date = request.data.get('function_date')
             time_from = request.data.get('time_from')
@@ -1200,13 +1657,15 @@ class FunctionCreateAPI(APIView):
             # Parse extra charges (array of objects)
             extra_charges = json.loads(request.data.get('extra_charges', '[]'))
             
-            # ✅ NEW: Get special instructions from create form
+            # Get special instructions
             special_instructions = request.data.get('special_instructions', '').strip()
             
             if not all([function_date, time_from, time_to, function_name, address, no_of_pax, rate_per_pax]):
                 return Response({'error': 'All required fields must be filled'}, status=400)
             
+            # ✅ CREATE FUNCTION WITH COMPANY
             function = FunctionBooking.objects.create(
+                company=company,  # ✅ CRITICAL: Assign company here
                 function_date=function_date,
                 time_from=time_from,
                 time_to=time_to,
@@ -1221,7 +1680,7 @@ class FunctionCreateAPI(APIView):
                 gst_option=gst_option,
                 hall_rent=hall_rent,
                 extra_charges=extra_charges,
-                special_instructions=special_instructions,  # ✅ NEW
+                special_instructions=special_instructions,
                 created_by=request.user
             )
             
@@ -1244,8 +1703,16 @@ class FunctionBookedDatesAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Get all distinct function dates in YYYY-MM-DD format
-        booked_dates = FunctionBooking.objects.values_list('function_date', flat=True).distinct()
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'booked_dates': []})
+        
+        # ✅ FILTER BY COMPANY
+        booked_dates = FunctionBooking.objects.filter(
+            company_id=active_company_id
+        ).values_list('function_date', flat=True).distinct()
+        
         dates = [d.strftime('%Y-%m-%d') for d in booked_dates]
         return Response({'booked_dates': dates})
     
@@ -1260,11 +1727,20 @@ class FunctionListByDateAPI(APIView):
         if not date_str:
             return Response({'error': 'Date parameter required'}, status=400)
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'functions': []})
+        
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            functions = FunctionBooking.objects.filter(function_date=date).order_by('time_from')
             
-            # ✅ UPDATED: Use helper function to check completion
+            # ✅ FILTER BY COMPANY
+            functions = FunctionBooking.objects.filter(
+                company_id=active_company_id,
+                function_date=date
+            ).order_by('time_from')
+            
             data = [{
                 'id': f.id,
                 'function_number': f.function_number,
@@ -1278,13 +1754,12 @@ class FunctionListByDateAPI(APIView):
                 'total_amount': str(f.total_amount),
                 'status': f.status,
                 'advance_amount': str(f.advance_amount) if f.advance_amount else None,
-                'is_completed': is_function_completed_check(f.function_date, f.time_to)  # ✅ FIXED
+                'is_completed': is_function_completed_check(f.function_date, f.time_to)
             } for f in functions]
             
             return Response({'functions': data})
         except ValueError:
             return Response({'error': 'Invalid date format'}, status=400)
-
 
 class FunctionDetailView(LoginRequiredMixin, DetailView):
     model = FunctionBooking
@@ -1292,12 +1767,20 @@ class FunctionDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'function'
 
     def dispatch(self, request, *args, **kwargs):
-        # ADD THIS PERMISSION CHECK
-        has_perm, error = check_user_permission(request.user, 'can_view_function_detail')
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_view_function_detail', active_company_id)
         if not has_perm:
             messages.error(request, error)
             return redirect('home')
         return super().dispatch(request, *args, **kwargs)
+        
+    def get_queryset(self):
+        # ✅ FILTER BY ACTIVE COMPANY
+        active_company_id = self.request.session.get('active_company_id')
+        if not active_company_id:
+            return FunctionBooking.objects.none()
+        
+        return FunctionBooking.objects.filter(company_id=active_company_id)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1307,17 +1790,24 @@ class FunctionDetailView(LoginRequiredMixin, DetailView):
         )
         return context
 
-
 class FunctionDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def delete(self, request, pk):
-        has_perm, error = check_user_permission(request.user, 'can_delete_function')
+        # ✅ GET ACTIVE COMPANY FIRST
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        has_perm, error = check_user_permission(request.user, 'can_delete_function', active_company_id)
         if not has_perm:
             return Response({'error': error}, status=403)
+    
+    # ... rest of the code
         
         try:
-            function = FunctionBooking.objects.get(pk=pk)
+            # ✅ FILTER BY COMPANY
+            function = FunctionBooking.objects.get(pk=pk, company_id=active_company_id)
             function_number = function.function_number
             function.delete()
             return Response({
@@ -1325,7 +1815,7 @@ class FunctionDeleteAPI(APIView):
                 'message': f'Function {function_number} deleted successfully'
             })
         except FunctionBooking.DoesNotExist:
-            return Response({'error': 'Function not found'}, status=404)
+            return Response({'error': 'Function not found or does not belong to active company'}, status=404)
  
 class FunctionConfirmAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -1420,7 +1910,12 @@ class FunctionUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, pk):
-        has_perm, error = check_user_permission(request.user, 'can_edit_function')
+        # ✅ GET ACTIVE COMPANY FIRST
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        has_perm, error = check_user_permission(request.user, 'can_edit_function', active_company_id)
         if not has_perm:
             return Response({'error': error}, status=403)
         
@@ -1489,8 +1984,8 @@ class FunctionPrintView(LoginRequiredMixin, DetailView):
     context_object_name = 'function'
 
     def dispatch(self, request, *args, **kwargs):
-        # ADD THIS PERMISSION CHECK
-        has_perm, error = check_user_permission(request.user, 'can_print_function')
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_print_function', active_company_id)
         if not has_perm:
             messages.error(request, error)
             return redirect('home')
@@ -1498,9 +1993,13 @@ class FunctionPrintView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        try:
-            context['company'] = CompanyDetail.load()
-        except:
+        active_company_id = self.request.session.get('active_company_id')
+        if active_company_id:
+            try:
+                context['company'] = Company.objects.get(id=active_company_id)
+            except Company.DoesNotExist:
+                context['company'] = None
+        else:
             context['company'] = None
         return context
     
@@ -1514,24 +2013,28 @@ class FunctionUpcomingEventsAPI(APIView):
         from django.utils import timezone
         import datetime as dt
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'success': True, 'functions': [], 'count': 0})
+        
         # Get current datetime
         now = timezone.localtime(timezone.now())
         today_date = now.date()
         current_time = now.time()
         
-        # Get all confirmed functions from today onwards
+        # ✅ FILTER BY COMPANY - Get all confirmed functions from today onwards
         functions = FunctionBooking.objects.filter(
+            company_id=active_company_id,
             status='CONFIRMED',
-            function_date__gte=today_date  # Today or future
+            function_date__gte=today_date
         ).order_by('function_date', 'time_from')
         
-        # ✅ UPDATED: Filter out completed functions based on date AND time
+        # Filter out completed functions based on date AND time
         upcoming_functions = []
         for f in functions:
-            # If function date is in future, it's upcoming
             if f.function_date > today_date:
                 upcoming_functions.append(f)
-            # If function date is today, check if time_to has passed
             elif f.function_date == today_date:
                 if f.time_to > current_time:
                     upcoming_functions.append(f)
@@ -1565,6 +2068,11 @@ class FunctionPendingByMonthAPI(APIView):
         year = int(request.GET.get('year'))
         month = int(request.GET.get('month'))
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'success': True, 'functions': [], 'count': 0})
+        
         # First day and last day of the month
         start_date = datetime(year, month, 1).date()
         if month == 12:
@@ -1572,7 +2080,9 @@ class FunctionPendingByMonthAPI(APIView):
         else:
             end_date = datetime(year, month + 1, 1).date()
         
+        # ✅ FILTER BY COMPANY
         pending_functions = FunctionBooking.objects.filter(
+            company_id=active_company_id,
             function_date__gte=start_date,
             function_date__lt=end_date,
             status='PENDING'
@@ -1606,23 +2116,27 @@ class FunctionUpcomingCountAPI(APIView):
         """Return the total count of confirmed upcoming functions (not yet ended)"""
         from django.utils import timezone
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'count': 0})
+        
         now = timezone.localtime(timezone.now())
         today_date = now.date()
         current_time = now.time()
         
-        # Get all confirmed functions from today onwards
+        # ✅ FILTER BY COMPANY - Get all confirmed functions from today onwards
         functions = FunctionBooking.objects.filter(
+            company_id=active_company_id,
             status='CONFIRMED',
             function_date__gte=today_date
         )
         
-        # ✅ UPDATED: Count only functions that haven't ended yet
+        # Count only functions that haven't ended yet
         count = 0
         for f in functions:
-            # Future dates are definitely upcoming
             if f.function_date > today_date:
                 count += 1
-            # Today's functions - check if end time hasn't passed
             elif f.function_date == today_date and f.time_to > current_time:
                 count += 1
 
@@ -1635,23 +2149,27 @@ class FunctionCompletedCountAPI(APIView):
         """Return count of completed functions (end time has passed)"""
         from django.utils import timezone
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'count': 0})
+        
         now = timezone.localtime(timezone.now())
         today_date = now.date()
         current_time = now.time()
         
-        # ✅ UPDATED: Get all confirmed functions up to today
+        # ✅ FILTER BY COMPANY - Get all confirmed functions up to today
         functions = FunctionBooking.objects.filter(
+            company_id=active_company_id,
             status='CONFIRMED',
-            function_date__lte=today_date  # Today or past
+            function_date__lte=today_date
         )
         
         # Count only functions where end time has passed
         count = 0
         for f in functions:
-            # Past dates are definitely completed
             if f.function_date < today_date:
                 count += 1
-            # Today's functions - check if end time has passed
             elif f.function_date == today_date and f.time_to <= current_time:
                 count += 1
         
@@ -1665,12 +2183,18 @@ class FunctionCompletedAPI(APIView):
         """Get all completed functions (end time has passed)"""
         from django.utils import timezone
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'success': True, 'functions': []})
+        
         now = timezone.localtime(timezone.now())
         today_date = now.date()
         current_time = now.time()
         
-        # ✅ UPDATED: Get all confirmed functions up to today
+        # ✅ FILTER BY COMPANY - Get all confirmed functions up to today
         functions = FunctionBooking.objects.filter(
+            company_id=active_company_id,
             status='CONFIRMED',
             function_date__lte=today_date
         ).order_by('-function_date', 'time_from')
@@ -1678,10 +2202,8 @@ class FunctionCompletedAPI(APIView):
         # Filter to only completed functions (end time passed)
         completed_functions = []
         for f in functions:
-            # Past dates are completed
             if f.function_date < today_date:
                 completed_functions.append(f)
-            # Today - check if end time passed
             elif f.function_date == today_date and f.time_to <= current_time:
                 completed_functions.append(f)
         
@@ -1716,11 +2238,18 @@ class FunctionListByMonthAPI(APIView):
         if not start_date_str or not end_date_str:
             return Response({'error': 'start and end date parameters required'}, status=400)
         
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'functions': []})
+        
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             
+            # ✅ FILTER BY COMPANY
             functions = FunctionBooking.objects.filter(
+                company_id=active_company_id,
                 function_date__gte=start_date,
                 function_date__lte=end_date
             ).order_by('function_date', 'time_from')
@@ -1802,7 +2331,12 @@ class FunctionTimeConflictCheckAPI(APIView):
         function_date = request.data.get('function_date')
         time_from = request.data.get('time_from')
         time_to = request.data.get('time_to')
-        function_id = request.data.get('function_id')  # For edit mode, to exclude current function
+        function_id = request.data.get('function_id')
+        
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
         
         if not all([function_date, time_from, time_to]):
             return Response({'error': 'Date and times are required'}, status=400)
@@ -1810,13 +2344,13 @@ class FunctionTimeConflictCheckAPI(APIView):
         try:
             from datetime import datetime, time as dt_time
             
-            # Parse the date and times
             check_date = datetime.strptime(function_date, '%Y-%m-%d').date()
             check_time_from = datetime.strptime(time_from, '%H:%M').time()
             check_time_to = datetime.strptime(time_to, '%H:%M').time()
             
-            # Get existing functions on the same date
+            # ✅ FILTER BY COMPANY - Get existing functions on the same date
             existing_functions = FunctionBooking.objects.filter(
+                company_id=active_company_id,
                 function_date=check_date
             )
             
@@ -1827,8 +2361,6 @@ class FunctionTimeConflictCheckAPI(APIView):
             conflicts = []
             
             for func in existing_functions:
-                # Check if times overlap
-                # Overlap occurs if: (StartA < EndB) and (EndA > StartB)
                 if (check_time_from < func.time_to) and (check_time_to > func.time_from):
                     conflicts.append({
                         'function_number': func.function_number,
@@ -1860,25 +2392,66 @@ class FunctionTimeConflictCheckAPI(APIView):
             return Response({'error': str(e)}, status=500)
 
 class UserRightsListAPI(APIView):
-    """Get all users with their current permissions"""
+    """Get all users with their current permissions FOR ACTIVE COMPANY"""
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=403)
         
-        users = User.objects.filter(is_active=True).select_related('userprofile').order_by('username')
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=404)
+        
+        # ✅ GET USERS WHO HAVE MEMBERSHIP IN THIS COMPANY
+        users = User.objects.filter(
+            is_active=True,
+            company_memberships__company=company,
+            company_memberships__is_active=True
+        ).distinct().order_by('username')
         
         data = []
         for user in users:
-            # Get or create permissions for this user
-            perms = UserPermission.get_or_create_for_user(user)
+            # ✅ GET USER'S MEMBERSHIP IN THIS COMPANY
+            membership = CompanyMembership.objects.filter(
+                user=user,
+                company=company,
+                is_active=True
+            ).select_related('designation').first()
+            
+            if not membership:
+                continue  # Skip if no active membership
+            
+            # ✅ GET OR CREATE PERMISSIONS FOR THIS USER IN THIS COMPANY
+            perms, created = UserPermission.objects.get_or_create(
+                user=user,
+                company=company,
+                defaults={
+                    'can_create_voucher': True,
+                    'can_edit_voucher': False,
+                    'can_view_voucher_list': True,
+                    'can_view_voucher_detail': True,
+                    'can_print_voucher': True,
+                    'can_create_function': True,
+                    'can_edit_function': False,
+                    'can_delete_function': False,
+                    'can_view_function_list': True,
+                    'can_view_function_detail': True,
+                    'can_print_function': True,
+                }
+            )
             
             data.append({
                 'id': user.id,
                 'username': user.username,
-                'group': user.groups.first().name if user.groups.exists() else 'None',
-                'designation': user.userprofile.designation.name if hasattr(user, 'userprofile') and user.userprofile.designation else 'N/A',
+                'group': membership.group,  # ✅ FROM MEMBERSHIP
+                'designation': membership.designation.name if membership.designation else 'N/A',  # ✅ FROM MEMBERSHIP
                 'permissions': {
                     'can_create_voucher': perms.can_create_voucher,
                     'can_edit_voucher': perms.can_edit_voucher,
@@ -1898,12 +2471,22 @@ class UserRightsListAPI(APIView):
 
 
 class UserRightsUpdateAPI(APIView):
-    """Update permissions for a specific user"""
+    """Update permissions for a specific user IN ACTIVE COMPANY"""
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         if not request.user.is_superuser:
             return Response({'error': 'Superuser only'}, status=403)
+        
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=404)
         
         user_id = request.data.get('user_id')
         permissions_data = request.data.get('permissions', {})
@@ -1913,9 +2496,37 @@ class UserRightsUpdateAPI(APIView):
         
         try:
             user = User.objects.get(id=user_id)
-            perms = UserPermission.get_or_create_for_user(user)
             
-            # Update permissions
+            # ✅ VERIFY USER HAS MEMBERSHIP IN THIS COMPANY
+            if not CompanyMembership.objects.filter(
+                user=user,
+                company=company,
+                is_active=True
+            ).exists():
+                return Response({
+                    'error': f'{user.username} is not a member of {company.name}'
+                }, status=400)
+            
+            # ✅ GET OR CREATE PERMISSIONS FOR THIS COMPANY
+            perms, created = UserPermission.objects.get_or_create(
+                user=user,
+                company=company,
+                defaults={
+                    'can_create_voucher': True,
+                    'can_edit_voucher': False,
+                    'can_view_voucher_list': True,
+                    'can_view_voucher_detail': True,
+                    'can_print_voucher': True,
+                    'can_create_function': True,
+                    'can_edit_function': False,
+                    'can_delete_function': False,
+                    'can_view_function_list': True,
+                    'can_view_function_detail': True,
+                    'can_print_function': True,
+                }
+            )
+            
+            # ✅ UPDATE PERMISSIONS
             perms.can_create_voucher = permissions_data.get('can_create_voucher', False)
             perms.can_edit_voucher = permissions_data.get('can_edit_voucher', False)
             perms.can_view_voucher_list = permissions_data.get('can_view_voucher_list', False)
@@ -1933,12 +2544,14 @@ class UserRightsUpdateAPI(APIView):
             
             return Response({
                 'success': True,
-                'message': f'Permissions updated for {user.username}'
+                'message': f'Permissions updated for {user.username} in {company.name}'
             })
             
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({'error': str(e)}, status=500)
 
 
@@ -1983,3 +2596,442 @@ class UserRightsBulkUpdateAPI(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+        
+
+# Temporary placeholder - will be replaced with full company management
+class CompanyManagementAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+            from .serializers import CompanySerializer
+            serializer = CompanySerializer(company, context={'request': request})
+            return Response(serializer.data)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
+
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+
+        try:
+            company = Company.objects.get(id=active_company_id)
+            data = request.POST.copy()
+            files = request.FILES
+
+            company.name = data.get('name', company.name).strip()
+            company.gst_no = data.get('gst_no', company.gst_no or '').strip()
+            company.pan_no = data.get('pan_no', company.pan_no or '').strip()
+            company.address = data.get('address', company.address or '').strip()
+            company.email = data.get('email', company.email or '').strip()
+            company.phone = data.get('phone', company.phone or '').strip()
+
+            if 'logo' in files:
+                company.logo = files['logo']
+
+            company.save()
+
+            from .serializers import CompanySerializer
+            serializer = CompanySerializer(company, context={'request': request})
+            return Response({
+                'message': 'Company details saved successfully.',
+                'company': serializer.data
+            })
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
+
+
+
+# =============================================
+# COMPANY MANAGEMENT VIEWS (SUPERUSER ONLY)
+# =============================================
+
+class CompanyListAPI(APIView):
+    """Get all companies"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        companies = Company.objects.all().order_by('-is_active', 'name')
+        data = [{
+            'id': c.id,
+            'name': c.name,
+            'gst_no': c.gst_no or '',
+            'pan_no': c.pan_no or '',
+            'address': c.address or '',
+            'email': c.email or '',
+            'phone': c.phone or '',
+            'logo': c.logo.url if c.logo else None,
+            'is_active': c.is_active,
+            'member_count': c.memberships.filter(is_active=True).count(),
+            'voucher_count': c.vouchers.count(),  # ✅ ADDED
+            'function_count': c.functions.count(),  # ✅ ADDED
+            'created_at': c.created_at.strftime('%d %b %Y')
+        } for c in companies]
+        
+        return Response({'companies': data})
+
+
+class CompanyCreateAPI(APIView):
+    """Create a new company"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        name = request.POST.get('name', '').strip()
+        gst_no = request.POST.get('gst_no', '').strip()
+        pan_no = request.POST.get('pan_no', '').strip()
+        address = request.POST.get('address', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        logo = request.FILES.get('logo')
+        
+        if not name:
+            return Response({'error': 'Company name is required'}, status=400)
+        
+        if Company.objects.filter(name=name).exists():
+            return Response({'error': 'Company with this name already exists'}, status=400)
+        
+        try:
+            company = Company.objects.create(
+                name=name,
+                gst_no=gst_no or None,
+                pan_no=pan_no or None,
+                address=address or None,
+                email=email or None,
+                phone=phone or None,
+                logo=logo,
+                is_active=True,
+                created_by=request.user
+            )
+            
+            # Auto-create approval levels for this company (copy from another company if exists)
+            template_company = Company.objects.exclude(id=company.id).first()
+            if template_company:
+                template_levels = ApprovalLevel.objects.filter(company=template_company)
+                for level in template_levels:
+                    ApprovalLevel.objects.create(
+                        company=company,
+                        designation=level.designation,
+                        order=level.order,
+                        is_active=level.is_active,
+                        updated_by=request.user
+                    )
+            
+            return Response({
+                'success': True,
+                'message': f'Company "{name}" created successfully',
+                'company': {
+                    'id': company.id,
+                    'name': company.name
+                }
+            }, status=201)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class CompanyUpdateAPI(APIView):
+    """Update company details"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        try:
+            company = Company.objects.get(pk=pk)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
+        
+        name = request.POST.get('name', '').strip()
+        if name and name != company.name:
+            if Company.objects.filter(name=name).exists():
+                return Response({'error': 'Company with this name already exists'}, status=400)
+            company.name = name
+        
+        company.gst_no = request.POST.get('gst_no', '').strip() or None
+        company.pan_no = request.POST.get('pan_no', '').strip() or None
+        company.address = request.POST.get('address', '').strip() or None
+        company.email = request.POST.get('email', '').strip() or None
+        company.phone = request.POST.get('phone', '').strip() or None
+        
+        if 'logo' in request.FILES:
+            company.logo = request.FILES['logo']
+        
+        company.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Company updated successfully',
+            'company': {
+                'id': company.id,
+                'name': company.name,
+                'logo': company.logo.url if company.logo else None
+            }
+        })
+
+
+class CompanyToggleActiveAPI(APIView):
+    """Activate or deactivate a company"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        try:
+            company = Company.objects.get(pk=pk)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
+        
+        company.is_active = not company.is_active
+        company.save()
+        
+        status_text = 'activated' if company.is_active else 'deactivated'
+        
+        return Response({
+            'success': True,
+            'message': f'Company {status_text} successfully',
+            'is_active': company.is_active
+        })
+
+
+class CompanyDeleteAPI(APIView):
+    """Delete a company (only if no data exists)"""
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        try:
+            company = Company.objects.get(pk=pk)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found'}, status=404)
+        
+        # Check if company has any data
+        if company.vouchers.exists():
+            return Response({
+                'error': f'Cannot delete company with {company.vouchers.count()} vouchers. Deactivate instead.'
+            }, status=400)
+        
+        if company.functions.exists():
+            return Response({
+                'error': f'Cannot delete company with {company.functions.count()} function bookings. Deactivate instead.'
+            }, status=400)
+        
+        company_name = company.name
+        company.delete()
+        
+        return Response({
+            'success': True,
+            'message': f'Company "{company_name}" deleted successfully'
+        })
+
+
+# =============================================
+# USER-COMPANY MEMBERSHIP MANAGEMENT
+# =============================================
+
+class UserMembershipListAPI(APIView):
+    """Get all users with their company memberships"""
+    permission_classes = [IsAuthenticated]
+    
+    # Replace UserMembershipListAPI.get method with this:
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        users = User.objects.filter(is_active=True).prefetch_related(
+            'company_memberships__company',
+            'company_memberships__designation',
+            'groups'
+        ).order_by('username')
+        
+        data = []
+        for user in users:
+            memberships = []
+            for membership in user.company_memberships.filter(is_active=True):
+                memberships.append({
+                    'id': membership.id,
+                    'company_id': membership.company.id,
+                    'company_name': membership.company.name,
+                    'group': membership.group,
+                    'designation_id': membership.designation.id if membership.designation else None,  # ✅ ADDED
+                    'designation_name': membership.designation.name if membership.designation else None,
+                    'mobile': membership.mobile or ''
+                })
+            
+            data.append({
+                'id': user.id,
+                'username': user.username,
+                'is_superuser': user.is_superuser,
+                'memberships': memberships
+            })
+        
+        # ✅ ADDED: Include all active companies for the dropdown
+        companies = Company.objects.filter(is_active=True).order_by('name')
+        companies_data = [{'id': c.id, 'name': c.name} for c in companies]
+        
+        return Response({
+            'users': data,
+            'companies': companies_data  # ✅ ADDED
+        })
+
+
+class UserMembershipCreateAPI(APIView):
+    """Assign a user to a company"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        user_id = request.data.get('user_id')
+        company_id = request.data.get('company_id')
+        group = request.data.get('group')
+        designation_id = request.data.get('designation_id')
+        mobile = request.data.get('mobile', '').strip()
+        
+        if not all([user_id, company_id, group]):
+            return Response({'error': 'User, company, and group are required'}, status=400)
+        
+        try:
+            user = User.objects.get(id=user_id)
+            company = Company.objects.get(id=company_id)
+        except (User.DoesNotExist, Company.DoesNotExist):
+            return Response({'error': 'User or company not found'}, status=404)
+        
+        # Check if membership already exists
+        if CompanyMembership.objects.filter(user=user, company=company).exists():
+            return Response({'error': f'{user.username} is already assigned to {company.name}'}, status=400)
+        
+        designation = None
+        if group == 'Admin Staff':
+            if not designation_id:
+                return Response({'error': 'Designation is required for Admin Staff'}, status=400)
+            try:
+                designation = Designation.objects.get(id=designation_id)
+            except Designation.DoesNotExist:
+                return Response({'error': 'Invalid designation'}, status=404)
+        
+        # ✅ SYNC: Update Django's User.groups to match CompanyMembership
+        try:
+            user.groups.clear()
+            django_group = Group.objects.get(name=group)
+            user.groups.add(django_group)
+        except Group.DoesNotExist:
+            return Response({'error': f'Group "{group}" does not exist in Django'}, status=400)
+        
+        membership = CompanyMembership.objects.create(
+            user=user,
+            company=company,
+            group=group,
+            designation=designation,
+            mobile=mobile or None,
+            is_active=True
+        )
+        
+        # Create default permissions for this user in this company
+        UserPermission.get_or_create_for_user(user, company)
+        
+        return Response({
+            'success': True,
+            'message': f'{user.username} assigned to {company.name}',
+            'membership': {
+                'id': membership.id,
+                'company_name': company.name,
+                'group': group,
+                'designation': designation.name if designation else None
+            }
+        }, status=201)
+
+
+class UserMembershipUpdateAPI(APIView):
+    """Update a user's membership in a company"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        try:
+            membership = CompanyMembership.objects.get(pk=pk)
+        except CompanyMembership.DoesNotExist:
+            return Response({'error': 'Membership not found'}, status=404)
+        
+        group = request.data.get('group')
+        designation_id = request.data.get('designation_id')
+        mobile = request.data.get('mobile', '').strip()
+        
+        if group:
+            membership.group = group
+            
+            # ✅ SYNC: Update Django's User.groups to match CompanyMembership
+            try:
+                user = membership.user
+                user.groups.clear()
+                django_group = Group.objects.get(name=group)
+                user.groups.add(django_group)
+            except Group.DoesNotExist:
+                return Response({'error': f'Group "{group}" does not exist in Django'}, status=400)
+            
+            if group == 'Admin Staff':
+                if not designation_id:
+                    return Response({'error': 'Designation required for Admin Staff'}, status=400)
+                try:
+                    membership.designation = Designation.objects.get(id=designation_id)
+                except Designation.DoesNotExist:
+                    return Response({'error': 'Invalid designation'}, status=404)
+            else:
+                membership.designation = None
+        
+        membership.mobile = mobile or None
+        membership.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Membership updated successfully'
+        })
+
+
+class UserMembershipDeleteAPI(APIView):
+    """Remove a user from a company"""
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        try:
+            membership = CompanyMembership.objects.get(pk=pk)
+        except CompanyMembership.DoesNotExist:
+            return Response({'error': 'Membership not found'}, status=404)
+        
+        user_name = membership.user.username
+        company_name = membership.company.name
+        
+        membership.delete()
+        
+        return Response({
+            'success': True,
+            'message': f'{user_name} removed from {company_name}'
+        })

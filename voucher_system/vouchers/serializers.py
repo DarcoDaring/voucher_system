@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from .models import (
     Voucher, Particular, VoucherApproval, ApprovalLevel,
-    AccountDetail, CompanyDetail, MainAttachment,
+    AccountDetail,  MainAttachment,
     ChequeAttachment, ParticularAttachment
 )
 from django.contrib.auth.models import User
@@ -284,35 +284,3 @@ class VoucherSerializer(serializers.ModelSerializer):
 
         return instance
 
-# ============================
-# COMPANY DETAIL SERIALIZER
-# ============================
-
-class CompanyDetailSerializer(serializers.ModelSerializer):
-    logo = serializers.ImageField(
-        required=False,
-        allow_null=True,
-        validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg'])]
-    )
-
-    class Meta:
-        model = CompanyDetail
-        fields = ['id', 'name', 'gst_no', 'pan_no', 'address', 'email', 'phone', 'logo']
-        read_only_fields = ['id']
-
-    def validate_logo(self, value):
-        if value and value.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError("Logo cannot exceed 2 MB.")
-        return value
-
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        request = self.context.get('request')
-
-        if instance.logo:
-            if request:
-                ret['logo'] = request.build_absolute_uri(instance.logo.url)
-            else:
-                ret['logo'] = instance.logo.url
-
-        return ret
