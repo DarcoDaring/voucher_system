@@ -577,7 +577,7 @@
 </div>
 {% endif %}
    
-    <!-- Replace the ACCOUNT CONTROL MODAL section in base.html with this -->
+    
 
 <!-- ACCOUNT CONTROL MODAL (SUPERUSER ONLY) -->
 {% if user.is_superuser %}
@@ -590,7 +590,9 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+           
             <div class="modal-body">
+                
                 <!-- Add Account Form -->
                 <div class="card border-success mb-4">
                     <div class="card-header bg-light">
@@ -2235,9 +2237,10 @@ toggleChequeFields();
                     </div>
                     <p class="text-muted mt-2">Loading user memberships...</p>
                 </div>
-
+                
                 <!-- Content -->
                 <div id="membershipListContent" style="display: none;">
+                   
                     <div class="table-responsive">
                         <table class="table table-sm table-hover">
                             <thead class="table-light sticky-top">
@@ -2759,12 +2762,13 @@ fetch('/api/memberships/')
                 } else {
                     membershipsHTML = '<div class="d-flex flex-wrap gap-2">';
                     user.memberships.forEach(m => {
-                        membershipsHTML += `
-                            <div class="border rounded p-2" style="min-width: 250px;">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <strong class="d-block">${escapeHtml(m.company_name)}</strong>
-                                        <span class="badge bg-primary">${m.group}</span>
+                       membershipsHTML += `
+                        <div class="border rounded p-2 ${!m.is_active ? 'bg-light opacity-75' : ''}" style="min-width: 250px;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong class="d-block">${escapeHtml(m.company_name)}</strong>
+                                    ${!m.is_active ? '<span class="badge bg-secondary me-1">Inactive</span>' : ''}
+                                    <span class="badge bg-primary">${m.group}</span>
                                         ${m.designation_name ? `<span class="badge bg-secondary">${escapeHtml(m.designation_name)}</span>` : ''}
                                         ${m.mobile ? `<br><small class="text-muted"><i class="bi bi-phone"></i> ${escapeHtml(m.mobile)}</small>` : ''}
                                     </div>
@@ -2774,10 +2778,10 @@ fetch('/api/memberships/')
                                                 title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </button>
-                                        <button class="btn btn-outline-danger btn-sm" 
-                                                onclick="deleteMembership(${m.id}, '${escapeHtml(user.username)}', '${escapeHtml(m.company_name)}')" 
-                                                title="Remove">
-                                            <i class="bi bi-trash"></i>
+                                        <button class="btn btn-outline-${m.is_active ? 'warning' : 'success'} btn-sm" 
+                                                onclick="toggleMembership(${m.id}, '${escapeHtml(user.username)}', '${escapeHtml(m.company_name)}', ${m.is_active})" 
+                                                title="${m.is_active ? 'Disable' : 'Enable'} Access">
+                                            <i class="bi bi-${m.is_active ? 'pause' : 'play'}-circle"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -2862,11 +2866,12 @@ function editMembership(id, username, companyName, group, designationId, mobile)
     new bootstrap.Modal(document.getElementById('editMembershipModal')).show();
 }
 
-function deleteMembership(id, username, companyName) {
-    if (!confirm(`Remove ${username} from ${companyName}?`)) return;
+function toggleMembership(id, username, companyName, isActive) {
+    const action = isActive ? 'disable' : 'enable';
+    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} ${username}'s access to ${companyName}?`)) return;
     
-    fetch(`/api/memberships/${id}/delete/`, {
-        method: 'DELETE',
+    fetch(`/api/memberships/${id}/toggle/`, {
+        method: 'POST',
         headers: { 'X-CSRFToken': window.csrfToken }
     })
     .then(r => r.json())

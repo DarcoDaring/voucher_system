@@ -2960,15 +2960,16 @@ class UserMembershipListAPI(APIView):
         data = []
         for user in users:
             memberships = []
-            for membership in user.company_memberships.filter(is_active=True):
+            for membership in user.company_memberships.all():
                 memberships.append({
                     'id': membership.id,
                     'company_id': membership.company.id,
                     'company_name': membership.company.name,
                     'group': membership.group,
-                    'designation_id': membership.designation.id if membership.designation else None,  # ✅ ADDED
+                    'designation_id': membership.designation.id if membership.designation else None,
                     'designation_name': membership.designation.name if membership.designation else None,
-                    'mobile': membership.mobile or ''
+                    'mobile': membership.mobile or '',
+                    'is_active': membership.is_active
                 })
             
             data.append({
@@ -3103,6 +3104,30 @@ class UserMembershipUpdateAPI(APIView):
             'message': 'Membership updated successfully'
         })
 
+class UserMembershipToggleAPI(APIView):
+    """Toggle active/inactive status for a user's company membership"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        try:
+            membership = CompanyMembership.objects.get(pk=pk)
+        except CompanyMembership.DoesNotExist:
+            return Response({'error': 'Membership not found'}, status=404)
+        
+        # Toggle status
+        membership.is_active = not membership.is_active
+        membership.save()
+        
+        action = 'enabled' if membership.is_active else 'disabled'
+        
+        return Response({
+            'success': True,
+            'message': f"Access {action} for {membership.user.username} in {membership.company.name}",
+            'is_active': membership.is_active
+        })
 
 class UserMembershipDeleteAPI(APIView):
     """Remove a user from a company"""
