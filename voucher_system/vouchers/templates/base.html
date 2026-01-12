@@ -577,47 +577,360 @@
 </div>
 {% endif %}
    
-    <!-- NEW: ACCOUNT CONTROL MODAL (SUPERUSER ONLY) -->
-    {% if user.is_superuser %}
-    <div class="modal fade" id="accountControlModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Manage Bank Accounts</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addAccountForm" class="row g-3 mb-4">
-                        <div class="col-md-5">
-                            <input type="text" class="form-control form-control-sm" placeholder="Bank Name" id="bank_name" required>
-                        </div>
-                        <div class="col-md-5">
-                            <input type="text" class="form-control form-control-sm" placeholder="Account Number" id="account_number" required>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-success btn-sm w-100">Add</button>
-                        </div>
-                    </form>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover" id="accountTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Bank Name</th>
-                                    <th>Account Number</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+    <!-- Replace the ACCOUNT CONTROL MODAL section in base.html with this -->
+
+<!-- ACCOUNT CONTROL MODAL (SUPERUSER ONLY) -->
+{% if user.is_superuser %}
+<div class="modal fade" id="accountControlModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-bank me-2"></i>Manage Bank Accounts
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Add Account Form -->
+                <div class="card border-success mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-plus-circle-fill text-success me-2"></i>Add New Account</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="addAccountForm" class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Bank Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" placeholder="e.g. State Bank of India" id="bank_name" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Account Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" placeholder="e.g. 1234567890" id="account_number" required>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-plus-lg me-1"></i>Add
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+                <!-- Accounts List -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>All Bank Accounts</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Loading State -->
+                        <div id="accountsLoading" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading accounts...</p>
+                        </div>
+
+                        <!-- Accounts Table -->
+                        <div id="accountsContent" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm mb-0" id="accountTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 60px;">Status</th>
+                                            <th>Bank Name</th>
+                                            <th>Account Number</th>
+                                            <th style="width: 120px;">Added On</th>
+                                            <th style="width: 180px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="accountsEmpty" style="display: none;" class="text-center py-5">
+                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3">No bank accounts added yet for this company</p>
+                        </div>
+
+                        <!-- Error State -->
+                        <div id="accountsError" style="display: none;" class="text-center py-5">
+                            <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                            <p class="text-danger mt-3" id="accountsErrorMsg"></p>
+                            <button class="btn btn-outline-danger btn-sm" onclick="loadAccountsModal()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                            </button>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            <div class="modal-footer bg-light">
+                
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
-    {% endif %}
+</div>
+
+<script>
+// =============================================
+// ACCOUNT CONTROL MODAL - COMPLETE WITH ENABLE/DISABLE
+// =============================================
+
+const accountModal = document.getElementById('accountControlModal');
+if (accountModal) {
+    const tableBody = accountModal.querySelector('#accountTable tbody');
+    const addForm = accountModal.querySelector('#addAccountForm');
+    const loading = document.getElementById('accountsLoading');
+    const content = document.getElementById('accountsContent');
+    const empty = document.getElementById('accountsEmpty');
+    const error = document.getElementById('accountsError');
+    
+    // ✅ LOAD ALL ACCOUNTS (active + inactive) FOR MANAGEMENT
+    function loadAccountsModal() {
+        loading.style.display = 'block';
+        content.style.display = 'none';
+        empty.style.display = 'none';
+        error.style.display = 'none';
+
+        fetch('/api/accounts/all/', {
+            headers: {
+                'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            }
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('✅ Accounts loaded:', data);
+            tableBody.innerHTML = '';
+            
+            if (!data.accounts || data.accounts.length === 0) {
+                loading.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+            
+            data.accounts.forEach(acc => {
+                const tr = document.createElement('tr');
+                tr.className = acc.is_active ? '' : 'table-secondary';
+                tr.innerHTML = `
+                    <td class="text-center">
+                        <span class="badge bg-${acc.is_active ? 'success' : 'secondary'}">
+                            ${acc.is_active ? '✓ Active' : '✗ Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <strong class="${acc.is_active ? '' : 'text-muted'}">${escapeHtml(acc.bank_name)}</strong>
+                    </td>
+                    <td>
+                        <code class="${acc.is_active ? '' : 'text-muted'}">${escapeHtml(acc.account_number)}</code>
+                    </td>
+                    <td>
+                        <small class="text-muted">${acc.created_at}</small>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-${acc.is_active ? 'warning' : 'success'} toggle-account" 
+                                    data-id="${acc.id}"
+                                    title="${acc.is_active ? 'Disable' : 'Enable'} Account">
+                                <i class="bi bi-${acc.is_active ? 'pause' : 'play'}-circle"></i>
+                                ${acc.is_active ? 'Disable' : 'Enable'}
+                            </button>
+                            <button class="btn btn-outline-danger delete-account" 
+                                    data-id="${acc.id}"
+                                    data-bank="${escapeHtml(acc.bank_name)}"
+                                    data-account="${escapeHtml(acc.account_number)}"
+                                    title="Delete Account">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            
+            loading.style.display = 'none';
+            content.style.display = 'block';
+        })
+        .catch(err => {
+            console.error('❌ Error loading accounts:', err);
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            document.getElementById('accountsErrorMsg').textContent = 
+                'Failed to load accounts: ' + err.message;
+        });
+    }
+    
+    // ✅ LOAD ACCOUNTS WHEN MODAL OPENS
+    accountModal.addEventListener('show.bs.modal', function() {
+        console.log('🔄 Loading bank accounts for active company...');
+        loadAccountsModal();
+    });
+    
+    // ✅ ADD ACCOUNT FORM SUBMISSION
+    addForm.onsubmit = e => {
+        e.preventDefault();
+        const bank = document.getElementById('bank_name').value.trim();
+        const acc = document.getElementById('account_number').value.trim();
+        
+        if (!bank || !acc) {
+            alert('Please fill in both bank name and account number');
+            return;
+        }
+        
+        const submitBtn = addForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Adding...';
+        
+        fetch('/api/accounts/create/', {
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ 
+                bank_name: bank, 
+                account_number: acc 
+            })
+        })
+        .then(r => {
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(err.error || 'Failed to create account');
+                });
+            }
+            return r.json();
+        })
+        .then(d => {
+            if (d.id) {
+                alert(d.message || 'Account added successfully!');
+                addForm.reset();
+                loadAccountsModal(); // ✅ Reload the table
+                
+                // ✅ ALSO reload accounts in voucher creation dropdown if modal is open
+                const voucherModal = document.getElementById('createVoucherModal');
+                if (voucherModal && voucherModal.classList.contains('show')) {
+                    loadAccounts(); // This reloads dropdown in voucher modal
+                }
+            } else {
+                throw new Error(d.error || 'Failed to create account');
+            }
+        })
+        .catch(err => {
+            console.error('❌ Error creating account:', err);
+            alert('Error: ' + err.message);
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    };
+    
+    // ✅ TOGGLE ACCOUNT ACTIVE/INACTIVE
+    tableBody.onclick = e => {
+        const toggleBtn = e.target.closest('.toggle-account');
+        const deleteBtn = e.target.closest('.delete-account');
+        
+        if (toggleBtn) {
+            const id = toggleBtn.dataset.id;
+            const row = toggleBtn.closest('tr');
+            const isActive = toggleBtn.querySelector('i').classList.contains('bi-pause-circle');
+            
+            if (!confirm(`${isActive ? 'Disable' : 'Enable'} this account?`)) return;
+            
+            toggleBtn.disabled = true;
+            toggleBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            
+            fetch(`/api/accounts/${id}/toggle/`, {
+                method: 'POST',
+                headers: { 
+                    'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                }
+            })
+            .then(r => {
+                if (!r.ok) {
+                    return r.json().then(err => {
+                        throw new Error(err.error || 'Failed to toggle account');
+                    });
+                }
+                return r.json();
+            })
+            .then(data => {
+                alert(data.message || 'Account status updated');
+                loadAccountsModal(); // ✅ Reload table
+                
+                // ✅ Reload voucher dropdown if open
+                const voucherModal = document.getElementById('createVoucherModal');
+                if (voucherModal && voucherModal.classList.contains('show')) {
+                    loadAccounts();
+                }
+            })
+            .catch(err => {
+                console.error('❌ Error toggling account:', err);
+                alert('Error: ' + err.message);
+                toggleBtn.disabled = false;
+                toggleBtn.innerHTML = isActive ? 
+                    '<i class="bi bi-pause-circle"></i> Disable' : 
+                    '<i class="bi bi-play-circle"></i> Enable';
+            });
+        }
+        
+        if (deleteBtn) {
+            const id = deleteBtn.dataset.id;
+            const bankName = deleteBtn.dataset.bank;
+            const accountNum = deleteBtn.dataset.account;
+            
+            if (!confirm(`Permanently delete account ${bankName} / ${accountNum}?\n\nThis action cannot be undone.`)) return;
+            
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            
+            fetch(`/api/accounts/delete/${id}/`, {
+                method: 'DELETE',
+                headers: { 
+                    'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                }
+            })
+            .then(r => {
+                if (!r.ok) {
+                    return r.json().then(err => {
+                        throw new Error(err.error || 'Failed to delete');
+                    });
+                }
+                return r.json();
+            })
+            .then(() => {
+                alert('Account deleted successfully');
+                loadAccountsModal(); // ✅ Reload table
+                
+                // ✅ Reload voucher dropdown if open
+                const voucherModal = document.getElementById('createVoucherModal');
+                if (voucherModal && voucherModal.classList.contains('show')) {
+                    loadAccounts();
+                }
+            })
+            .catch(err => {
+                console.error('❌ Error deleting account:', err);
+                alert('Error: ' + err.message);
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            });
+        }
+    };
+}
+
+// Helper function for escaping HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endif %}
     {% if user.is_superuser %}
 <!-- USER RIGHTS MODAL -->
 <div class="modal fade" id="userRightsModal" tabindex="-1">
@@ -1309,218 +1622,7 @@ if (designationForm) {
         });
     });
 }
-        // =============================================
-// ACCOUNT CONTROL MODAL - COMPANY-SPECIFIC
-// =============================================
-const accountModal = document.getElementById('accountControlModal');
-if (accountModal) {
-    const tableBody = accountModal.querySelector('#accountTable tbody');
-    const addForm = accountModal.querySelector('#addAccountForm');
-    
-    // ✅ LOAD ACCOUNTS FUNCTION - COMPANY-SPECIFIC
-    function loadAccountsModal() {
-        fetch("{% url 'account_list' %}")
-            .then(r => {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-            .then(accounts => {
-                tableBody.innerHTML = '';
-                
-                if (accounts.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="text-center text-muted py-3">
-                                No bank accounts added yet for this company
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-                
-                accounts.forEach(acc => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${acc.label.split(' / ')[0]}</td>
-                        <td>${acc.label.split(' / ')[1]}</td>
-                        <td>
-                            <button class="btn btn-sm btn-danger delete-account" data-id="${acc.value}">
-                                <i class="bi bi-trash"></i> Delete
-                            </button>
-                        </td>
-                    `;
-                    tableBody.appendChild(tr);
-                });
-            })
-            .catch(err => {
-                console.error('Error loading accounts:', err);
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="3" class="text-center text-danger py-3">
-                            Failed to load accounts: ${err.message}
-                        </td>
-                    </tr>
-                `;
-            });
-    }
-    
-    // ✅ LOAD ACCOUNTS WHEN MODAL OPENS
-    accountModal.addEventListener('show.bs.modal', function() {
-        console.log('🔄 Loading bank accounts for active company...');
-        loadAccountsModal();
-    });
-    
-    // ✅ ADD ACCOUNT FORM SUBMISSION
-    addForm.onsubmit = e => {
-        e.preventDefault();
-        const bank = document.getElementById('bank_name').value.trim();
-        const acc = document.getElementById('account_number').value.trim();
         
-        if (!bank || !acc) {
-            alert('Please fill in both bank name and account number');
-            return;
-        }
-        
-        const submitBtn = addForm.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Adding...';
-        
-        fetch("{% url 'account_create' %}", {
-            method: 'POST',
-            headers: { 
-                'X-CSRFToken': getCsrfToken(), 
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({ 
-                bank_name: bank, 
-                account_number: acc 
-            })
-        })
-        .then(r => {
-            if (!r.ok) {
-                return r.json().then(err => {
-                    throw new Error(err.error || 'Failed to create account');
-                });
-            }
-            return r.json();
-        })
-        .then(d => {
-            if (d.id) {
-                alert(d.message || 'Account added successfully!');
-                addForm.reset();
-                loadAccountsModal(); // ✅ Reload the table
-                
-                // ✅ ALSO reload accounts in voucher creation dropdown if modal is open
-                const voucherModal = document.getElementById('createVoucherModal');
-                if (voucherModal && voucherModal.classList.contains('show')) {
-                    loadAccountsForVoucher();
-                }
-            } else {
-                throw new Error(d.error || 'Failed to create account');
-            }
-        })
-        .catch(err => {
-            console.error('Error creating account:', err);
-            alert('Error: ' + err.message);
-        })
-        .finally(() => {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        });
-    };
-    
-    // ✅ DELETE ACCOUNT
-    tableBody.onclick = e => {
-        const btn = e.target.closest('.delete-account');
-        if (!btn) return;
-        
-        const id = btn.dataset.id;
-        const row = btn.closest('tr');
-        const bankName = row.querySelector('td:first-child').textContent;
-        const accountNum = row.querySelector('td:nth-child(2)').textContent;
-        
-        if (!confirm(`Delete account ${bankName} / ${accountNum}?`)) return;
-        
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-        
-        fetch(`/api/accounts/delete/${id}/`, {
-            method: 'DELETE',
-            headers: { 'X-CSRFToken': getCsrfToken() }
-        })
-        .then(r => {
-            if (!r.ok) {
-                return r.json().then(err => {
-                    throw new Error(err.error || 'Failed to delete');
-                });
-            }
-            return r.json();
-        })
-        .then(() => {
-            alert('Account deleted successfully');
-            loadAccountsModal(); // ✅ Reload the table
-            
-            // ✅ ALSO reload accounts in voucher creation dropdown if modal is open
-            const voucherModal = document.getElementById('createVoucherModal');
-            if (voucherModal && voucherModal.classList.contains('show')) {
-                loadAccountsForVoucher();
-            }
-        })
-        .catch(err => {
-            console.error('Error deleting account:', err);
-            alert('Error: ' + err.message);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-trash"></i> Delete';
-        });
-    };
-}
-
-// ✅ HELPER: Load accounts into voucher creation dropdown
-function loadAccountsForVoucher() {
-    const select = document.getElementById('account_details');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Loading...</option>';
-    
-    fetch("{% url 'account_list' %}")
-        .then(r => {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
-        .then(accounts => {
-            select.innerHTML = '';
-            
-            if (accounts.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = "";
-                opt.textContent = "-- No Accounts --";
-                opt.disabled = true;
-                opt.selected = true;
-                select.appendChild(opt);
-            } else {
-                // Add placeholder option
-                const placeholder = document.createElement('option');
-                placeholder.value = "";
-                placeholder.textContent = "-- Select Account --";
-                placeholder.disabled = true;
-                placeholder.selected = true;
-                select.appendChild(placeholder);
-                
-                // Add actual accounts
-                accounts.forEach(acc => {
-                    const opt = document.createElement('option');
-                    opt.value = acc.value;
-                    opt.textContent = acc.label;
-                    select.appendChild(opt);
-                });
-            }
-        })
-        .catch(err => {
-            console.error('Error loading accounts:', err);
-            select.innerHTML = '<option value="">-- Load Failed --</option>';
-        });
-}
 
 
 // === EDIT USER (USER CONTROL PANEL) ===

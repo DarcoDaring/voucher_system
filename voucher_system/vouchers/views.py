@@ -1018,9 +1018,10 @@ class AccountDetailListAPI(APIView):
         except Company.DoesNotExist:
             return Response({'error': 'Invalid company'}, status=404)
         
-        # ✅ FILTER ACCOUNTS BY COMPANY
+        # ✅ FILTER: Only active accounts for voucher creation
         accounts = AccountDetail.objects.filter(
-            company=company
+            company=company,
+            is_active=True  # ✅ ONLY SHOW ACTIVE ACCOUNTS
         ).order_by('bank_name')
         
         serializer = AccountDetailSerializer(accounts, many=True)
@@ -1059,19 +1060,90 @@ class AccountDetailCreateAPI(APIView):
                 'error': f'This account already exists in {company.name}'
             }, status=400)
 
-        # ✅ CREATE ACCOUNT FOR THIS COMPANY
+        # ✅ CREATE ACCOUNT (is_active defaults to True)
         account = AccountDetail.objects.create(
             company=company,
             bank_name=bank_name,
             account_number=account_number,
+            is_active=True,  # ✅ NEW ACCOUNTS ARE ACTIVE BY DEFAULT
             created_by=request.user
         )
         
         return Response({
             'id': account.id,
             'label': str(account),
+            'is_active': account.is_active,  # ✅ RETURN STATUS
             'message': f'Account created successfully in {company.name}'
         }, status=201)
+
+class AccountDetailToggleAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+
+        # ✅ GET ACTIVE COMPANY
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+
+        try:
+            # ✅ VERIFY ACCOUNT BELONGS TO ACTIVE COMPANY
+            account = AccountDetail.objects.get(
+                pk=pk,
+                company_id=active_company_id
+            )
+
+            # ✅ TOGGLE STATUS
+            account.is_active = not account.is_active
+            account.save()
+
+            status_text = 'enabled' if account.is_active else 'disabled'
+            
+            return Response({
+                'success': True,
+                'message': f'Account {status_text} successfully',
+                'is_active': account.is_active
+            }, status=200)
+
+        except AccountDetail.DoesNotExist:
+            return Response(
+                {'error': 'Account not found or does not belong to active company'},
+                status=404
+            )
+
+class AccountDetailAllAPI(APIView):
+    """Get ALL accounts (active + inactive) for Account Control Modal"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+        
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=404)
+        
+        # ✅ GET ALL ACCOUNTS (active + inactive)
+        accounts = AccountDetail.objects.filter(
+            company=company
+        ).order_by('-is_active', 'bank_name')
+        
+        data = [{
+            'id': acc.id,
+            'bank_name': acc.bank_name,
+            'account_number': acc.account_number,
+            'is_active': acc.is_active,
+            'created_at': acc.created_at.strftime('%d %b %Y')
+        } for acc in accounts]
+        
+        return Response({'accounts': data})
 
 class AccountDetailDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -1091,12 +1163,31 @@ class AccountDetailDeleteAPI(APIView):
                 pk=pk,
                 company_id=active_company_id
             )
+
+            # ✅ CHECK IF ACCOUNT IS USED IN ANY VOUCHER
+            is_used = Voucher.objects.filter(
+                account_details=account
+            ).exists()
+
+            if is_used:
+                return Response(
+                    {
+                        'error': 'Cannot delete account. This account is used in one or more vouchers.'
+                    },
+                    status=400
+                )
+
             account.delete()
-            return Response({'message': 'Account deleted successfully'}, status=200)
+            return Response(
+                {'message': 'Account deleted successfully'},
+                status=200
+            )
+
         except AccountDetail.DoesNotExist:
-            return Response({
-                'error': 'Account not found or does not belong to active company'
-            }, status=404)
+            return Response(
+                {'error': 'Account not found or does not belong to active company'},
+                status=404
+            )
 
 
 

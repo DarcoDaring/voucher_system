@@ -18,7 +18,7 @@ from vouchers.views import (
     CompanyListAPI, CompanyCreateAPI, CompanyUpdateAPI, 
     CompanyToggleActiveAPI, CompanyDeleteAPI,
     UserMembershipListAPI, UserMembershipCreateAPI,
-    UserMembershipUpdateAPI, UserMembershipDeleteAPI,DesignationListAPI
+    UserMembershipUpdateAPI, UserMembershipDeleteAPI,DesignationListAPI,AccountDetailAllAPI,AccountDetailToggleAPI
 )
 
 urlpatterns = [
@@ -96,6 +96,12 @@ urlpatterns = [
     path('api/memberships/<int:pk>/delete/', UserMembershipDeleteAPI.as_view(), name='membership_delete_api'),
     path('api/designations/by-company/<int:company_id>/', DesignationListAPI.as_view(), name='designation_list_by_company'),
     path('api/designations/', DesignationListAPI.as_view(), name='designation_list_api'),
+
+    path('api/accounts/', AccountDetailListAPI.as_view(), name='account_list'),  # Only active accounts
+    path('api/accounts/all/', AccountDetailAllAPI.as_view(), name='account_list_all'),  # ✅ NEW - All accounts for modal
+    path('api/accounts/create/', AccountDetailCreateAPI.as_view(), name='account_create'),
+    path('api/accounts/<int:pk>/toggle/', AccountDetailToggleAPI.as_view(), name='account_toggle'),  # ✅ NEW
+    path('api/accounts/delete/<int:pk>/', AccountDetailDeleteAPI.as_view(), name='account_delete'),
 
     
     

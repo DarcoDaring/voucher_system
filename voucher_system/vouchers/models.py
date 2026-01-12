@@ -393,16 +393,21 @@ class AccountDetail(models.Model):
     )
     bank_name = models.CharField(max_length=200)
     account_number = models.CharField(max_length=50)
+    is_active = models.BooleanField(
+        default=True, 
+        help_text="Only active accounts appear in voucher creation"
+    )  # ✅ NEW FIELD
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='account_details')
     created_at = models.DateTimeField(auto_now_add=True)
-
+    updated_at = models.DateTimeField(auto_now=True)  # ✅ NEW FIELD (optional but recommended)
+    
     class Meta:
         unique_together = ('company', 'bank_name', 'account_number')
-        ordering = ['bank_name']
-
+        ordering = ['-is_active', 'bank_name']  # ✅ Show active accounts first
+    
     def __str__(self):
-        return f"{self.bank_name} / {self.account_number}"
-
+        status = "✓" if self.is_active else "✗"
+        return f"{status} {self.bank_name} / {self.account_number}"
 
 
 
