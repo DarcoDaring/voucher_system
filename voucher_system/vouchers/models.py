@@ -538,41 +538,23 @@ class FunctionBooking(models.Model):
     time_to = models.TimeField()
     function_name = models.CharField(max_length=200)
     booked_by = models.CharField(max_length=200, help_text="Name of person/company who booked")
-    
-    # Multiple contact numbers (stored as JSON array)
     contact_numbers = models.JSONField(default=list, help_text="List of contact numbers")
-    
     address = models.TextField(max_length=500)
-    
-    # UPDATED: Menu items stored as JSON object with categories
     menu_items = models.JSONField(
         default=dict, 
         help_text="Menu items categorized: {welcome_drink, starters, main_course, desserts}"
     )
-    
     no_of_pax = models.IntegerField()
     rate_per_pax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
-    # GST option
     gst_option = models.CharField(max_length=20, choices=GST_CHOICES, default='INCLUDING')
-    
-    # Hall rent (optional)
     hall_rent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=0)
-    
-    # UPDATED: Location moved to creation time (not confirmation)
     location = models.CharField(
         max_length=50, 
         choices=LOCATION_CHOICES, 
         help_text="Location where the function will be held"
     )
-    
-    # Extra charges (stored as JSON array of {description, rate})
     extra_charges = models.JSONField(default=list, help_text="List of extra charges with description and rate")
-    
-    # Calculated total amount
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    # Confirmation fields
     due_amount = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
@@ -580,14 +562,12 @@ class FunctionBooking(models.Model):
         blank=True,
         help_text="Remaining amount to be paid (Total - Advance)"
     )
-    
     status = models.CharField(
         max_length=20, 
         choices=STATUS_CHOICES, 
         default='PENDING',
         help_text="Function confirmation status"
     )
-    
     advance_amount = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
@@ -600,19 +580,20 @@ class FunctionBooking(models.Model):
         blank=True,
         help_text="Time when food should be picked up"
     )
-    
     food_service_time = models.TimeField(
         null=True,
         blank=True,
         help_text="Time when food service should begin"
     )
-    # NEW: Special instructions for confirmed functions
     special_instructions = models.TextField(
         blank=True,
         null=True,
         help_text="Special instructions or notes for the function"
     )
-    is_completed = models.BooleanField(default=False, verbose_name="Marked as Completed")
+    
+    # ❌ REMOVE THIS FIELD - Use property instead
+    # is_completed = models.BooleanField(default=False, verbose_name="Marked as Completed")
+    
     confirmed_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 
@@ -621,13 +602,11 @@ class FunctionBooking(models.Model):
         related_name='confirmed_functions',
         help_text="User who confirmed the function"
     )
-    
     confirmed_at = models.DateTimeField(
         null=True, 
         blank=True,
         help_text="Timestamp when function was confirmed"
     )
-    
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='function_bookings')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -639,11 +618,8 @@ class FunctionBooking(models.Model):
     def __str__(self):
         return f"{self.function_number} - {self.function_name}"
     
-    # FIND and REPLACE the save() method:
-
     def save(self, *args, **kwargs):
         if not self.function_number:
-            # Generate company-specific function number
             last_function = FunctionBooking.objects.filter(company=self.company).order_by('-id').first()
             if last_function and last_function.function_number.startswith('FN'):
                 num = int(last_function.function_number[2:]) + 1
@@ -651,15 +627,11 @@ class FunctionBooking(models.Model):
             else:
                 self.function_number = 'FN0001'
 
-        # Always recalculate total
         self.calculate_total_amount()
-
-        # Always recalculate due amount
         total = Decimal(self.total_amount or 0)
         advance = Decimal(self.advance_amount or 0)
         self.due_amount = total - advance
 
-        # Prevent negative due
         if self.due_amount < 0:
             self.due_amount = Decimal('0.00')
 
@@ -669,38 +641,30 @@ class FunctionBooking(models.Model):
         """Calculate total amount based on pax, rate, GST, hall rent and extra charges"""
         base_amount = Decimal(self.no_of_pax) * Decimal(self.rate_per_pax)
         
-        # Apply GST
         if self.gst_option == 'INCLUDING':
             amount_with_gst = base_amount
         else:
-            amount_with_gst = base_amount+((base_amount*5)/100)
+            amount_with_gst = base_amount + ((base_amount * 5) / 100)
         
-        # Add hall rent
         hall_rent = Decimal(self.hall_rent or 0)
-        
-        # Add extra charges
         extra_total = sum(Decimal(charge.get('rate', 0)) for charge in self.extra_charges)
         
         self.total_amount = amount_with_gst + hall_rent + extra_total
-
-@property
-def is_function_completed(self):
-    """
-    Check if function is completed based on date and time.
-    Uses timezone-aware datetime comparison.
-    """
-    from django.utils import timezone
-    import datetime
     
-    # Get current time in configured timezone (Asia/Kolkata)
-    now = timezone.localtime(timezone.now())
-    
-    # Create timezone-aware datetime for function end time
-    function_end_datetime = timezone.make_aware(
-        datetime.datetime.combine(self.function_date, self.time_to)
-    )
-    
-    # Function is completed if current time >= function end time
-    return now >= function_end_datetime
+    # ✅ CORRECT PLACEMENT - Property inside the class
+    @property
+    def is_function_completed(self):
+        """
+        Check if function is completed based on date and time.
+        Uses timezone-aware datetime comparison.
+        """
+        from django.utils import timezone
+        import datetime
+        
+        now = timezone.localtime(timezone.now())
+        function_end_datetime = timezone.make_aware(
+            datetime.datetime.combine(self.function_date, self.time_to)
+        )
+        return now >= function_end_datetime
 
 
