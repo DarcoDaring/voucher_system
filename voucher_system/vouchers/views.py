@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import (
     Voucher, Particular, VoucherApproval, Designation,
-    ApprovalLevel, UserProfile, AccountDetail, Company, CompanyMembership,  # ✅ NEW
+    ApprovalLevel, UserProfile, AccountDetail, Company, CompanyMembership,  
     MainAttachment, ChequeAttachment, ParticularAttachment, FunctionBooking
 )
 from .serializers import VoucherSerializer, VoucherApprovalSerializer, AccountDetailSerializer
@@ -24,7 +24,7 @@ import time
 from datetime import datetime
 from django.utils import timezone
 from .models import UserPermission,CompanyMembership
-from django.views import View  # ✅ ADD THIS LINE
+from django.views import View  # 
 from django.contrib.auth import authenticate, login as auth_login, logout
 
 def get_user_designation_for_company(user, company_id):
@@ -51,12 +51,12 @@ def check_user_permission(user, permission_name, company_id=None):
     if user.is_superuser:
         return True, None
     
-    # ✅ If no company_id provided, return False
+   
     if not company_id:
         return False, "No active company selected."
     
     try:
-        # ✅ Get permission record for THIS user in THIS company
+        #  Get permission record for THIS user in THIS company
         perms = UserPermission.objects.filter(
             user=user,
             company_id=company_id
@@ -189,7 +189,7 @@ class CustomLoginView(View):
         if user is not None:
             auth_login(request, user)
             
-            # ✅ SUPERUSER: Skip company selection entirely
+            #  SUPERUSER: Skip company selection entirely
             if user.is_superuser:
                 # Auto-select first available company or create one
                 company = Company.objects.filter(is_active=True).first()
@@ -218,7 +218,7 @@ class CustomLoginView(View):
                 messages.success(request, f"Welcome, {user.username}! Currently viewing: {company.name}")
                 return redirect('home')
             
-            # ✅ REGULAR USER: Must have company assignment
+            #  REGULAR USER: Must have company assignment
             memberships = CompanyMembership.objects.filter(
                 user=user,
                 is_active=True,
@@ -247,7 +247,7 @@ class SelectCompanyView(LoginRequiredMixin, View):
     """Show company selection page for users with multiple company access"""
     
     def get(self, request):
-        # ✅ Superusers can access all active companies
+        #  Superusers can access all active companies
         if request.user.is_superuser:
             # Get all active companies
             all_companies = Company.objects.filter(is_active=True).order_by('name')
