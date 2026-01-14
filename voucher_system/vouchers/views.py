@@ -172,7 +172,7 @@ class CustomLoginView(View):
         # If already logged in, redirect to company selection or home
         if request.user.is_authenticated:
             if request.user.is_superuser:
-                return redirect('home')  # Superusers go directly to home
+                return redirect('home')
             return redirect('select_company')
         return render(request, 'login.html')
     
@@ -189,13 +189,22 @@ class CustomLoginView(View):
         if user is not None:
             auth_login(request, user)
             
-            #  SUPERUSER: Skip company selection entirely
+            # ✅ CRITICAL: Clear any existing company selection from previous sessions
+            if 'active_company_id' in request.session:
+                del request.session['active_company_id']
+            
+            print(f"\n{'='*50}")
+            print(f"DEBUG: Login successful for {user.username}")
+            print(f"Is Superuser: {user.is_superuser}")
+            
+            # ✅ SUPERUSER: Skip company selection entirely
             if user.is_superuser:
+                print(f"Superuser detected - setting up company access")
                 # Auto-select first available company or create one
                 company = Company.objects.filter(is_active=True).first()
                 
                 if not company:
-                    # No companies exist - create default
+                    print(f"No companies exist - creating default")
                     company = Company.objects.create(
                         name='Default Company',
                         is_active=True,
@@ -215,30 +224,40 @@ class CustomLoginView(View):
                 
                 # Set active company
                 request.session['active_company_id'] = company.id
+                print(f"Set active_company_id to {company.id} ({company.name})")
+                print(f"Redirecting to home")
+                print(f"{'='*50}\n")
                 messages.success(request, f"Welcome, {user.username}! Currently viewing: {company.name}")
                 return redirect('home')
             
-            #  REGULAR USER: Must have company assignment
+            # ✅ REGULAR USER: Check company assignments
             memberships = CompanyMembership.objects.filter(
                 user=user,
                 is_active=True,
                 company__is_active=True
             ).select_related('company')
             
-            if not memberships.exists():
+            membership_count = memberships.count()
+            print(f"Regular user - Found {membership_count} active company memberships")
+            
+            if membership_count == 0:
+                print(f"No memberships - logging out")
+                print(f"{'='*50}\n")
                 messages.error(request, "You are not assigned to any company. Please contact your administrator.")
                 logout(request)
                 return redirect('login')
             
-            # If user has only 1 company, auto-select it
-            if memberships.count() == 1:
-                request.session['active_company_id'] = memberships.first().company.id
-                messages.success(request, f"Welcome! Logged in to {memberships.first().company.name}")
-                return redirect('home')
+            # ✅ Log company names for debugging
+            company_names = [m.company.name for m in memberships]
+            print(f"Companies: {company_names}")
+            print(f"Redirecting to select_company view")
+            print(f"{'='*50}\n")
             
-            # Multiple companies - show selector
+            # ✅ ALWAYS redirect to select_company for regular users
+            # Let SelectCompanyView handle auto-selection if only 1 company
             return redirect('select_company')
         else:
+            print(f"DEBUG: Login failed for username: {username}")
             messages.error(request, "Invalid username or password")
             return redirect('login')
 
@@ -247,10 +266,16 @@ class SelectCompanyView(LoginRequiredMixin, View):
     """Show company selection page for users with multiple company access"""
     
     def get(self, request):
-        #  Superusers can access all active companies
+        print(f"\n{'='*50}")
+        print(f"DEBUG: SelectCompanyView called")
+        print(f"User: {request.user.username}")
+        print(f"Is Superuser: {request.user.is_superuser}")
+        
+        # ✅ Superusers can access all active companies
         if request.user.is_superuser:
             # Get all active companies
             all_companies = Company.objects.filter(is_active=True).order_by('name')
+            print(f"Superuser - Found {all_companies.count()} active companies")
             
             if not all_companies.exists():
                 # No companies exist - create default
@@ -276,13 +301,21 @@ class SelectCompanyView(LoginRequiredMixin, View):
                 )
                 memberships.append(membership)
             
-            # If only one company, auto-select
+            print(f"Memberships created: {len(memberships)}")
+            
+            # ✅ ONLY auto-select if exactly ONE company
             if len(memberships) == 1:
+                print(f"Only 1 company - auto-selecting: {memberships[0].company.name}")
                 request.session['active_company_id'] = memberships[0].company.id
                 messages.success(request, f"Switched to {memberships[0].company.name}")
                 return redirect('home')
             
-            # Show selection page with all companies
+            # ✅ Multiple companies - SHOW SELECTION PAGE
+            print(f"Multiple companies ({len(memberships)}) - showing selection page")
+            print(f"Companies: {[m.company.name for m in memberships]}")
+            print(f"Rendering template: select_company.html")
+            print(f"{'='*50}\n")
+            
             return render(request, 'select_company.html', {
                 'memberships': memberships
             })
@@ -294,21 +327,31 @@ class SelectCompanyView(LoginRequiredMixin, View):
             company__is_active=True
         ).select_related('company', 'designation')
         
+        print(f"Regular user - Found {memberships.count()} active memberships")
+        
         if not memberships.exists():
+            print(f"No memberships found - logging out user")
             messages.error(request, "You are not assigned to any company. Please contact your administrator.")
             logout(request)
             return redirect('login')
         
-        # If only one company, auto-select it
+        # ✅ ONLY auto-select if exactly ONE membership
         if memberships.count() == 1:
+            print(f"Only 1 membership - auto-selecting: {memberships.first().company.name}")
             request.session['active_company_id'] = memberships.first().company.id
             messages.success(request, f"Switched to {memberships.first().company.name}")
             return redirect('home')
         
-        # Show selection page
+        # ✅ Multiple memberships - SHOW SELECTION PAGE
+        print(f"Multiple memberships ({memberships.count()}) - showing selection page")
+        print(f"Companies: {[m.company.name for m in memberships]}")
+        print(f"Rendering template: select_company.html")
+        print(f"{'='*50}\n")
+        
         return render(request, 'select_company.html', {
             'memberships': memberships
         })
+
 
 class SetCompanyView(LoginRequiredMixin, View):
     """Handle company selection from dropdown or selection page"""
@@ -379,6 +422,17 @@ class SetCompanyView(LoginRequiredMixin, View):
 
 class HomeView(TemplateView):
     template_name = 'vouchers/home.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        # ✅ If user is logged in but has no active company, redirect to selection
+        if request.user.is_authenticated and not request.user.is_superuser:
+            active_company_id = request.session.get('active_company_id')
+            if not active_company_id:
+                print(f"DEBUG: HomeView - No active_company_id, redirecting to select_company")
+                return redirect('select_company')
+        return super().dispatch(request, *args, **kwargs)
+
+    
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
