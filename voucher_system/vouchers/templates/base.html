@@ -1794,7 +1794,25 @@ toggleChequeFields();
             })
 
             
-            
+            // Add Row handler for particulars
+addBtn.onclick = () => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm" name="particulars[${index}][description]" required oninput="this.value = this.value.toUpperCase();"></td>
+        <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${index}][amount]" required></td>
+        <td>
+            <input type="file" class="form-control form-control-sm"
+                name="particular_attachment_${index}"
+                multiple
+                accept="image/*,application/pdf"
+                required>
+            <div class="mt-1 text-muted small particular-file-list"></div>
+        </td>
+        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+    `;
+    tbody.appendChild(row);
+    index++;
+};
 
 
             tbody.onclick = e => {
