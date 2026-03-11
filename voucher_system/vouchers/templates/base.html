@@ -84,7 +84,7 @@
                 <li>
                     <form method="post" action="{% url 'set_company' %}" class="d-inline w-100">
                         {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <input type="hidden" name="next" value="{% url 'home' %}">
                         <button type="submit" 
                                 name="company_id" 
                                 value="{{ membership.company.id }}" 

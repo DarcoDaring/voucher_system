@@ -642,9 +642,9 @@ class FunctionBooking(models.Model):
         base_amount = Decimal(self.no_of_pax) * Decimal(self.rate_per_pax)
         
         if self.gst_option == 'INCLUDING':
-            amount_with_gst = base_amount
-        else:
             amount_with_gst = base_amount + ((base_amount * 5) / 100)
+        else:
+            amount_with_gst = base_amount 
         
         hall_rent = Decimal(self.hall_rent or 0)
         extra_total = sum(Decimal(charge.get('rate', 0)) for charge in self.extra_charges)

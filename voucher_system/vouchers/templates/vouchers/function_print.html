@@ -242,6 +242,7 @@
                     </div>
 
             <div class="col-center"><strong>Booked By:</strong> {{ function.booked_by }}</div>
+            
             <div class="col-right">
                 <strong>Contact:</strong>
                 {% if function.contact_numbers %}
@@ -263,13 +264,13 @@
         <tr>
     <td>
         <strong>Rate Per Pax</strong>
-        <small style="color: #666; margin-left: 6px;">
+       <!-- <small style="color: #666; margin-left: 6px;">
             {% if function.gst_option == 'INCLUDING' %}
                 (Incl. GST)
             {% else %}
                 (Without. GST)
             {% endif %}
-        </small>
+        </small> -->
     </td>
     <td class="amount">₹{{ function.rate_per_pax|floatformat:2 }}</td>
 </tr>

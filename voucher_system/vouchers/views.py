@@ -1966,9 +1966,28 @@ class FunctionConfirmAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        """Confirm a function with advance payment, due amount, and food times"""
-        if not (request.user.is_superuser or request.user.groups.filter(name='Admin Staff').exists()):
-            return Response({'error': 'Permission denied'}, status=403)
+        # 1️⃣ Get active company
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company selected'}, status=400)
+
+        # 2️⃣ Permission check (THIS IS THE FIX)
+        has_perm, error = check_user_permission(
+            request.user,
+            'can_edit_function',   # or create can_confirm_function
+            active_company_id
+        )
+        if not has_perm:
+            return Response({'error': error}, status=403)
+
+        # 3️⃣ Get function ONLY from active company
+        try:
+            function = FunctionBooking.objects.get(
+                pk=pk,
+                company_id=active_company_id
+            )
+        except FunctionBooking.DoesNotExist:
+            return Response({'error': 'Function not found'}, status=404)
 
         try:
             function = FunctionBooking.objects.get(pk=pk)

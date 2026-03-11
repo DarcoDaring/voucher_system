@@ -129,7 +129,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     
     # ✅ Custom login/company selection (override with different name)
-    path('accounts/login/', CustomLoginView.as_view(), name='login'),
+    
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('select-company/', SelectCompanyView.as_view(), name='select_company'),
     path('set-company/', SetCompanyView.as_view(), name='set_company'),

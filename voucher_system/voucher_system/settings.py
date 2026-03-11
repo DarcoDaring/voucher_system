@@ -133,11 +133,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+
 
 USE_I18N = True
 
-USE_TZ = True
+
 
 
 # Static files (CSS, JavaScript, Images)
@@ -180,4 +180,10 @@ LOGGING = {
 
 
 LOGIN_REDIRECT_URL = 'home'        # ← AFTER SUCCESSFUL LOGIN → /
+
 LOGOUT_REDIRECT_URL = 'home'       # ← Optional: after logout
+# Session expires after 30 minutes (600 seconds) of inactivity
+SESSION_COOKIE_AGE = 600
+
+# Reset session expiry time on every request
+SESSION_SAVE_EVERY_REQUEST = True
