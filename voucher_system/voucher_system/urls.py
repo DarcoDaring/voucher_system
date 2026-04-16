@@ -21,9 +21,12 @@ from vouchers.views import (
     CompanyToggleActiveAPI, CompanyDeleteAPI,
     UserMembershipListAPI, UserMembershipCreateAPI,
     UserMembershipUpdateAPI, UserMembershipDeleteAPI, DesignationListAPI,
-    AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI,
+    AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI,WhatsAppTestLogAPI,
 )
-
+from vouchers.mobile_api import (
+    MobileLoginAPI, MobileVoucherListAPI,
+    MobileVoucherDetailAPI, MobileVoucherApprovalAPI,
+)
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -133,5 +136,13 @@ urlpatterns = [
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('select-company/', SelectCompanyView.as_view(), name='select_company'),
     path('set-company/', SetCompanyView.as_view(), name='set_company'),
+
+    path('api/whatsapp/test-logs/', WhatsAppTestLogAPI.as_view(), name='whatsapp_test_logs'),
+
+    # ── MOBILE APP (token-based) ────────────────────────────────────
+path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),
+path('api/mobile/vouchers/',                 MobileVoucherListAPI.as_view(),     name='mobile_voucher_list'),
+path('api/mobile/vouchers/<int:pk>/',        MobileVoucherDetailAPI.as_view(),   name='mobile_voucher_detail'),
+path('api/mobile/vouchers/<int:pk>/action/', MobileVoucherApprovalAPI.as_view(), name='mobile_voucher_action'),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

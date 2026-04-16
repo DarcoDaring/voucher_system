@@ -164,3 +164,62 @@ Not Found: /favicon.ico
 Not Found: /media/vouchers/particulars/Screenshot_32_TchyUZJ.png
 "GET /media/vouchers/particulars/Screenshot_32_TchyUZJ.png HTTP/1.1" 404 179
 D:\Internship\PV4\voucher_system\voucher_system\settings.py changed, reloading.
+Error sending voucher notifications: 'str' object has no attribute 'strftime'
+Traceback (most recent call last):
+  File "D:\PaymentVoucher\voucher_system\vouchers\whatsapp_notification.py", line 218, in notify_approvers_new_voucher
+    message = _build_approval_message(
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PaymentVoucher\voucher_system\vouchers\whatsapp_notification.py", line 271, in _build_approval_message
+    voucher_date = voucher.voucher_date.strftime("%d %b %Y")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'strftime'
+WhatsApp notification sent to GM (+919446017520) for voucher VCH0006
+Voucher VCH0006: Notified 1 approver(s)
+[WhatsApp TEST] To: +919446017520 | Message: ? *Voucher Approval Required*
+
+Hello GM,
+
+A new voucher has been created and requires your approval....
+[WhatsApp TEST] To: +919446017520 | Message: ? *Voucher Approval Required*
+
+Hello GM,
+
+A new voucher has been created and requires your approval....
+[WhatsApp TEST] To: +918590649355 | Message: ? *Voucher Approval Required*
+
+Hello Director,
+
+A new voucher has been created and requires your app...
+WhatsApp notification sent to GM (+919446017520) for voucher VCH0010
+WhatsApp notification sent to Director (+918590649355) for voucher VCH0010
+Voucher VCH0010: Notified 2 approver(s)
+[WhatsApp TEST] To: +919446017520 | Message: ? *Voucher Approval Required*
+
+Hello GM,
+
+A new voucher has been created and requires your approval....
+[WhatsApp TEST] To: +918590649355 | Message: ? *Voucher Approval Required*
+
+Hello Director,
+
+A new voucher has been created and requires your app...
+[WhatsApp TEST] To: +919446017520 | Message: ? *Voucher Approval Required*
+
+Hello GM,
+
+A new voucher has been created and requires your approval....
+[WhatsApp TEST] To: +918590649355 | Message: ? *Voucher Approval Required*
+
+Hello Director,
+
+A new voucher has been created and requires your app...
+[WhatsApp TEST] To: +919446017520 | Message: ? *Voucher Approval Required*
+
+Hello Antony,
+
+A new voucher has been created and requires your appro...
+[WhatsApp TEST] To: +918590649355 | Message: ? *Voucher Approval Required*
+
+Hello Director,
+
+A new voucher has been created and requires your app...

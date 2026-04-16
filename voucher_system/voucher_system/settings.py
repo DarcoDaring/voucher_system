@@ -26,15 +26,7 @@ LANGUAGE_CODE = 'en-in'  # English (India)
 import datetime
 from django.utils import timezone
 
-print("=" * 60)
-print("⚙️  DJANGO TIMEZONE CONFIGURATION")
-print("=" * 60)
-print(f"TIME_ZONE setting: {TIME_ZONE}")
-print(f"USE_TZ: {USE_TZ}")
-print(f"Current timezone: {timezone.get_current_timezone()}")
-print(f"Current datetime: {timezone.now()}")
-print(f"Current time (IST): {timezone.localtime(timezone.now())}")
-print("=" * 60)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -62,9 +54,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'vouchers.apps.VouchersConfig',
+    'rest_framework.authtoken',
+     "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -187,3 +182,5 @@ SESSION_COOKIE_AGE = 600
 
 # Reset session expiry time on every request
 SESSION_SAVE_EVERY_REQUEST = True
+SITE_URL = "http://127.0.0.1:8000"
+CORS_ALLOW_ALL_ORIGINS = True

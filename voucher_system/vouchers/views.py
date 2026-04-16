@@ -26,7 +26,12 @@ from django.utils import timezone
 from .models import UserPermission,CompanyMembership
 from django.views import View  # 
 from django.contrib.auth import authenticate, login as auth_login, logout
+from .whatsapp_notification import notify_approvers_new_voucher
 
+from vouchers.mobile_api import (
+     MobileLoginAPI, MobileVoucherListAPI,
+     MobileVoucherDetailAPI, MobileVoucherApprovalAPI,
+ )
 def get_user_designation_for_company(user, company_id):
     """
     Helper function to get a user's designation for a specific company.
@@ -876,10 +881,16 @@ class VoucherCreateAPI(APIView):
                     voucher = Voucher.objects.select_for_update().get(
                         id=voucher_id,
                         created_by=request.user,
-                        company=company,  # ✅ VERIFY BELONGS TO ACTIVE COMPANY
-                        status='PENDING',
-                        approvals__isnull=True  # only editable if no one approved yet
+                        company=company,
+                        status='PENDING'
                     )
+
+                    # ✅ SAME LOGIC AS approvals__isnull=True
+                    if voucher.approvals.exists():
+                        return Response(
+                            {'error': 'Voucher cannot be edited because it already has approvals.'},
+                            status=400
+                        )
                 else:
                     # ✅ CREATE WITH COMPANY
                     voucher = Voucher(created_by=request.user, company=company)
@@ -1042,6 +1053,16 @@ class VoucherCreateAPI(APIView):
                         }, status=400)
 
                 action = "updated" if is_edit else "created"
+                
+                # Send WhatsApp notifications to approvers on new voucher creation
+                if not is_edit:
+                    try:
+                        notify_approvers_new_voucher(voucher, request)
+                    except Exception as notify_err:
+                        import traceback
+                        traceback.print_exc()
+                        print(f"⚠️ WhatsApp notification failed (voucher was still created): {notify_err}")
+                
                 return Response({
                     'success': True,
                     'message': f'Voucher {voucher.voucher_number} {action} successfully!',
@@ -3223,4 +3244,22 @@ class UserMembershipDeleteAPI(APIView):
         return Response({
             'success': True,
             'message': f'{user_name} removed from {company_name}'
+        })
+    
+
+class WhatsAppTestLogAPI(APIView):
+    """View recent WhatsApp notification test logs (superuser only)"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        
+        from .whatsapp_notification import get_test_logs
+        logs = get_test_logs(limit=50)
+        
+        return Response({
+            'mode': 'TEST',
+            'count': len(logs),
+            'logs': logs
         })
