@@ -1287,20 +1287,36 @@ function handlePermissionChange(event) {
                     <div class="modal-dialog modal-xl">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title">Create New Voucher</h5>
+                                <h5 class="modal-title" id="createVoucherModalTitle">New Voucher</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
                                 <form id="createVoucherForm" enctype="multipart/form-data">
-                                    <!-- 1. Voucher Date - Top Right -->
-                                    <div class="text-end mb-4">
-                                        <div class="d-inline-block" style="width: 180px;">
-                                            <label for="voucher_date" class="form-label fw-bold text-primary">
-                                                Voucher Date <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="date" class="form-control form-control-sm" id="voucher_date" name="voucher_date" max="{{ today }}" required>
+                                    <!-- 1. Voucher Number (left) + Voucher Date (right) -->
+                                    <div class="d-flex justify-content-between align-items-end mb-4">
+    
+                                    <!-- LEFT: Voucher Number -->
+                                    <div>
+                                        <!-- SAME STYLE AS Voucher Date -->
+                                        <label class="form-label fw-bold text-primary">
+                                            Voucher Number
+                                        </label>
+
+                                        <!-- NORMAL TEXT (not bold, not blue) -->
+                                        <div id="voucherNumberPreview" class="form-control form-control-sm bg-light text-dark">
+                                            <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
                                         </div>
                                     </div>
+
+                                    <!-- RIGHT: Voucher Date -->
+                                    <div style="width: 180px;">
+                                        <label for="voucher_date" class="form-label fw-bold text-primary">
+                                            Voucher Date <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control form-control-sm" id="voucher_date" name="voucher_date" max="{{ today }}" required>
+                                    </div>
+
+                                </div>
                                     <!-- 2. Title (SUPER SMALL) + Pay To (Full) -->
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-2">
@@ -1326,6 +1342,7 @@ function handlePermissionChange(event) {
                                                     <option value="CASH">Cash</option>
                                                     <option value="CHEQUE">Cheque</option>
                                                     <option value="PETTY_CASH">Petty Cash</option>
+                                                    <option value="ONLINE">Online</option>
                                                 </select>
                                             </div>
                                             <!-- Cheque Number -->
@@ -1744,29 +1761,55 @@ if (editUserModalEl) {
             const accountDetailsSelect = document.getElementById('account_details');
             
 
-            voucherModal.addEventListener('show.bs.modal', loadAccounts);
+            voucherModal.addEventListener('show.bs.modal', function() {
+    loadAccounts();
+    // Fetch and display the next voucher number
+    const preview = document.getElementById('voucherNumberPreview');
+    if (preview) {
+        preview.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" role="status"></span>';
+    }
+    fetch("{% url 'voucher_next_number' %}", {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+        if (preview && data && data.voucher_number) {
+            preview.textContent = data.voucher_number;
+        } else if (preview) {
+            preview.textContent = '—';
+        }
+    })
+    .catch(() => {
+        if (preview) preview.textContent = '—';
+    });
+
+    const titleEl = document.getElementById('createVoucherModalTitle');
+    if (titleEl) titleEl.textContent = 'New Voucher';
+});
             // Show/Hide Cheque Fields
 function toggleChequeFields() {
     if (!paymentTypeSelect) return;
 
-    // get the actual <select id="account_details"> element (may be inside the modal form)
     const accountDetailsSelect = document.getElementById('account_details');
+    const paymentValue = paymentTypeSelect.value;
 
-    if (paymentTypeSelect.value === "CHEQUE") {
+    if (paymentValue === "CHEQUE") {
         chequeField.style.display = "block";
         chequeDateField.style.display = "block";
         accountDetailsField.style.display = "block";
         chequeAttachmentField.style.display = "block";
-
-        // Make account_details required only when cheque selected
+        if (accountDetailsSelect) accountDetailsSelect.required = true;
+    } else if (paymentValue === "ONLINE") {
+        chequeField.style.display = "none";
+        chequeDateField.style.display = "none";
+        accountDetailsField.style.display = "block";
+        chequeAttachmentField.style.display = "none";
         if (accountDetailsSelect) accountDetailsSelect.required = true;
     } else {
         chequeField.style.display = "none";
         chequeDateField.style.display = "none";
         accountDetailsField.style.display = "none";
         chequeAttachmentField.style.display = "none";
-
-        // Remove required so browser won't block submit when hidden
         if (accountDetailsSelect) accountDetailsSelect.required = false;
     }
 }
@@ -1865,6 +1908,10 @@ addBtn.onclick = () => {
                     formData.append('cheque_date', chequeDate);
                     const accVal = accountDetailsSelect.value;
                     if (!accVal) return alert('Account Details required for Cheque');
+                    formData.append('account_details', accVal);
+                } else if (paymentType === 'ONLINE') {
+                    const accVal = accountDetailsSelect.value;
+                    if (!accVal) return alert('Account Details required for Online payment');
                     formData.append('account_details', accVal);
                 }
 

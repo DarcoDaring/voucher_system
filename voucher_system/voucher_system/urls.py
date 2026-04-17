@@ -21,7 +21,7 @@ from vouchers.views import (
     CompanyToggleActiveAPI, CompanyDeleteAPI,
     UserMembershipListAPI, UserMembershipCreateAPI,
     UserMembershipUpdateAPI, UserMembershipDeleteAPI, DesignationListAPI,
-    AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI,WhatsAppTestLogAPI,
+    AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI, VoucherNextNumberAPI,WhatsAppTestLogAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/vouchers/create/', VoucherCreateAPI.as_view(), name='voucher_create_api'),
     path('api/vouchers/<int:pk>/approve/', VoucherApprovalAPI.as_view(), name='voucher_approval_api'),
     path('api/vouchers/<int:pk>/delete/', VoucherDeleteAPI.as_view(), name='voucher_delete_api'),
+    path('api/vouchers/next-number/', VoucherNextNumberAPI.as_view(), name='voucher_next_number'),
 
     # =============================================
     # FUNCTION BOOKING MANAGEMENT

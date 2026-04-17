@@ -177,8 +177,8 @@ LOGGING = {
 LOGIN_REDIRECT_URL = 'home'        # ← AFTER SUCCESSFUL LOGIN → /
 
 LOGOUT_REDIRECT_URL = 'home'       # ← Optional: after logout
-# Session expires after 30 minutes (600 seconds) of inactivity
-SESSION_COOKIE_AGE = 600
+# Session expires after 30 minutes (1800 seconds) of inactivity
+SESSION_COOKIE_AGE = 1800
 
 # Reset session expiry time on every request
 SESSION_SAVE_EVERY_REQUEST = True

@@ -199,6 +199,11 @@ class VoucherSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'cheque_date': 'Required for Cheque payments.'})
             if not data.get('account_details'):
                 raise serializers.ValidationError({'account_details': 'Required for Cheque payments.'})
+        elif payment_type == 'ONLINE':
+            if not data.get('account_details'):
+                raise serializers.ValidationError({'account_details': 'Required for Online payments.'})
+            data['cheque_number'] = None
+            data['cheque_date'] = None
         else:
             data['cheque_number'] = None
             data['cheque_date'] = None

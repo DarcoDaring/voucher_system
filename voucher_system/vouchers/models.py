@@ -156,6 +156,7 @@ class Voucher(models.Model):
         ('CASH', 'Cash'),
         ('CHEQUE', 'Cheque'),
         ('PETTY_CASH', 'Petty Cash'),
+        ('ONLINE', 'Online'),
     )
     company = models.ForeignKey(
             Company, 
@@ -321,8 +322,13 @@ class Voucher(models.Model):
                 raise ValidationError("Cheque date is required for Cheque payments.")
             if not self.account_details:
                 raise ValidationError("Account Details is required for Cheque payments.")
+        elif self.payment_type == 'ONLINE':
+            if not self.account_details:
+                raise ValidationError("Account Details is required for Online payments.")
+            self.cheque_number = None
+            self.cheque_date = None
         else:
-            # Clear cheque fields if not CHEQUE
+            # Clear cheque fields if not CHEQUE or ONLINE
             self.cheque_number = None
             self.cheque_date = None
             self.account_details = None

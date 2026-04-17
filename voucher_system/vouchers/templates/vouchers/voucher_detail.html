@@ -12,7 +12,7 @@
             <!-- HEADER (ONLY VOUCHER NUMBER) -->
             <div class="card-header bg-primary text-white py-3">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">Voucher {{ voucher.voucher_number }}</h5>
+                    <h5 class="mb-0 fw-bold">Voucher No {{ voucher.voucher_number }}</h5>
                     <div class="text-end">
                         <!-- COMPANY INFO REMOVED FROM SCREEN VIEW -->
                     </div>
@@ -39,8 +39,16 @@
                                     {% if voucher.payment_type == 'CASH' %}Cash
                                     {% elif voucher.payment_type == 'CHEQUE' %}Cheque
                                     {% elif voucher.payment_type == 'PETTY_CASH' %}Petty Cash
+                                    {% elif voucher.payment_type == 'ONLINE' %}Online
                                     {% endif %}
                                 </span>
+
+                                <!-- ONLINE: Show Account Details -->
+                                {% if voucher.payment_type == 'ONLINE' and voucher.account_details %}
+                                    <span class="ms-3 text-muted">
+                                        <strong class="text-dark">Account:</strong> {{ voucher.account_details }}
+                                    </span>
+                                {% endif %}
 
                                 <!-- CHEQUE: Show No, Date, Account in same format -->
                                 {% if voucher.payment_type == 'CHEQUE' and voucher.cheque_number %}
@@ -395,8 +403,12 @@
                     {% if voucher.payment_type == 'CASH' %}Cash
                     {% elif voucher.payment_type == 'CHEQUE' %}Cheque
                     {% elif voucher.payment_type == 'PETTY_CASH' %}Petty Cash
+                    {% elif voucher.payment_type == 'ONLINE' %}Online
                     {% endif %}
                 </p>
+                {% if voucher.payment_type == 'ONLINE' and voucher.account_details %}
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Account:</strong> {{ voucher.account_details }}</p>
+                {% endif %}
                 {% if voucher.payment_type == 'CHEQUE' and voucher.cheque_number %}
                     <p style="margin: 4px 0; font-size: 13px;"><strong>Cheque No:</strong> {{ voucher.cheque_number }}</p>
                     {% if voucher.cheque_date %}
@@ -745,6 +757,17 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <small class="text-muted">Current files: ${currentText}</small>
                             </div>`);
                     }
+                } else if (VOUCHER_EDIT_DATA.payment_type === 'ONLINE') {
+                    // Hide cheque-specific fields, show account details only
+                    chequeFields.forEach(field => field.style.display = 'none');
+                    const accField = document.getElementById('accountDetailsField');
+                    if (accField) accField.style.display = '';
+                    if (accountDetails) {
+                        accountDetails.value = VOUCHER_EDIT_DATA.account_details || '';
+                        accountDetails.required = true;
+                    }
+                    if (chequeNumber) chequeNumber.value = '';
+                    if (chequeDate) chequeDate.value = '';
                 } else {
                     chequeFields.forEach(field => field.style.display = 'none');
                     if (chequeNumber) chequeNumber.value = '';

@@ -902,6 +902,7 @@ class VoucherCreateAPI(APIView):
                 voucher.pay_to = data['pay_to']
 
                 # Cheque fields
+                # Cheque / Online fields
                 if data['payment_type'] == 'CHEQUE':
                     voucher.cheque_number = data.get('cheque_number', '').strip()
                     voucher.cheque_date = data.get('cheque_date') or None
@@ -913,6 +914,12 @@ class VoucherCreateAPI(APIView):
                         return Response({'error': 'Cheque date is required.'}, status=400)
                     if not voucher.account_details:
                         return Response({'error': 'Account Details is required.'}, status=400)
+                elif data['payment_type'] == 'ONLINE':
+                    voucher.account_details_id = data.get('account_details') or None
+                    voucher.cheque_number = None
+                    voucher.cheque_date = None
+                    if not voucher.account_details_id:
+                        return Response({'error': 'Account Details is required for Online payments.'}, status=400)
                 else:
                     voucher.cheque_number = voucher.cheque_date = voucher.account_details = None
 
@@ -1078,6 +1085,31 @@ class VoucherCreateAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': str(e)}, status=500)
+
+class VoucherNextNumberAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'voucher_number': 'V0001'})
+        try:
+            company = Company.objects.get(id=active_company_id)
+            last = Voucher.objects.filter(company=company).order_by('-id').first()
+            if last and last.voucher_number:
+                import re
+                match = re.search(r'(\d+)$', last.voucher_number)
+                if match:
+                    num = int(match.group(1)) + 1
+                    prefix = last.voucher_number[:match.start()]
+                    next_number = f"{prefix}{num:04d}"
+                else:
+                    next_number = 'V0001'
+            else:
+                next_number = 'V0001'
+        except Company.DoesNotExist:
+            next_number = 'V0001'
+        return Response({'voucher_number': next_number})
         
 class AccountDetailListAPI(APIView):
     permission_classes = [IsAuthenticated]
