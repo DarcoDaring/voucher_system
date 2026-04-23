@@ -1761,31 +1761,69 @@ if (editUserModalEl) {
             const accountDetailsSelect = document.getElementById('account_details');
             
 
-            voucherModal.addEventListener('show.bs.modal', function() {
+           voucherModal.addEventListener('show.bs.modal', function (event) {
     loadAccounts();
-    // Fetch and display the next voucher number
-    const preview = document.getElementById('voucherNumberPreview');
-    if (preview) {
-        preview.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" role="status"></span>';
-    }
-    fetch("{% url 'voucher_next_number' %}", {
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-        if (preview && data && data.voucher_number) {
-            preview.textContent = data.voucher_number;
-        } else if (preview) {
-            preview.textContent = '—';
-        }
-    })
-    .catch(() => {
-        if (preview) preview.textContent = '—';
-    });
 
+    const preview = document.getElementById('voucherNumberPreview');
     const titleEl = document.getElementById('createVoucherModalTitle');
-    if (titleEl) titleEl.textContent = 'New Voucher';
+
+   let existingNumber = null;
+
+// ✅ Case 1: EDIT MODE
+if (typeof VOUCHER_EDIT_DATA !== "undefined" && VOUCHER_EDIT_DATA.voucher_number) {
+    existingNumber = VOUCHER_EDIT_DATA.voucher_number;
+}
+
+// ✅ Case 2: Button click (new voucher from list)
+else if (event.relatedTarget) {
+    const button = event.relatedTarget;
+    existingNumber = button.getAttribute('data-voucher-number');
+}
+
+if (existingNumber) {
+    preview.innerHTML = existingNumber;
+    if (titleEl) titleEl.innerText = "Edit Voucher";
+} else {
+    if (titleEl) titleEl.innerText = "New Voucher";
+
+    preview.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+    fetch("{% url 'voucher_next_number' %}")
+    .then(res => res.json())
+    .then(data => {
+        preview.innerHTML = data.next_number;
+    });
+}
+
+    // ✅ EDIT MODE
+    if (existingNumber) {
+        preview.innerHTML = existingNumber;
+        if (titleEl) titleEl.innerText = "Edit Voucher";
+    } 
+    
+    // ✅ CREATE MODE
+    else {
+        if (titleEl) titleEl.innerText = "New Voucher";
+
+        preview.innerHTML = `
+            <span class="spinner-border spinner-border-sm text-secondary"></span>
+        `;
+
+        fetch("{% url 'voucher_next_number' %}", {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            preview.innerHTML = data.next_number;
+        })
+        .catch(() => {
+            preview.innerHTML = "Error";
+        });
+    }
 });
+        // ✅ OUTSIDE event listener
+        const titleEl = document.getElementById('createVoucherModalTitle');
+        if (titleEl) titleEl.textContent = 'New Voucher';
             // Show/Hide Cheque Fields
 function toggleChequeFields() {
     if (!paymentTypeSelect) return;

@@ -244,9 +244,14 @@
 
                     <!-- EDIT BUTTON (ONLY FOR ACCOUNTANT + PENDING + NO APPROVALS YET) -->
                     {% if user.groups.all.0.name == 'Accountants' and voucher.status == 'PENDING' and voucher.approvals.count == 0 %}
-                        <button type="button" class="btn btn-warning px-5" id="editVoucherBtn">
-                            Edit
-                        </button>
+                        <button type="button"
+        class="btn btn-warning px-5"
+        id="editVoucherBtn"
+        data-voucher-number="{{ voucher.voucher_number }}"
+        data-bs-toggle="modal"
+        data-bs-target="#createVoucherModal">
+    Edit
+</button>
                     {% elif user.groups.all.0.name == 'Accountants' and voucher.approvals.count > 0 %}
                         <button type="button" class="btn btn-secondary px-5" disabled>
                             Edit
@@ -550,6 +555,7 @@ function printVoucher() {
 // SAFE DATA — NO TemplateSyntaxError
 const VOUCHER_EDIT_DATA = {
     id: {{ voucher.id|safe }},
+    voucher_number: "{{ voucher.voucher_number|escapejs }}",
     voucher_date: "{{ voucher.voucher_date|date:'Y-m-d'|default:'' }}",
     payment_type: "{{ voucher.payment_type|default:'' }}",
     name_title: "{{ voucher.name_title|escapejs }}",
@@ -557,6 +563,7 @@ const VOUCHER_EDIT_DATA = {
     cheque_number: "{{ voucher.cheque_number|default:''|escapejs }}",
     cheque_date: "{{ voucher.cheque_date|date:'Y-m-d'|default:'' }}",
     account_details: "{{ voucher.account_details|default:''|escapejs }}",
+    
 
     // ✅ FIX: ADD THIS
     main_attachments: [
@@ -699,13 +706,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // === EDIT BUTTON – SAFE VERSION ===
     const editBtn = document.getElementById('editVoucherBtn');
+  
     if (editBtn) {
         editBtn.addEventListener('click', function () {
+            
+            window.IS_EDIT_MODE = true;
             const createModal = document.getElementById('createVoucherModal');
-            if (!createModal) {
-                alert("Edit modal not found!");
-                return;
-            }
+
+if (!createModal) {
+    alert("Edit modal not found!");
+    return;
+}
+
+createModal.setAttribute(
+    'data-voucher-number',
+    VOUCHER_EDIT_DATA.voucher_number
+);
 
             const modalTitle = createModal.querySelector('.modal-title');
             if (modalTitle) {
@@ -727,6 +743,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const paymentTypeInput = form.querySelector('[name="payment_type"]');
                 const nameTitleInput = form.querySelector('[name="name_title"]');
                 const payToInput = form.querySelector('[name="pay_to"]');
+                const voucherNumberInput = form.querySelector('[name="voucher_number"]');
+                if (voucherNumberInput) {
+                    voucherNumberInput.value = VOUCHER_EDIT_DATA.voucher_number;
+                }
                 
                 if (voucherDateInput) voucherDateInput.value = VOUCHER_EDIT_DATA.voucher_date;
                 if (paymentTypeInput) paymentTypeInput.value = VOUCHER_EDIT_DATA.payment_type;
@@ -843,6 +863,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const submitBtn = form.querySelector('button[type="submit"]');
                 if (submitBtn) submitBtn.textContent = 'Update Voucher';
+                setTimeout(() => {
+                    const voucherNumberInput = form.querySelector('[name="voucher_number"]');
+                    if (voucherNumberInput) {
+                        voucherNumberInput.value = VOUCHER_EDIT_DATA.voucher_number;
+                    }
+                }, 50);
                 
                 createModal.removeEventListener('shown.bs.modal', handler);
             });

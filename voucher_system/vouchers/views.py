@@ -862,10 +862,7 @@ class VoucherCreateAPI(APIView):
             if not has_perm:
                 return Response({'error': error}, status=403)
 
-        # ✅ GET ACTIVE COMPANY - REQUIRED FOR CREATE & EDIT
-        active_company_id = request.session.get('active_company_id')
-        if not active_company_id:
-            return Response({'error': 'No active company selected'}, status=400)
+        
         
         try:
             company = Company.objects.get(id=active_company_id)
@@ -880,20 +877,32 @@ class VoucherCreateAPI(APIView):
                 if is_edit:
                     voucher = Voucher.objects.select_for_update().get(
                         id=voucher_id,
-                        created_by=request.user,
-                        company=company,
-                        status='PENDING'
+                        company=company
                     )
 
-                    # ✅ SAME LOGIC AS approvals__isnull=True
-                    if voucher.approvals.exists():
+                    # ✅ Rule 1: Only pending vouchers editable
+                    if voucher.status != 'PENDING':
                         return Response(
-                            {'error': 'Voucher cannot be edited because it already has approvals.'},
+                            {'error': 'Only pending vouchers can be edited.'},
                             status=400
                         )
+
+                    # ✅ Rule 2: If ANY approval exists → block edit
+                    if voucher.approvals.exists():
+                        return Response(
+                            {'error': 'Voucher cannot be edited once it has been approved by any user.'},
+                            status=400
+                        )
+
                 else:
-                    # ✅ CREATE WITH COMPANY
-                    voucher = Voucher(created_by=request.user, company=company)
+                    # ✅ CREATE MODE
+                    voucher = Voucher(
+                        created_by=request.user,
+                        company=company
+                    )
+
+                    
+                
 
                 # Basic fields
                 voucher.voucher_date = data['voucher_date']
@@ -912,7 +921,7 @@ class VoucherCreateAPI(APIView):
                         return Response({'error': 'Cheque number is required.'}, status=400)
                     if not voucher.cheque_date:
                         return Response({'error': 'Cheque date is required.'}, status=400)
-                    if not voucher.account_details:
+                    if not voucher.account_details_id:
                         return Response({'error': 'Account Details is required.'}, status=400)
                 elif data['payment_type'] == 'ONLINE':
                     voucher.account_details_id = data.get('account_details') or None
