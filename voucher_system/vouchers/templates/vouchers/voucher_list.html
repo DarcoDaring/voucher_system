@@ -42,12 +42,13 @@
             </thead>
             <tbody id="voucher-tbody">
                 {% for voucher in vouchers %}
-               <tr class="voucher-row"
+              <tr class="voucher-row{% if voucher.can_approve and voucher.status == 'PENDING' %} table-warning{% endif %}"
     data-voucher-id="{{ voucher.id }}"
     data-status="{{ voucher.status }}"
     data-pay-to="{{ voucher.pay_to|lower }}"
     data-voucher-number="{{ voucher.voucher_number|lower }}"
-    data-particulars="{% for p in voucher.particulars.all %}{{ p.description|lower }}{% if not forloop.last %} {% endif %}{% endfor %}">
+    data-particulars="{% for p in voucher.particulars.all %}{{ p.description|lower }}{% if not forloop.last %} {% endif %}{% endfor %}"
+    data-needs-approval="{{ voucher.can_approve|yesno:'true,false' }}">
 
                     <td><strong>{{ voucher.voucher_number }}</strong></td>
 

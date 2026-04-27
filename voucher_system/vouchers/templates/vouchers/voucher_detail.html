@@ -68,26 +68,26 @@
                                 {% endif %}
                             </div>
 
-                            <!-- CHEQUE ATTACHMENTS - MULTIPLE (REPLACES OLD SINGLE FIELD) -->
+                            <!-- CHEQUE ATTACHMENTS -->
                             {% if voucher.cheque_attachments.exists %}
                             <div class="mb-4">
                                 <div class="d-flex align-items-center gap-3 flex-wrap">
                                     <strong class="text-primary">Cheque Attachment{{ voucher.cheque_attachments.count|pluralize }}</strong>
                                     {% for att in voucher.cheque_attachments.all %}
-    {% with ext=att.file.name|lower|split:"."|last %}
-        {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
-            <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
-                                                            data-url="{{ att.file.url }}"
-                                                            data-filename="{{ att.file.name|filename }}">
-                                                        View
-                                                    </button>
-        {% else %}
-            <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary me-2 mb-2">
-                Open File
-            </a>
-        {% endif %}
-    {% endwith %}
-{% endfor %}
+                                        {% with ext=att.file.name|lower|split:"."|last %}
+                                            {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+                                                <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
+                                                        data-url="{{ att.file.url }}"
+                                                        data-filename="{{ att.file.name|filename }}">
+                                                    View
+                                                </button>
+                                            {% else %}
+                                                <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary me-2 mb-2">
+                                                    Open File
+                                                </a>
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endfor %}
                                     {% if voucher.cheque_attachments.count > 3 %}
                                         <span class="badge bg-light text-dark border small">
                                             +{{ voucher.cheque_attachments.count|add:"-3" }} more
@@ -97,6 +97,36 @@
                             </div>
                             {% elif voucher.payment_type == 'CHEQUE' %}
                             <small class="text-warning d-block">Warning: Cheque attachment missing</small>
+                            {% endif %}
+
+                            <!-- ONLINE ATTACHMENTS -->
+                            {% if voucher.payment_type == 'ONLINE' %}
+                            <div class="mt-2">
+                                {% if voucher.online_attachments.exists %}
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <strong class="text-primary">Online Attachment{{ voucher.online_attachments.count|pluralize }}</strong>
+                                    {% for att in voucher.online_attachments.all %}
+                                        {% with ext=att.file.name|lower|split:"."|last %}
+                                            {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-primary view-attachment-btn"
+                                                        data-url="{{ att.file.url }}"
+                                                        data-filename="{{ att.file.name|filename }}">
+                                                    View
+                                                </button>
+                                            {% else %}
+                                                <a href="{{ att.file.url }}" target="_blank"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    Open
+                                                </a>
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <small class="text-warning d-block">Warning: Online payment attachment missing</small>
+                                {% endif %}
+                            </div>
                             {% endif %}
 
                             <!-- RIGHT: EMPTY -->
@@ -111,36 +141,36 @@
                     <h4 class="text-primary fw-bold mb-0">{{ voucher.name_title }} {{ voucher.pay_to }}</h4>
                 </div>
 
-                <!-- MAIN ATTACHMENTS - MULTIPLE (REPLACES OLD SINGLE voucher.attachment) -->
+                <!-- MAIN ATTACHMENTS -->
                 {% if voucher.main_attachments.exists %}
-<div class="mb-4">
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-        <strong class="text-success me-2">Main Attachment{{ voucher.main_attachments.count|pluralize }}</strong>
-        {% for att in voucher.main_attachments.all %}
-            {% with ext=att.file.name|lower|split:"."|last %}
-                {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
-                    <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
-                            data-url="{{ att.file.url }}"
-                            data-filename="{{ att.file.name|filename }}">
-                        View
-                    </button>
-                {% else %}
-                    <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                        Open
-                    </a>
+                <div class="mb-4">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <strong class="text-success me-2">Main Attachment{{ voucher.main_attachments.count|pluralize }}</strong>
+                        {% for att in voucher.main_attachments.all %}
+                            {% with ext=att.file.name|lower|split:"."|last %}
+                                {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
+                                            data-url="{{ att.file.url }}"
+                                            data-filename="{{ att.file.name|filename }}">
+                                        View
+                                    </button>
+                                {% else %}
+                                    <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        Open
+                                    </a>
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                        {% if voucher.main_attachments.count > 5 %}
+                            <span class="badge bg-light text-dark border small">
+                                +{{ voucher.main_attachments.count|add:"-5" }} more
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endif %}
-            {% endwith %}
-        {% endfor %}
-        {% if voucher.main_attachments.count > 5 %}
-            <span class="badge bg-light text-dark border small">
-                +{{ voucher.main_attachments.count|add:"-5" }} more
-            </span>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
 
-                <!-- 3. PARTICULARS - NOW SHOWS MULTIPLE ATTACHMENTS PER ROW -->
+                <!-- 3. PARTICULARS -->
                 <div class="mb-4">
                     <h6 class="text-success fw-bold mb-3">Particulars</h6>
                     <div class="table-responsive">
@@ -157,28 +187,28 @@
                                 <tr>
                                     <td class="fw-medium">{{ p.description }}</td>
                                     <td>
-    {% if p.attachments.exists %}
-        <div class="d-flex flex-wrap gap-1">
-            {% for att in p.attachments.all %}
-                {% with ext=att.file.name|lower|split:"."|last %}
-                    {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
-                        <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
-                                                            data-url="{{ att.file.url }}"
-                                                            data-filename="{{ att.file.name|filename }}">
-                                                        View
-                                                    </button>
-                    {% else %}
-                        <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                            Open
-                        </a>
-                    {% endif %}
-                {% endwith %}
-            {% endfor %}
-        </div>
-    {% else %}
-        <span class="text-muted">—</span>
-    {% endif %}
-</td>
+                                        {% if p.attachments.exists %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for att in p.attachments.all %}
+                                                    {% with ext=att.file.name|lower|split:"."|last %}
+                                                        {% if ext in "jpg,jpeg,png,gif,webp,bmp,svg,tif,tiff" %}
+                                                            <button type="button" class="btn btn-sm btn-outline-primary view-attachment-btn"
+                                                                    data-url="{{ att.file.url }}"
+                                                                    data-filename="{{ att.file.name|filename }}">
+                                                                View
+                                                            </button>
+                                                        {% else %}
+                                                            <a href="{{ att.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                                Open
+                                                            </a>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-end fw-bold text-success">₹{{ p.amount|floatformat:2 }}</td>
                                 </tr>
                                 {% empty %}
@@ -200,16 +230,16 @@
                 <!-- 5. CREATED INFO -->
                 <div class="d-flex justify-content-between text-muted small mb-3">
                     <div>
-                        <strong>Created By:</strong> 
+                        <strong>Created By:</strong>
                         {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}
                     </div>
                     <div>
-                        <strong>Created At:</strong> 
+                        <strong>Created At:</strong>
                         {{ voucher.created_at|date:"d M Y, h:i A" }}
                     </div>
                 </div>
 
-                <!-- 6. STATUS + PROGRESS -->
+                <!-- 6. STATUS -->
                 <div class="mb-4">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <strong>Status:</strong>
@@ -225,10 +255,6 @@
                             {% endif %}
                         </a>
                     </div>
-
-                    
-                    </div>
-                  
                 </div>
 
                 <!-- ONLY SHOW "Waiting for" IF PENDING -->
@@ -242,22 +268,25 @@
                 <div class="d-grid d-md-flex gap-2 justify-content-center">
                     <a href="{% url 'voucher_list' %}" class="btn btn-secondary px-5">Back to List</a>
 
-                    <!-- EDIT BUTTON (ONLY FOR ACCOUNTANT + PENDING + NO APPROVALS YET) -->
-                    {% if user.groups.all.0.name == 'Accountants' and voucher.status == 'PENDING' and voucher.approvals.count == 0 %}
+                    <!-- EDIT BUTTON — Accountant can always edit a PENDING voucher.
+                         If approvals exist they are reset on save (server-side). -->
+                    {% if user.groups.all.0.name == 'Accountants' and voucher.status == 'PENDING' %}
                         <button type="button"
-        class="btn btn-warning px-5"
-        id="editVoucherBtn"
-        data-voucher-number="{{ voucher.voucher_number }}"
-        data-bs-toggle="modal"
-        data-bs-target="#createVoucherModal">
-    Edit
-</button>
-                    {% elif user.groups.all.0.name == 'Accountants' and voucher.approvals.count > 0 %}
-                        <button type="button" class="btn btn-secondary px-5" disabled>
+                                class="btn btn-warning px-5"
+                                id="editVoucherBtn"
+                                data-voucher-number="{{ voucher.voucher_number }}"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createVoucherModal">
                             Edit
                         </button>
+                        {% if voucher.approvals.count > 0 %}
+                        <div class="text-warning small mt-1 text-center">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Editing will reset all existing approvals.
+                        </div>
+                        {% endif %}
                     {% endif %}
-                        
+
                     {% if user.groups.all.0.name == 'Admin Staff' and voucher.status == 'PENDING' %}
                         {% if not user_approval and can_approve %}
                             <button class="btn btn-success px-5 approve-btn" data-id="{{ voucher.id }}" data-status="APPROVED">Approve</button>
@@ -358,7 +387,6 @@
                     </div>
                 </div>
 
-                <!-- REJECTION REASON BOX (SEPARATE) -->
                 {% if voucher.status == 'REJECTED' %}
                     {% with reject=voucher.approvals|first_rejected %}
                         {% if reject.rejection_reason %}
@@ -380,7 +408,7 @@
     </div>
 </div>
 
-<!-- ==================== PRINT-ONLY SECTION (FINAL UPDATE) ==================== -->
+<!-- ==================== PRINT-ONLY SECTION ==================== -->
 <div id="print-section">
     <style type="text/css">
         @media print {
@@ -396,11 +424,9 @@
     </style>
 
     <div style="padding: 40px; font-family: Arial, sans-serif; max-width: 800px; margin: auto;">
-        <!-- TOP SECTION: LEFT (Voucher Info) + RIGHT (Company Info) -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px;">
-            <!-- LEFT: Payment Voucher + Details -->
             <div style="flex: 1;">
-                <h4 style="margin: margin: 0 0 8px 0; font-weight: bold; text-transform: uppercase; font-size: 18px;">Payment Voucher</h4>
+                <h4 style="margin: 0 0 8px 0; font-weight: bold; text-transform: uppercase; font-size: 18px;">Payment Voucher</h4>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Voucher No:</strong> {{ voucher.voucher_number }}</p>
                 <p style="margin: 4px 0; font-size: 13px;"><strong>Voucher Date:</strong> {{ voucher.voucher_date|date:"d M Y" }}</p>
                 <p style="margin: 4px 0; font-size: 13px;">
@@ -425,16 +451,12 @@
                 {% endif %}
             </div>
 
-            <!-- RIGHT: Company Logo + Address (Aligned with heading) -->
             <div style="flex: 1; text-align: right; display: flex; flex-direction: column; justify-content: flex-start; min-height: 60px;">
                 {% if company.logo %}
                     <div style="margin-bottom: 8px;">
                         <img src="{{ company.logo.url }}" alt="Company Logo" style="max-height: 60px; object-fit: contain;">
                     </div>
                 {% endif %}
-
-                
-
                 {% if company.gst_no or company.pan_no or company.email or company.phone %}
                     <p style="margin: 5px 0 0 0; font-size: 11px;">
                         {% if company.gst_no %}GST: {{ company.gst_no }}{% endif %}
@@ -451,17 +473,13 @@
             </div>
         </div>
 
-        <!-- PAYEE & AMOUNT -->
         <div style="display: flex; justify-content: space-between; margin: 20px 0; font-size: 14px;">
-            <div>
-                <strong>Pay To:</strong> {{ voucher.name_title }} {{ voucher.pay_to }}
-            </div>
+            <div><strong>Pay To:</strong> {{ voucher.name_title }} {{ voucher.pay_to }}</div>
             <div style="text-align: right;">
                 <strong>Amount:</strong> ₹{{ voucher.particulars.all|sum_particulars|floatformat:2 }}
             </div>
         </div>
 
-        <!-- PARTICULARS TABLE -->
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
             <thead>
                 <tr style="background-color: #f8f9fa; border-bottom: 2px solid #000;">
@@ -487,12 +505,10 @@
             </tbody>
         </table>
 
-        <!-- CREATED BY: JUST BELOW PARTICULARS -->
         <div style="margin-top: 15px; font-size: 13px; text-align: right;">
             <strong>Created by:</strong> {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}
         </div>
 
-        <!-- APPROVAL SIGNATURES -->
         <div style="margin-top: 50px;">
             <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-around;">
                 {% for approval in voucher.approvals.all %}
@@ -517,13 +533,11 @@
             </div>
         </div>
 
-        <!-- FOOTER: NO "Generated on" TEXT -->
         <div style="text-align: center; margin-top: 60px;">
             <hr style="border-top: 1px dashed #ccc;">
         </div>
     </div>
 
-    <!-- PRE-LOAD SIGNATURE IMAGES -->
     <div id="preload-signatures" style="position: absolute; left: -9999px; top: -9999px;">
         {% for approval in voucher.approvals.all %}
             {% if approval.status == 'APPROVED' and approval.approver.userprofile.signature %}
@@ -533,7 +547,6 @@
     </div>
 </div>
 
-<!-- ==================== FIX: PASS voucher_list_url VIA data-url ==================== -->
 <div id="voucher-list-url" data-url="{% url 'voucher_list' %}" style="display: none;"></div>
 
 <script>
@@ -542,9 +555,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const preload = document.getElementById('preload-signatures');
     if (preload) {
         const imgs = preload.querySelectorAll('img');
-        imgs.forEach(img => {
-            if (!img.complete) img.onload = () => {};
-        });
+        imgs.forEach(img => { if (!img.complete) img.onload = () => {}; });
     }
 });
 
@@ -552,7 +563,7 @@ function printVoucher() {
     window.print();
 }
 
-// SAFE DATA — NO TemplateSyntaxError
+// Voucher data for edit mode
 const VOUCHER_EDIT_DATA = {
     id: {{ voucher.id|safe }},
     voucher_number: "{{ voucher.voucher_number|escapejs }}",
@@ -562,10 +573,8 @@ const VOUCHER_EDIT_DATA = {
     pay_to: "{{ voucher.pay_to|escapejs }}",
     cheque_number: "{{ voucher.cheque_number|default:''|escapejs }}",
     cheque_date: "{{ voucher.cheque_date|date:'Y-m-d'|default:'' }}",
-    account_details: "{{ voucher.account_details|default:''|escapejs }}",
-    
+    account_details: "{{ voucher.account_details_id|default:'' }}",
 
-    // ✅ FIX: ADD THIS
     main_attachments: [
         {% for att in voucher.main_attachments.all %}
             "{{ att.file.name|filename|escapejs }}"{% if not forloop.last %},{% endif %}
@@ -575,7 +584,12 @@ const VOUCHER_EDIT_DATA = {
     cheque_attachments: [
         {% for att in voucher.cheque_attachments.all %}
             "{{ att.file.name|filename|escapejs }}"{% if not forloop.last %},{% endif %}
-        {% empty %}
+        {% endfor %}
+    ],
+
+    online_attachments: [
+        {% for att in voucher.online_attachments.all %}
+            "{{ att.file.name|filename|escapejs }}"{% if not forloop.last %},{% endif %}
         {% endfor %}
     ],
 
@@ -594,13 +608,28 @@ const VOUCHER_EDIT_DATA = {
     ]
 };
 
+// Helper: poll until account dropdown is populated then set value
+function setAccountWhenReady(selectEl, value) {
+    if (!selectEl || !value) return;
+    if (selectEl.options.length > 1) {
+        selectEl.value = value;
+        return;
+    }
+    const t = setInterval(() => {
+        if (selectEl.options.length > 1) {
+            selectEl.value = value;
+            clearInterval(t);
+        }
+    }, 100);
+    setTimeout(() => clearInterval(t), 5000);
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     const listUrlEl = document.getElementById('voucher-list-url');
     const listUrl = listUrlEl ? listUrlEl.dataset.url : '/vouchers/';
 
-    // === APPROVE/REJECT ===
+    // === APPROVE / REJECT ===
     document.querySelectorAll('.approve-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             const id = this.dataset.id;
@@ -623,22 +652,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             fetch(`/api/vouchers/${id}/approve/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrf
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
                 body: JSON.stringify(payload)
             })
             .then(r => {
-                if (!r.ok) {
-                    return r.json().then(errData => {
-                        throw new Error(errData.error || 'Server error');
-                    });
-                }
+                if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Server error'); });
                 return r.json();
             })
             .then(data => {
-                console.log('✅ Approval response:', data);
                 if (data.status === 'APPROVED' || data.status === 'REJECTED') {
                     alert('Voucher ' + data.status.toLowerCase() + ' successfully!');
                     window.location.href = listUrl;
@@ -648,7 +669,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(err => {
-                console.error('❌ Approval error:', err);
                 alert('Approval failed: ' + err.message);
                 document.querySelectorAll('.approve-btn').forEach(b => b.disabled = false);
             });
@@ -663,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const fileNameEl = document.getElementById('attachmentFileName');
             if (fileNameEl) fileNameEl.textContent = filename;
-            
+
             const downloadLink = document.getElementById('downloadLink');
             if (downloadLink) downloadLink.href = url;
 
@@ -672,10 +692,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const previewImage = document.getElementById('previewImage');
             const fallback = document.getElementById('fallbackMessage');
 
-            if (iframe) {
-                iframe.src = '';
-                iframe.classList.add('d-none');
-            }
+            if (iframe) { iframe.src = ''; iframe.classList.add('d-none'); }
             if (imagePreview) imagePreview.classList.add('d-none');
             if (fallback) fallback.classList.add('d-none');
 
@@ -686,55 +703,45 @@ document.addEventListener('DOMContentLoaded', function () {
                     previewImage.src = url + '?t=' + Date.now();
                     imagePreview.classList.remove('d-none');
                 }
-            } 
-            else if (['pdf','doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) {
+            } else if (['pdf','doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) {
                 if (iframe) {
                     iframe.src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
                     iframe.classList.remove('d-none');
                 }
-            } 
-            else {
+            } else {
                 if (fallback) fallback.classList.remove('d-none');
             }
 
             const modalEl = document.getElementById('attachmentPreviewModal');
-            if (modalEl) {
-                new bootstrap.Modal(modalEl).show();
-            }
+            if (modalEl) new bootstrap.Modal(modalEl).show();
         });
     });
 
-    // === EDIT BUTTON – SAFE VERSION ===
+    // === EDIT BUTTON ===
     const editBtn = document.getElementById('editVoucherBtn');
-  
+
     if (editBtn) {
         editBtn.addEventListener('click', function () {
-            
             window.IS_EDIT_MODE = true;
             const createModal = document.getElementById('createVoucherModal');
 
-if (!createModal) {
-    alert("Edit modal not found!");
-    return;
-}
+            if (!createModal) {
+                alert("Edit modal not found!");
+                return;
+            }
 
-createModal.setAttribute(
-    'data-voucher-number',
-    VOUCHER_EDIT_DATA.voucher_number
-);
+            createModal.setAttribute('data-voucher-number', VOUCHER_EDIT_DATA.voucher_number);
 
             const modalTitle = createModal.querySelector('.modal-title');
-            if (modalTitle) {
-                modalTitle.textContent = 'Edit Voucher {{ voucher.voucher_number }}';
-            }
-            
+            if (modalTitle) modalTitle.textContent = 'Edit Voucher {{ voucher.voucher_number }}';
+
             const bsModal = new bootstrap.Modal(createModal);
             bsModal.show();
 
             createModal.addEventListener('shown.bs.modal', function handler() {
                 const form = createModal.querySelector('form');
                 if (!form) return;
-                
+
                 const tbody = form.querySelector('#particularsTable tbody');
                 if (tbody) tbody.innerHTML = '';
 
@@ -743,56 +750,64 @@ createModal.setAttribute(
                 const paymentTypeInput = form.querySelector('[name="payment_type"]');
                 const nameTitleInput = form.querySelector('[name="name_title"]');
                 const payToInput = form.querySelector('[name="pay_to"]');
-                const voucherNumberInput = form.querySelector('[name="voucher_number"]');
-                if (voucherNumberInput) {
-                    voucherNumberInput.value = VOUCHER_EDIT_DATA.voucher_number;
-                }
-                
+
                 if (voucherDateInput) voucherDateInput.value = VOUCHER_EDIT_DATA.voucher_date;
-                if (paymentTypeInput) paymentTypeInput.value = VOUCHER_EDIT_DATA.payment_type;
                 if (nameTitleInput) nameTitleInput.value = VOUCHER_EDIT_DATA.name_title;
                 if (payToInput) payToInput.value = VOUCHER_EDIT_DATA.pay_to;
 
-                // === CHEQUE FIELDS ===
-                const chequeFields = document.querySelectorAll('#chequeNumberField, #chequeDateField, #accountDetailsField, #chequeAttachmentField');
+                // Set payment type then dispatch change so toggleChequeFields()
+                // in base.html runs and shows/hides the correct fields
+                if (paymentTypeInput) {
+                    paymentTypeInput.value = VOUCHER_EDIT_DATA.payment_type;
+                    paymentTypeInput.dispatchEvent(new Event('change'));
+                }
+
+                // === PAYMENT-TYPE-SPECIFIC FIELDS ===
+                const accountDetails = document.getElementById('account_details');
                 const chequeNumber = form.querySelector('[name="cheque_number"]');
                 const chequeDate = form.querySelector('[name="cheque_date"]');
-                const accountDetails = form.querySelector('[name="account_details"]');
 
                 if (VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
-                    chequeFields.forEach(field => field.style.display = '');
-
                     if (chequeNumber) chequeNumber.value = VOUCHER_EDIT_DATA.cheque_number || '';
                     if (chequeDate) chequeDate.value = VOUCHER_EDIT_DATA.cheque_date || '';
-                    if (accountDetails) {
-                        accountDetails.value = VOUCHER_EDIT_DATA.account_details || '';
-                        accountDetails.required = true;
+
+                    // Prefill account details (async — wait for loadAccounts to finish)
+                    setAccountWhenReady(accountDetails, VOUCHER_EDIT_DATA.account_details);
+
+                    // Show current cheque attachment filenames
+                    const chequeFileInput = form.querySelector('[name="cheque_attachments"]');
+                    if (chequeFileInput && VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
+                        // Remove any previously inserted hint to avoid duplicates
+                        const existing = chequeFileInput.parentElement.querySelector('.edit-hint');
+                        if (existing) existing.remove();
+                        const hint = document.createElement('div');
+                        hint.className = 'mt-1 edit-hint';
+                        hint.innerHTML = `<small class="text-muted">Current files: ${VOUCHER_EDIT_DATA.cheque_attachments.join(', ')}</small>`;
+                        chequeFileInput.insertAdjacentElement('afterend', hint);
                     }
 
-                    const fileInput = form.querySelector('[name="cheque_attachments"]');
-                    if (fileInput && VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
-                        const currentText = VOUCHER_EDIT_DATA.cheque_attachments.join(', ');
-                        fileInput.insertAdjacentHTML('afterend', `
-                            <div class="mt-1">
-                                <small class="text-muted">Current files: ${currentText}</small>
-                            </div>`);
-                    }
                 } else if (VOUCHER_EDIT_DATA.payment_type === 'ONLINE') {
-                    // Hide cheque-specific fields, show account details only
-                    chequeFields.forEach(field => field.style.display = 'none');
-                    const accField = document.getElementById('accountDetailsField');
-                    if (accField) accField.style.display = '';
-                    if (accountDetails) {
-                        accountDetails.value = VOUCHER_EDIT_DATA.account_details || '';
-                        accountDetails.required = true;
+                    if (chequeNumber) chequeNumber.value = '';
+                    if (chequeDate) chequeDate.value = '';
+
+                    // Prefill account details (async — wait for loadAccounts to finish)
+                    setAccountWhenReady(accountDetails, VOUCHER_EDIT_DATA.account_details);
+
+                    // Show current online attachment filenames
+                    const onlineFileInput = form.querySelector('[name="online_attachments"]');
+                    if (onlineFileInput && VOUCHER_EDIT_DATA.online_attachments.length > 0) {
+                        const existing = onlineFileInput.parentElement.querySelector('.edit-hint');
+                        if (existing) existing.remove();
+                        const hint = document.createElement('div');
+                        hint.className = 'mt-1 edit-hint';
+                        hint.innerHTML = `<small class="text-muted">Current files: ${VOUCHER_EDIT_DATA.online_attachments.join(', ')}</small>`;
+                        onlineFileInput.insertAdjacentElement('afterend', hint);
                     }
-                    if (chequeNumber) chequeNumber.value = '';
-                    if (chequeDate) chequeDate.value = '';
+
                 } else {
-                    chequeFields.forEach(field => field.style.display = 'none');
+                    // CASH / PETTY_CASH — clear payment-specific fields
                     if (chequeNumber) chequeNumber.value = '';
                     if (chequeDate) chequeDate.value = '';
-                    if (accountDetails) accountDetails.required = false;
                 }
 
                 // === REBUILD PARTICULARS ===
@@ -801,23 +816,17 @@ createModal.setAttribute(
                         const filesList = p.files.length > 0
                             ? `<small class="text-muted d-block mt-1">Current: ${p.files.join(', ')}</small>`
                             : '';
-                        
+
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>
-                                <input type="text" class="form-control form-control-sm" name="particulars[${i}][description]" value="${p.description}" required>
-                            </td>
-                            <td>
-                                <input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${i}][amount]" value="${p.amount}" required>
-                            </td>
+                            <td><input type="text" class="form-control form-control-sm" name="particulars[${i}][description]" value="${p.description}" required oninput="this.value=this.value.toUpperCase()"></td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${i}][amount]" value="${p.amount}" required></td>
                             <td>
                                 <input type="file" class="form-control form-control-sm" name="particular_attachment_${i}" multiple accept="image/*,.pdf,.doc,.docx">
                                 ${filesList}
                                 <div class="mt-1 text-muted small particular-file-list"></div>
                             </td>
-                            <td>
-                                <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
-                            </td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-row">Remove</button></td>
                         `;
                         tbody.appendChild(row);
                     });
@@ -827,10 +836,12 @@ createModal.setAttribute(
                 const mainFileInput = form.querySelector('[name="main_attachments"]');
                 if (mainFileInput) {
                     if (VOUCHER_EDIT_DATA.main_attachments && VOUCHER_EDIT_DATA.main_attachments.length > 0) {
-                        const current = VOUCHER_EDIT_DATA.main_attachments.join(', ');
-                        mainFileInput.insertAdjacentHTML('afterend', `
-                            <div class="mt-1"><small class="text-muted">Current: ${current}</small></div>
-                        `);
+                        const existing = mainFileInput.parentElement.querySelector('.edit-hint');
+                        if (existing) existing.remove();
+                        const hint = document.createElement('div');
+                        hint.className = 'mt-1 edit-hint';
+                        hint.innerHTML = `<small class="text-muted">Current: ${VOUCHER_EDIT_DATA.main_attachments.join(', ')}</small>`;
+                        mainFileInput.insertAdjacentElement('afterend', hint);
                     }
                     mainFileInput.value = '';
                 }
@@ -863,13 +874,7 @@ createModal.setAttribute(
 
                 const submitBtn = form.querySelector('button[type="submit"]');
                 if (submitBtn) submitBtn.textContent = 'Update Voucher';
-                setTimeout(() => {
-                    const voucherNumberInput = form.querySelector('[name="voucher_number"]');
-                    if (voucherNumberInput) {
-                        voucherNumberInput.value = VOUCHER_EDIT_DATA.voucher_number;
-                    }
-                }, 50);
-                
+
                 createModal.removeEventListener('shown.bs.modal', handler);
             });
         });
@@ -884,136 +889,13 @@ createModal.setAttribute(
     });
 });
 
-// Disable Ctrl + P & right-click
-document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'p') { e.preventDefault(); } });
+// Disable Ctrl+P & right-click
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'p') e.preventDefault(); });
 document.addEventListener('contextmenu', e => e.preventDefault());
-
-// ✅ SAFE: Show Confirmation Modal - only if element exists
-function showConfirmModal() {
-    const modalEl = document.getElementById('confirmFunctionModal');
-    if (!modalEl) return;
-    
-    const modal = new bootstrap.Modal(modalEl);
-    const advanceInput = document.getElementById('advance_amount');
-    const errorDiv = document.getElementById('confirmFormError');
-    const successDiv = document.getElementById('confirmFormSuccess');
-    
-    if (advanceInput) advanceInput.value = '';
-    if (errorDiv) errorDiv.classList.add('d-none');
-    if (successDiv) successDiv.classList.add('d-none');
-    
-    modal.show();
-}
-
-// ✅ SAFE: Confirm Function Form - Only if element exists
-const confirmFunctionForm = document.getElementById('confirmFunctionForm');
-if (confirmFunctionForm) {
-    confirmFunctionForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const errorDiv = document.getElementById('confirmFormError');
-        const successDiv = document.getElementById('confirmFormSuccess');
-        const advanceInput = document.getElementById('advance_amount');
-        
-        if (errorDiv) errorDiv.classList.add('d-none');
-        if (successDiv) successDiv.classList.add('d-none');
-        
-        if (!advanceInput) return;
-        const advanceAmount = advanceInput.value;
-        
-        if (!advanceAmount || parseFloat(advanceAmount) < 0) {
-            if (errorDiv) {
-                errorDiv.textContent = 'Please enter a valid advance amount';
-                errorDiv.classList.remove('d-none');
-            }
-            return;
-        }
-        
-        const submitBtn = this.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Confirming...';
-        }
-        
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || window.csrfToken || '';
-        
-        fetch(`/api/functions/{{ function.id }}/confirm/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                advance_amount: advanceAmount
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                if (successDiv) {
-                    successDiv.textContent = data.message;
-                    successDiv.classList.remove('d-none');
-                }
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                if (errorDiv) {
-                    errorDiv.textContent = data.error || 'Failed to confirm function';
-                    errorDiv.classList.remove('d-none');
-                }
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
-                }
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            if (errorDiv) {
-                errorDiv.textContent = 'Network error. Please try again.';
-                errorDiv.classList.remove('d-none');
-            }
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Function';
-            }
-        });
-    });
-}
-
-// ✅ SAFE: Delete Function - only if on function page
-function deleteFunction() {
-    if (!confirm('Are you sure you want to delete this function? This action cannot be undone.')) {
-        return;
-    }
-    
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || window.csrfToken || '';
-    
-    fetch(`/api/functions/{{ function.id }}/delete/`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': csrfToken
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            window.location.href = '{% url "function" %}';
-        } else {
-            alert(data.error || 'Failed to delete function');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert('Network error. Please try again.');
-    });
-}
 </script>
 
 <style>
 @media screen { #print-section { display: none !important; } }
-@media print { #print-section { display: block !important; } }
+@media print  { #print-section { display: block !important; } }
 </style>
 {% endblock %}

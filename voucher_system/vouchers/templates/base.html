@@ -1376,6 +1376,17 @@ function handlePermissionChange(event) {
            accept="image/*,application/pdf">
     
 </div>
+<!-- ONLINE ATTACHMENTS - NEW -->
+<div class="col-md-2" id="onlineAttachmentField" style="display:none;">
+    <label class="form-label">Online Attachments <span class="text-danger">*</span></label>
+    <div id="onlineFileName" class="text-muted small mt-1"></div>
+    <input type="file"
+           class="form-control form-control-sm"
+           name="online_attachments"
+           id="online_attachments"
+           multiple
+           accept="image/*,application/pdf">
+</div>
                                         </div>
                                     </div>
                                     <!-- 5. Main Attachment (NOW MULTIPLE & OPTIONAL) -->
@@ -1810,15 +1821,20 @@ if (existingNumber) {
         `;
 
         fetch("{% url 'voucher_next_number' %}", {
-            headers: { 'Accept': 'application/json' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            preview.innerHTML = data.next_number;
-        })
-        .catch(() => {
-            preview.innerHTML = "Error";
-        });
+    headers: { 'Accept': 'application/json' }
+})
+.then(response => response.json())
+.then(data => {
+    console.log("Voucher API:", data); // 👈 keep for debug
+
+    const number = data.next_number || data.voucher_number || data.number;
+
+    preview.innerHTML = number ? number : "Error";
+})
+.catch(err => {
+    console.error("Voucher fetch error:", err);
+    preview.innerHTML = "Error";
+});
     }
 });
         // ✅ OUTSIDE event listener
@@ -1827,27 +1843,39 @@ if (existingNumber) {
             // Show/Hide Cheque Fields
 function toggleChequeFields() {
     if (!paymentTypeSelect) return;
-
+ 
     const accountDetailsSelect = document.getElementById('account_details');
+    const onlineAttachmentField = document.getElementById('onlineAttachmentField');
+    const onlineAttachmentInput = document.getElementById('online_attachments');
     const paymentValue = paymentTypeSelect.value;
-
+ 
     if (paymentValue === "CHEQUE") {
         chequeField.style.display = "block";
         chequeDateField.style.display = "block";
         accountDetailsField.style.display = "block";
         chequeAttachmentField.style.display = "block";
+        if (onlineAttachmentField) onlineAttachmentField.style.display = "none";
+        if (onlineAttachmentInput) onlineAttachmentInput.required = false;
         if (accountDetailsSelect) accountDetailsSelect.required = true;
     } else if (paymentValue === "ONLINE") {
         chequeField.style.display = "none";
         chequeDateField.style.display = "none";
         accountDetailsField.style.display = "block";
         chequeAttachmentField.style.display = "none";
+        if (onlineAttachmentField) onlineAttachmentField.style.display = "block";
+        // Only require online attachment for NEW vouchers, not edits
+        // (edit mode is detected by the presence of voucher_id in the form)
+        const isEditMode = !!document.querySelector('#createVoucherForm [name="voucher_id"]') 
+                           || window.IS_EDIT_MODE === true;
+        if (onlineAttachmentInput) onlineAttachmentInput.required = !isEditMode;
         if (accountDetailsSelect) accountDetailsSelect.required = true;
     } else {
         chequeField.style.display = "none";
         chequeDateField.style.display = "none";
         accountDetailsField.style.display = "none";
         chequeAttachmentField.style.display = "none";
+        if (onlineAttachmentField) onlineAttachmentField.style.display = "none";
+        if (onlineAttachmentInput) onlineAttachmentInput.required = false;
         if (accountDetailsSelect) accountDetailsSelect.required = false;
     }
 }
@@ -1872,7 +1900,11 @@ toggleChequeFields();
             chequeAttachmentInput?.addEventListener('change', e => {
                 const files = Array.from(e.target.files);
                 document.getElementById('chequeFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
-            })
+            });
+            document.getElementById('online_attachments')?.addEventListener('change', e => {
+                const files = Array.from(e.target.files);
+                document.getElementById('onlineFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
+            });
 
             
             // Add Row handler for particulars
@@ -1951,6 +1983,16 @@ addBtn.onclick = () => {
                     const accVal = accountDetailsSelect.value;
                     if (!accVal) return alert('Account Details required for Online payment');
                     formData.append('account_details', accVal);
+                    const onlineInput = document.getElementById('online_attachments');
+                    const isEdit = window.IS_EDIT_MODE === true;
+                    if (onlineInput && onlineInput.files.length > 0) {
+                        // New files selected — upload them
+                        Array.from(onlineInput.files).forEach(file => formData.append('online_attachments', file));
+                    } else if (!isEdit) {
+                        // New voucher with no online attachment — block submission
+                        return alert('At least one online attachment is required for Online payment');
+                    }
+                    // Edit mode with no new file selected — keep existing files (server handles this)
                 }
 
                 let valid = true;
@@ -2000,9 +2042,12 @@ addBtn.onclick = () => {
                     
                     const fileNameEl = document.getElementById('fileName');
                     if (fileNameEl) fileNameEl.textContent = '';
-                    
+
                     const chequeFileNameEl = document.getElementById('chequeFileName');
                     if (chequeFileNameEl) chequeFileNameEl.textContent = '';
+
+                    const onlineFileNameEl = document.getElementById('onlineFileName');
+                    if (onlineFileNameEl) onlineFileNameEl.textContent = '';
                     
                     document.querySelectorAll('.particular-file-list').forEach(el => el.textContent = '');
                     tbody.innerHTML = `<tr>

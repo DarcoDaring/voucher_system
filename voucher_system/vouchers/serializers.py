@@ -2,8 +2,8 @@
 from rest_framework import serializers
 from .models import (
     Voucher, Particular, VoucherApproval, ApprovalLevel,
-    AccountDetail,  MainAttachment,
-    ChequeAttachment, ParticularAttachment
+    AccountDetail, MainAttachment, ChequeAttachment,
+    ParticularAttachment, OnlineAttachment
 )
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
@@ -36,7 +36,6 @@ class ParticularAttachmentSerializer(serializers.ModelSerializer):
 class ParticularSerializer(serializers.ModelSerializer):
     attachments = ParticularAttachmentSerializer(many=True, read_only=True)
     
-    # This field accepts new files during create/update
     attachment_files = serializers.ListField(
         child=serializers.FileField(
             max_length=None,
@@ -69,7 +68,6 @@ class ParticularSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        # Ensure at least one attachment (existing or new)
         new_files = data.get('attachment_files', [])
         instance = getattr(self, 'instance', None)
 
@@ -86,7 +84,7 @@ class ParticularSerializer(serializers.ModelSerializer):
 
 
 # ============================
-# MAIN & CHEQUE ATTACHMENTS
+# MAIN ATTACHMENT
 # ============================
 
 class MainAttachmentSerializer(serializers.ModelSerializer):
@@ -104,11 +102,34 @@ class MainAttachmentSerializer(serializers.ModelSerializer):
         return ret
 
 
+# ============================
+# CHEQUE ATTACHMENT
+# ============================
+
 class ChequeAttachmentSerializer(serializers.ModelSerializer):
     file = serializers.FileField()
 
     class Meta:
         model = ChequeAttachment
+        fields = ['id', 'file', 'uploaded_at']
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.file and request:
+            ret['file'] = request.build_absolute_uri(instance.file.url)
+        return ret
+
+
+# ============================
+# ONLINE ATTACHMENT  ← NEW
+# ============================
+
+class OnlineAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.FileField()
+
+    class Meta:
+        model = OnlineAttachment
         fields = ['id', 'file', 'uploaded_at']
 
     def to_representation(self, instance):
@@ -144,6 +165,8 @@ class AccountDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccountDetail
         fields = ['value', 'label']
+
+
 # ============================
 # MAIN VOUCHER SERIALIZER
 # ============================
@@ -153,6 +176,7 @@ class VoucherSerializer(serializers.ModelSerializer):
     particulars = ParticularSerializer(many=True)
     main_attachments = MainAttachmentSerializer(many=True, read_only=True)
     cheque_attachments = ChequeAttachmentSerializer(many=True, read_only=True)
+    online_attachments = OnlineAttachmentSerializer(many=True, read_only=True)   # ← NEW
 
     approvals = VoucherApprovalSerializer(many=True, read_only=True)
     required_approvers = serializers.SerializerMethodField()
@@ -165,13 +189,14 @@ class VoucherSerializer(serializers.ModelSerializer):
             'id', 'voucher_number', 'voucher_date', 'payment_type',
             'name_title', 'pay_to', 'cheque_number', 'cheque_date',
             'account_details', 'created_by', 'created_at', 'status',
-            'main_attachments', 'cheque_attachments',
+            'main_attachments', 'cheque_attachments', 'online_attachments',  # ← NEW
             'particulars', 'approvals', 'required_approvers',
             'approved_count', 'rejected_count'
         ]
         read_only_fields = [
             'voucher_number', 'created_by', 'created_at', 'status',
-            'main_attachments', 'cheque_attachments', 'approvals'
+            'main_attachments', 'cheque_attachments', 'online_attachments',  # ← NEW
+            'approvals'
         ]
 
     # ----------------------------
@@ -218,7 +243,6 @@ class VoucherSerializer(serializers.ModelSerializer):
         particulars_data = validated_data.pop('particulars', [])
         voucher = Voucher.objects.create(**validated_data)
 
-        # Save particulars + attachments
         for p_data in particulars_data:
             files = p_data.pop('attachment_files', [])
             particular = Particular.objects.create(voucher=voucher, **p_data)
@@ -231,30 +255,22 @@ class VoucherSerializer(serializers.ModelSerializer):
     # UPDATE
     # ----------------------------
     def update(self, instance, validated_data):
-
-        # ---- Update basic fields ----
         particulars_data = validated_data.pop('particulars', None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # ============================
-        # UPDATE PARTICULARS + FILES
-        # ============================
+        # Update particulars + attachments
         if particulars_data is not None:
-
-            # delete old attachment files
             for p in instance.particulars.all():
                 for att in p.attachments.all():
                     if att.file:
                         att.file.delete(save=False)
                 p.attachments.all().delete()
 
-            # delete old particulars
             instance.particulars.all().delete()
 
-            # create new ones
             for p_data in particulars_data:
                 files = p_data.pop('attachment_files', [])
                 particular = Particular.objects.create(voucher=instance, **p_data)
@@ -265,27 +281,38 @@ class VoucherSerializer(serializers.ModelSerializer):
                         file=f
                     )
 
-        # ============================
-        # UPDATE MAIN ATTACHMENTS
-        # ============================
+        # Update main attachments
         request = self.context.get("request")
 
         if request:
             new_main_files = request.FILES.getlist("main_attachments")
 
             if new_main_files:
-                # DELETE OLD FILES
                 for att in instance.main_attachments.all():
                     if att.file:
                         att.file.delete(save=False)
                 instance.main_attachments.all().delete()
 
-                # CREATE NEW FILES
                 for file in new_main_files:
                     MainAttachment.objects.create(
                         voucher=instance,
                         file=file
                     )
 
-        return instance
+            # Update online attachments if payment type is ONLINE
+            if instance.payment_type == 'ONLINE':
+                new_online_files = request.FILES.getlist("online_attachments")
 
+                if new_online_files:
+                    for att in instance.online_attachments.all():
+                        if att.file:
+                            att.file.delete(save=False)
+                    instance.online_attachments.all().delete()
+
+                    for file in new_online_files:
+                        OnlineAttachment.objects.create(
+                            voucher=instance,
+                            file=file
+                        )
+
+        return instance

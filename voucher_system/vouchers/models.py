@@ -21,7 +21,7 @@ class Designation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        unique_together = ('company', 'name')  # Unique per company
+        unique_together = ('company', 'name')
         ordering = ['company__name', 'name']
         verbose_name = "Designation"
         verbose_name_plural = "Designations"
@@ -71,6 +71,7 @@ class Company(models.Model):
     def __str__(self):
         return self.name
 
+
 class CompanyMembership(models.Model):
     """
     Links users to companies with role & designation.
@@ -87,7 +88,6 @@ class CompanyMembership(models.Model):
         related_name='memberships'
     )
     
-    # Role in THIS company
     GROUP_CHOICES = (
         ('Admin Staff', 'Admin Staff'),
         ('Accountants', 'Accountants'),
@@ -98,7 +98,6 @@ class CompanyMembership(models.Model):
         help_text="User's role in this company"
     )
     
-    # Designation in THIS company (only for Admin Staff)
     designation = models.ForeignKey(
         'Designation', 
         on_delete=models.SET_NULL, 
@@ -107,7 +106,6 @@ class CompanyMembership(models.Model):
         help_text="Required for Admin Staff"
     )
     
-    # Mobile number (moved from UserProfile - now per-company)
     mobile = models.CharField(
         max_length=15,
         blank=True,
@@ -137,6 +135,7 @@ class CompanyMembership(models.Model):
         if self.group == 'Admin Staff' and not self.designation:
             raise ValidationError("Designation is required for Admin Staff members")
 
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
@@ -148,7 +147,7 @@ class UserProfile(models.Model):
     )
 
     def __str__(self):
-        return f"{self.user.username} Profile"  # ✅ FIXED
+        return f"{self.user.username} Profile"
 
 
 class Voucher(models.Model):
@@ -159,21 +158,17 @@ class Voucher(models.Model):
         ('ONLINE', 'Online'),
     )
     company = models.ForeignKey(
-            Company, 
-            on_delete=models.CASCADE, 
-            related_name='vouchers',
-            help_text="Company this voucher belongs to"
-        )
+        Company, 
+        on_delete=models.CASCADE, 
+        related_name='vouchers',
+        help_text="Company this voucher belongs to"
+    )
     voucher_number = models.CharField(max_length=20, blank=True)
     voucher_date = models.DateField()
     payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES)
     name_title = models.CharField(max_length=5, choices=[('MR', 'Mr.'), ('MRS', 'Mrs.'), ('MS', 'Ms.')])
     pay_to = models.CharField(max_length=200)
-    
-    # REMOVED: Old single main attachment (now using MainAttachment model below)
-    # attachment = models.FileField(upload_to='vouchers/attachments/', null=True, blank=True)
 
-    # CHEQUE FIELDS
     cheque_number = models.CharField(
         max_length=20,
         blank=True,
@@ -181,23 +176,19 @@ class Voucher(models.Model):
         help_text="Required only for Cheque payments"
     )
 
-    # REMOVED: Old single cheque attachment (now using ChequeAttachment model below)
-    # cheque_attachment = models.FileField(upload_to='vouchers/cheques/', null=True, blank=True)
-
     cheque_date = models.DateField(
         null=True,
         blank=True,
         help_text="Date on the cheque - required for Cheque payments"
     )
 
-    # ACCOUNT DETAILS → REQUIRED FOR CHEQUE
     account_details = models.ForeignKey(
         'AccountDetail',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Bank account for Cheque payments"
-     )
+        help_text="Bank account for Cheque/Online payments"
+    )
 
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vouchers')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -215,7 +206,6 @@ class Voucher(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.voucher_number:
-            # Generate company-specific voucher number
             last_voucher = Voucher.objects.filter(company=self.company).order_by('-id').first()
             if last_voucher and last_voucher.voucher_number.startswith('VCH'):
                 num = int(last_voucher.voucher_number[3:]) + 1
@@ -223,27 +213,22 @@ class Voucher(models.Model):
             else:
                 self.voucher_number = 'VCH0001'
 
-        # Save snapshot on first save (creation)
         if not self.pk:
-            super().save(*args, **kwargs)  # Save first to get PK
+            super().save(*args, **kwargs)
             self.required_approvers_snapshot = self._get_current_required_approvers()
             self.save(update_fields=['required_approvers_snapshot'])
         else:
             super().save(*args, **kwargs)
 
-    # FIND this method and REPLACE it:
-
     def _get_current_required_approvers(self):
         """Helper: Get current required approvers from active levels."""
-        # ✅ NOW FILTER BY COMPANY
         levels = ApprovalLevel.objects.filter(
-            company=self.company,  # ADD THIS
+            company=self.company,
             is_active=True
         ).select_related('designation').order_by('order')
         
         usernames = []
         for level in levels:
-            # Get users from THIS company's memberships
             memberships = CompanyMembership.objects.filter(
                 company=self.company,
                 designation=level.designation,
@@ -262,15 +247,13 @@ class Voucher(models.Model):
             return self._get_current_required_approvers()
 
     def _update_status_if_all_approved(self):
-        # If any rejection → REJECTED
         if self.approvals.filter(status='REJECTED').exists():
             self.status = 'REJECTED'
             self.save(update_fields=['status'])
             return
 
-        # ✅ Get active approval levels FOR THIS COMPANY
         levels = ApprovalLevel.objects.filter(
-            company=self.company,  # ✅ ADDED
+            company=self.company,
             is_active=True
         ).order_by('order')
         
@@ -284,39 +267,33 @@ class Voucher(models.Model):
                 .values_list('approver__username', flat=True)
         )
 
-        # Check: for each active level, is AT LEAST ONE user from that designation approved?
         for level in levels:
-            # ✅ Use CompanyMembership instead of UserProfile
             level_memberships = CompanyMembership.objects.filter(
-                company=self.company,  # ✅ ADDED
+                company=self.company,
                 designation=level.designation,
                 group='Admin Staff',
                 is_active=True,
                 user__is_active=True
             ).values_list('user__username', flat=True)
 
-            # If no users in this designation → skip (shouldn't happen)
             if not level_memberships:
                 continue
 
-            # If NONE of the users in this level have approved → not done yet
             if not any(username in approved_usernames for username in level_memberships):
                 self.status = 'PENDING'
                 self.save(update_fields=['status'])
                 return
 
-        # All levels have at least one approval → APPROVED
         self.status = 'APPROVED'
         self.save(update_fields=['status'])
 
     def clean(self):
         from django.core.exceptions import ValidationError
 
-        # CHEQUE VALIDATION
         if self.payment_type == 'CHEQUE':
             if not self.cheque_number:
                 raise ValidationError("Cheque number is required for Cheque payments.")
-            if not self.cheque_attachments.exists():  # Now checks related objects
+            if not self.cheque_attachments.exists():
                 raise ValidationError("At least one cheque attachment is required for Cheque payments.")
             if not self.cheque_date:
                 raise ValidationError("Cheque date is required for Cheque payments.")
@@ -328,28 +305,26 @@ class Voucher(models.Model):
             self.cheque_number = None
             self.cheque_date = None
         else:
-            # Clear cheque fields if not CHEQUE or ONLINE
             self.cheque_number = None
             self.cheque_date = None
             self.account_details = None
+
     class Meta:
-        unique_together = ('company', 'voucher_number')  # ADD THIS
+        unique_together = ('company', 'voucher_number')
         ordering = ['-created_at']
+
 
 class Particular(models.Model):
     voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, related_name='particulars')
     description = models.CharField(max_length=300)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    
-    # REMOVED: Old single attachment (now using ParticularAttachment model below)
-    # attachment = models.FileField(upload_to='vouchers/particulars/', help_text="...")
 
     def __str__(self):
         return f"{self.description} - {self.amount}"
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        if not self.attachments.exists():  # Now checks multiple attachments
+        if not self.attachments.exists():
             raise ValidationError("At least one attachment is required for each particular.")
 
 
@@ -374,20 +349,20 @@ class ApprovalLevel(models.Model):
         related_name='approval_levels',
         help_text="Company this approval level belongs to"
     )
-    designation = models.ForeignKey(Designation, on_delete=models.CASCADE)  # ✅ Changed to ForeignKey
-    order = models.PositiveIntegerField(help_text="Lower number = earlier in approval chain")  # ✅ Removed unique=True
+    designation = models.ForeignKey(Designation, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(help_text="Lower number = earlier in approval chain")
     is_active = models.BooleanField(default=True, help_text="Only active levels require approval")
     updated_by = models.ForeignKey(User, on_delete=models.CASCADE)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('company', 'designation')  # ✅ This ensures uniqueness per company
+        unique_together = ('company', 'designation')
         ordering = ['company', 'order']
         verbose_name = "Approval Level"
         verbose_name_plural = "Approval Levels"
 
     def __str__(self):
-        return f"{self.company.name} - {self.order}. {self.designation.name} ({'Active' if self.is_active else 'Inactive'})"  # ✅ Added company name
+        return f"{self.company.name} - {self.order}. {self.designation.name} ({'Active' if self.is_active else 'Inactive'})"
 
 
 class AccountDetail(models.Model):
@@ -402,23 +377,22 @@ class AccountDetail(models.Model):
     is_active = models.BooleanField(
         default=True, 
         help_text="Only active accounts appear in voucher creation"
-    )  # ✅ NEW FIELD
+    )
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='account_details')
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)  # ✅ NEW FIELD (optional but recommended)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         unique_together = ('company', 'bank_name', 'account_number')
-        ordering = ['-is_active', 'bank_name']  # ✅ Show active accounts first
+        ordering = ['-is_active', 'bank_name']
     
     def __str__(self):
         status = "✓" if self.is_active else "✗"
         return f"{status} {self.bank_name} / {self.account_number}"
 
 
-
 # =============================================
-# NEW MODELS FOR MULTIPLE FILE UPLOADS
+# FILE UPLOAD MODELS
 # =============================================
 
 class MainAttachment(models.Model):
@@ -447,11 +421,32 @@ class ParticularAttachment(models.Model):
     def __str__(self):
         return os.path.basename(self.file.name)
 
+
+class OnlineAttachment(models.Model):
+    """
+    Attachments for Online payment vouchers.
+
+    Mandatory for NEW online vouchers created after this model was added.
+    Existing online vouchers (created before this feature) may have zero
+    records in this table — that is intentional and harmless; the views
+    never enforce the presence check on existing vouchers.
+    """
+    voucher = models.ForeignKey(
+        Voucher,
+        on_delete=models.CASCADE,
+        related_name='online_attachments'
+    )
+    file = models.FileField(upload_to='vouchers/online/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return os.path.basename(self.file.name)
+
+
 class UserPermission(models.Model):
     """
     Granular permissions for each user PER COMPANY.
     """
-    # ✅ ADD THIS FIELD FIRST
     company = models.ForeignKey(
         Company, 
         on_delete=models.CASCADE, 
@@ -481,7 +476,6 @@ class UserPermission(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        # ✅ UPDATE THIS
         unique_together = ('user', 'company')
         verbose_name = "User Permission"
         verbose_name_plural = "User Permissions"
@@ -510,8 +504,11 @@ class UserPermission(models.Model):
             }
         )
         return obj
-    
-#Create FunctionBooking 
+
+
+# =============================================
+# FUNCTION BOOKING
+# =============================================
 
 class FunctionBooking(models.Model):
     STATUS_CHOICES = (
@@ -597,9 +594,6 @@ class FunctionBooking(models.Model):
         help_text="Special instructions or notes for the function"
     )
     
-    # ❌ REMOVE THIS FIELD - Use property instead
-    # is_completed = models.BooleanField(default=False, verbose_name="Marked as Completed")
-    
     confirmed_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 
@@ -644,7 +638,7 @@ class FunctionBooking(models.Model):
         super().save(*args, **kwargs)
     
     def calculate_total_amount(self):
-        """Calculate total amount based on pax, rate, GST, hall rent and extra charges"""
+        """Calculate total amount based on pax, rate, GST, hall rent and extra charges."""
         base_amount = Decimal(self.no_of_pax) * Decimal(self.rate_per_pax)
         
         if self.gst_option == 'INCLUDING':
@@ -657,7 +651,6 @@ class FunctionBooking(models.Model):
         
         self.total_amount = amount_with_gst + hall_rent + extra_total
     
-    # ✅ CORRECT PLACEMENT - Property inside the class
     @property
     def is_function_completed(self):
         """
@@ -672,5 +665,3 @@ class FunctionBooking(models.Model):
             datetime.datetime.combine(self.function_date, self.time_to)
         )
         return now >= function_end_datetime
-
-
