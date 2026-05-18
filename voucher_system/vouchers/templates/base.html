@@ -11,18 +11,7 @@
         .btn-warning { min-width: 180px; }
         .btn-lg { min-height: 50px; }
         .file-name { font-size: 0.9em; color: #555; }
-        /* WIDER CREATE VOUCHER MODAL */
-        #createVoucherModal .modal-dialog {
-            max-width: 90vw !important;
-            width: 1400px;
-            margin: 1.75rem auto;
-        }
-        @media (max-width: 1500px) {
-            #createVoucherModal .modal-dialog { width: 95vw; }
-        }
-        #createVoucherModal .modal-body { max-height: 75vh; overflow-y: auto; }
-        #particularsTable th, #particularsTable td { vertical-align: middle; }
-        .navbar .dropdown-toggle::after { display: none; }
+.navbar .dropdown-toggle::after { display: none; }
         .grip-handle { cursor: move; color: #6c757d; }
         .list-group-item:hover .grip-handle { color: #495057; }
     </style>
@@ -739,7 +728,6 @@ if (accountModal) {
             return r.json();
         })
         .then(data => {
-            console.log('✅ Accounts loaded:', data);
             tableBody.innerHTML = '';
             
             if (!data.accounts || data.accounts.length === 0) {
@@ -791,19 +779,14 @@ if (accountModal) {
             content.style.display = 'block';
         })
         .catch(err => {
-            console.error('❌ Error loading accounts:', err);
             loading.style.display = 'none';
             error.style.display = 'block';
-            document.getElementById('accountsErrorMsg').textContent = 
+            document.getElementById('accountsErrorMsg').textContent =
                 'Failed to load accounts: ' + err.message;
         });
     }
     
-    // ✅ LOAD ACCOUNTS WHEN MODAL OPENS
-    accountModal.addEventListener('show.bs.modal', function() {
-        console.log('🔄 Loading bank accounts for active company...');
-        loadAccountsModal();
-    });
+    accountModal.addEventListener('show.bs.modal', loadAccountsModal);
     
     // ✅ ADD ACCOUNT FORM SUBMISSION
     addForm.onsubmit = e => {
@@ -856,7 +839,6 @@ if (accountModal) {
             }
         })
         .catch(err => {
-            console.error('❌ Error creating account:', err);
             alert('Error: ' + err.message);
         })
         .finally(() => {
@@ -905,7 +887,6 @@ if (accountModal) {
                 }
             })
             .catch(err => {
-                console.error('❌ Error toggling account:', err);
                 alert('Error: ' + err.message);
                 toggleBtn.disabled = false;
                 toggleBtn.innerHTML = isActive ? 
@@ -949,7 +930,6 @@ if (accountModal) {
                 }
             })
             .catch(err => {
-                console.error('❌ Error deleting account:', err);
                 alert('Error: ' + err.message);
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
@@ -968,484 +948,20 @@ function escapeHtml(text) {
 </script>
 {% endif %}
     {% if user.is_superuser %}
-<!-- USER RIGHTS MODAL -->
-<div class="modal fade" id="userRightsModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <div>
-                    <h5 class="modal-title fw-semibold mb-0">
-                        <i class="bi bi-shield-lock me-2 text-primary"></i>
-                        User Rights & Permissions
-                    </h5>
-                    
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body p-0">
-                <!-- Loading State -->
-                <div id="userRightsLoading" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="text-muted mt-3">Loading user permissions...</p>
-                </div>
-
-                <!-- Main Content -->
-                <div id="userRightsContent" style="display: none;">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm mb-0">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th style="width: 12%;">Username</th>
-                                    <th style="width: 10%;">Group</th>
-                                    <th style="width: 12%;">Designation</th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-file-earmark-plus text-primary"></i><br>
-                                        <small>Create<br>Voucher</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-pencil-square text-warning"></i><br>
-                                        <small>Edit<br>Voucher</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-list-ul text-info"></i><br>
-                                        <small>Voucher<br>List</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-eye text-secondary"></i><br>
-                                        <small>Voucher<br>Detail</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-printer text-dark"></i><br>
-                                        <small>Print<br>Voucher</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-calendar-plus text-success"></i><br>
-                                        <small>Create<br>Function</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-pencil text-info"></i><br>
-                                        <small>Edit<br>Function</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-trash text-danger"></i><br>
-                                        <small>Delete<br>Function</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-calendar3 text-primary"></i><br>
-                                        <small>Function<br>List</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-eye-fill text-success"></i><br>
-                                        <small>Function<br>Detail</small>
-                                    </th>
-                                    <th class="text-center" style="width: 6%;">
-                                        <i class="bi bi-printer-fill text-secondary"></i><br>
-                                        <small>Print<br>Function</small>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody id="userRightsTableBody">
-                                <!-- Will be populated by JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Error State -->
-                <div id="userRightsError" class="text-center py-5" style="display: none;">
-                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
-                    <p class="text-danger mt-3" id="userRightsErrorMessage"></p>
-                    <button class="btn btn-outline-danger btn-sm" onclick="loadUserRights()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Retry
-                    </button>
-                </div>
-            </div>
-            <div class="modal-footer bg-light">
-                <div class="me-auto">
-                    
-                </div>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ✅ PASS CURRENT USER ID TO JAVASCRIPT -->
-<script>
-    window.CURRENT_USER_ID = "{{ user.id }}";
-</script>
-
-<script>
-// ===================================
-// USER RIGHTS MANAGEMENT - COMPLETE
-// ===================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('userRightsModal');
-    if (!modal) return;
-
-    // Load data when modal opens
-    modal.addEventListener('show.bs.modal', function() {
-        loadUserRights();
-    });
-});
-
-function loadUserRights() {
-    const loading = document.getElementById('userRightsLoading');
-    const content = document.getElementById('userRightsContent');
-    const error = document.getElementById('userRightsError');
-    
-    loading.style.display = 'block';
-    content.style.display = 'none';
-    error.style.display = 'none';
-
-    fetch('/api/user-rights/', {
-        headers: {
-            'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-        }
-    })
-    .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    })
-    .then(data => {
-        console.log('✅ User rights loaded:', data);
-        renderUserRightsTable(data.users);
-        loading.style.display = 'none';
-        content.style.display = 'block';
-    })
-    .catch(err => {
-        console.error('❌ Error loading user rights:', err);
-        loading.style.display = 'none';
-        error.style.display = 'block';
-        document.getElementById('userRightsErrorMessage').textContent = 
-            'Failed to load user rights: ' + err.message + '. Check console (F12) for details.';
-    });
-}
-
-function renderUserRightsTable(users) {
-    const tbody = document.getElementById('userRightsTableBody');
-    tbody.innerHTML = '';
-
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">No users found</td></tr>';
-        return;
-    }
-
-    users.forEach(user => {
-        const row = document.createElement('tr');
-        const isCurrentUser = user.id === window.CURRENT_USER_ID;
-        
-        row.innerHTML = `
-            <td>
-                <strong>${escapeHtml(user.username)}</strong>
-                ${isCurrentUser ? '<span class="badge bg-info ms-2">You</span>' : ''}
-            </td>
-            <td>
-                <span class="badge bg-${getGroupColor(user.group)}">${escapeHtml(user.group)}</span>
-            </td>
-            <td>
-                <small class="text-muted">${escapeHtml(user.designation)}</small>
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_create_voucher', user.permissions.can_create_voucher)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_edit_voucher', user.permissions.can_edit_voucher)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_view_voucher_list', user.permissions.can_view_voucher_list)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_view_voucher_detail', user.permissions.can_view_voucher_detail)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_print_voucher', user.permissions.can_print_voucher)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_create_function', user.permissions.can_create_function)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_edit_function', user.permissions.can_edit_function)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_delete_function', user.permissions.can_delete_function)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_view_function_list', user.permissions.can_view_function_list)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_view_function_detail', user.permissions.can_view_function_detail)}
-            </td>
-            <td class="text-center">
-                ${createPermissionCheckbox(user.id, 'can_print_function', user.permissions.can_print_function)}
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    // Attach event listeners
-    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', handlePermissionChange);
-    });
-    
-    console.log('✅ Rendered ' + users.length + ' users');
-}
-function createPermissionCheckbox(userId, permission, checked) {
-    return `
-        <div class="form-check d-inline-block">
-            <input class="form-check-input permission-checkbox" 
-                   type="checkbox" 
-                   data-user-id="${userId}"
-                   data-permission="${permission}"
-                   ${checked ? 'checked' : ''}>
-        </div>
-    `;
-}
-
-function getGroupColor(group) {
-    switch(group) {
-        case 'Admin Staff': return 'primary';
-        case 'Accountants': return 'success';
-        default: return 'secondary';
-    }
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function handlePermissionChange(event) {
-    const checkbox = event.target;
-    const userId = checkbox.dataset.userId;
-    const permission = checkbox.dataset.permission;
-    const isChecked = checkbox.checked;
-
-    // Disable checkbox while saving
-    checkbox.disabled = true;
-
-    // Collect ALL current checkbox states for this user
-    const row = checkbox.closest('tr');
-    const allCheckboxes = row.querySelectorAll('.permission-checkbox');
-    
-    const permissions = {};
-    allCheckboxes.forEach(cb => {
-        permissions[cb.dataset.permission] = cb.checked;
-    });
-
-    console.log('💾 Saving permissions for user ' + userId + ':', permissions);
-
-    fetch('/api/user-rights/update/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-        },
-        body: JSON.stringify({
-            user_id: userId,
-            permissions: permissions
-        })
-    })
-    .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    })
-    .then(data => {
-        console.log('✅ Permission updated:', data);
-        checkbox.disabled = false;
-        
-        // Flash the row green
-        row.style.transition = 'background-color 0.3s';
-        row.style.backgroundColor = '#d4edda';
-        setTimeout(() => {
-            row.style.backgroundColor = '';
-        }, 800);
-    })
-    .catch(err => {
-        console.error('❌ Error updating permission:', err);
-        // Revert checkbox on error
-        checkbox.checked = !isChecked;
-        checkbox.disabled = false;
-        alert('Failed to update permission: ' + err.message);
-    });
-}
-</script>
-{% endif %}
+        {% include 'modals/user_permissions.html' %}
+    {% endif %}
 
 
     
-    <!-- CREATE VOUCHER MODAL - WORKS FOR ACCOUNTANTS, ADMIN STAFF & SUPERUSER -->
+    <!-- CREATE VOUCHER MODAL -->
     {% if user.is_authenticated %}
         {% with user_group=user.groups.all.0.name %}
             {% if user_group == 'Accountants' or user_group == 'Admin Staff' or user.is_superuser %}
-                <div class="modal fade" id="createVoucherModal" tabindex="-1">
-                    <div class="modal-dialog modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="createVoucherModalTitle">New Voucher</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form id="createVoucherForm" enctype="multipart/form-data">
-                                    <!-- 1. Voucher Number (left) + Voucher Date (right) -->
-                                    <div class="d-flex justify-content-between align-items-end mb-4">
-    
-                                    <!-- LEFT: Voucher Number -->
-                                    <div>
-                                        <!-- SAME STYLE AS Voucher Date -->
-                                        <label class="form-label fw-bold text-primary">
-                                            Voucher Number
-                                        </label>
-
-                                        <!-- NORMAL TEXT (not bold, not blue) -->
-                                        <div id="voucherNumberPreview" class="form-control form-control-sm bg-light text-dark">
-                                            <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
-                                        </div>
-                                    </div>
-
-                                    <!-- RIGHT: Voucher Date -->
-                                    <div style="width: 180px;">
-                                        <label for="voucher_date" class="form-label fw-bold text-primary">
-                                            Voucher Date <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="date" class="form-control form-control-sm" id="voucher_date" name="voucher_date" max="{{ today }}" required>
-                                    </div>
-
-                                </div>
-                                    <!-- 2. Title (SUPER SMALL) + Pay To (Full) -->
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-2">
-                                            <label for="name_title" class="form-label">Title <span class="text-danger">*</span></label>
-                                            <select class="form-select form-select-sm" id="name_title" name="name_title" required>
-                                                <option value="MR">Mr.</option>
-                                                <option value="MRS">Mrs.</option>
-                                                <option value="MS">Ms.</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-10">
-                                            <label for="pay_to" class="form-label">Pay To <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="pay_to" name="pay_to" required placeholder="Enter full name"  oninput="this.value = this.value.toUpperCase();">
-                                        </div>
-                                    </div>
-                                    <!-- 3. Payment Type + CHEQUE FIELDS IN ONE ROW -->
-                                    <div class="mb-3">
-                                        <div class="row g-3 align-items-end">
-                                            <!-- Payment Type -->
-                                            <div class="col-md-3">
-                                                <label for="payment_type" class="form-label">Payment Type <span class="text-danger">*</span></label>
-                                                <select class="form-select form-select-sm" id="payment_type" name="payment_type" required>
-                                                    <option value="CASH">Cash</option>
-                                                    <option value="CHEQUE">Cheque</option>
-                                                    <option value="PETTY_CASH">Petty Cash</option>
-                                                    <option value="ONLINE">Online</option>
-                                                </select>
-                                            </div>
-                                            <!-- Cheque Number -->
-                                            <div class="col-md-2" id="chequeNumberField" style="display:none;">
-                                                <label for="cheque_number" class="form-label">Cheque Number <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-sm" id="cheque_number" name="cheque_number" placeholder="e.g. 123456" maxlength="20">
-                                            </div>
-                                            <!-- Cheque Date -->
-                                            <div class="col-md-2" id="chequeDateField" style="display:none;">
-                                                <label for="cheque_date" class="form-label">Cheque Date <span class="text-danger">*</span></label>
-                                                <input type="date" class="form-control form-control-sm" id="cheque_date" name="cheque_date" max="{{ today }}">
-                                            </div>
-                                            <!-- Account Details - REQUIRED, NO NULL -->
-                                            <div class="col-md-3" id="accountDetailsField" style="display:none;">
-                                                <label for="account_details" class="form-label">Account Details <span class="text-danger">*</span></label>
-                                                <select class="form-select form-select-sm" id="account_details" name="account_details" required>
-                                                    <!-- Options filled by loadAccounts() -->
-                                                </select>
-                                            </div>
-                                            <!-- Cheque Attachment (NOW MULTIPLE) -->
-                                            <!-- CHEQUE ATTACHMENTS - CORRECT -->
-<div class="col-md-2" id="chequeAttachmentField" style="display:none;">
-    <label class="form-label">Cheque Attachments <span class="text-danger">*</span></label>
-    <div id="chequeFileName" class="text-muted small mt-1"></div>
-
-    <input type="file"
-           class="form-control form-control-sm"
-           name="cheque_attachments"
-           id="cheque_attachments"
-           multiple
-           accept="image/*,application/pdf">
-    
-</div>
-<!-- ONLINE ATTACHMENTS - NEW -->
-<div class="col-md-2" id="onlineAttachmentField" style="display:none;">
-    <label class="form-label">Online Attachments <span class="text-danger">*</span></label>
-    <div id="onlineFileName" class="text-muted small mt-1"></div>
-    <input type="file"
-           class="form-control form-control-sm"
-           name="online_attachments"
-           id="online_attachments"
-           multiple
-           accept="image/*,application/pdf">
-</div>
-                                        </div>
-                                    </div>
-                                    <!-- 5. Main Attachment (NOW MULTIPLE & OPTIONAL) -->
-                                    <!-- MAIN ATTACHMENTS - CORRECT -->
-<div class="mb-4" style="max-width: 500px;">
-    <label class="form-label">Main Attachments</label>
-    <input type="file"
-       id="main_attachments"
-       name="main_attachments"
-       class="form-control form-control-sm"
-       multiple
-       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
-           <div id="fileName" class="text-muted small mt-1"></div>
-
-</div>
-                                    <!-- REMOVED: EMAIL & PHONE FROM VOUCHER FORM -->
-                                    <hr class="my-4">
-                                    <!-- PARTICULARS -->
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold">Particulars <span class="text-danger">*</span></label>
-                                        <table class="table table-sm table-bordered" id="particularsTable">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th width="40%">Description</th>
-                                                    <th width="20%">Amount</th>
-                                                    <th width="30%">Attachments </th>
-                                                    <th width="10%"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="particularsBody">
-                                                <tr>
-                                                    <td><input type="text" class="form-control form-control-sm" name="particulars[0][description]" required  oninput="this.value = this.value.toUpperCase();"></td>
-                                                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[0][amount]" required></td>
-                                                    <td>
-                                                        <input type="file" class="form-control form-control-sm"
-                                                            name="particular_attachment_0"
-                                                            multiple
-                                                            accept="image/*,application/pdf"
-                                                            required>
-
-                                                        <div class="mt-1 text-muted small particular-file-list"></div>
-                                                    </td>
-                                                    <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                        <button type="button" class="btn btn-sm btn-primary" id="addParticular">Add Row</button>
-                                    </div>
-                                    <div class="d-grid">
-                                        <button type="submit" class="btn btn-primary btn-lg">Submit Voucher</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {% include 'modals/voucher_creation.html' %}
             {% endif %}
         {% endwith %}
     {% endif %}
+
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -1453,80 +969,6 @@ function handlePermissionChange(event) {
         
     document.addEventListener('DOMContentLoaded', function () {
         const getCsrfToken = () => window.csrfToken;
-     // -------------------------------------------------
-// GLOBAL: Load bank accounts into the dropdown (NO NULL)
-// -------------------------------------------------
-function loadAccounts() {
-    const select = document.getElementById('account_details');
-    if (!select) return;
-
-    select.innerHTML = '<option value="">Loading...</option>';
-    
-    fetch("{% url 'account_list' %}", {
-        headers: {
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('HTTP ' + response.status);
-        }
-        return response.json();
-    })
-    .then(accounts => {
-        select.innerHTML = '';
-        
-        if (!Array.isArray(accounts) || accounts.length === 0) {
-            const opt = document.createElement('option');
-            opt.value = "";
-            opt.textContent = "-- No Accounts for This Company --";
-            opt.disabled = true;
-            opt.selected = true;
-            select.appendChild(opt);
-            return;
-        }
-
-        // Placeholder
-        const placeholder = document.createElement('option');
-        placeholder.value = "";
-        placeholder.textContent = "-- Select Account --";
-        placeholder.disabled = true;
-        placeholder.selected = true;
-        select.appendChild(placeholder);
-
-        accounts.forEach(acc => {
-            const opt = document.createElement('option');
-            opt.value = acc.value;
-            opt.textContent = acc.label;
-            select.appendChild(opt);
-        });
-    })
-    .catch(error => {
-        console.error('Error loading accounts:', error);
-        select.innerHTML = '';
-        const opt = document.createElement('option');
-        opt.value = "";
-        opt.textContent = "-- Load Failed --";
-        opt.disabled = true;
-        opt.selected = true;
-        select.appendChild(opt);
-    });
-}
-
-// ✅ LOAD ACCOUNTS ONLY IF COMPANY IS SELECTED
-const ACTIVE_COMPANY_ID = "{{ request.session.active_company_id|default:'' }}";
-if (ACTIVE_COMPANY_ID) {
-    loadAccounts();
-}
-
-// -------------------------------------------------
-// Auto-fill date
-// -------------------------------------------------
-const dateInput = document.getElementById('voucher_date');
-if (dateInput) {
-    dateInput.value = window.today;
-    dateInput.max = window.today;
-}
         // === CREATE USER ===
 const userForm = document.getElementById('createUserForm');
 if (userForm) {
@@ -1651,9 +1093,7 @@ if (designationForm) {
         e.preventDefault();
         const name = document.getElementById('designation_name').value.trim();
         if (!name) return alert('Designation name is required');
-        
-        console.log('📤 Sending designation:', name); // Debug log
-        
+
         fetch("{% url 'designation_create_api' %}", {
             method: 'POST',
             headers: { 
@@ -1663,7 +1103,6 @@ if (designationForm) {
             body: JSON.stringify({ name: name })
         })
         .then(r => {
-            console.log('📥 Response status:', r.status); // Debug log
             if (!r.ok) {
                 return r.json().then(err => {
                     throw new Error(err.error || 'Server error: ' + r.status);
@@ -1672,9 +1111,8 @@ if (designationForm) {
             return r.json();
         })
         .then(d => {
-            console.log('✅ Response data:', d); // Debug log
             if (d.id) {
-                alert(`✅ Designation "${name}" created successfully!`);
+                alert(`Designation "${name}" created successfully!`);
                 bootstrap.Modal.getInstance(document.getElementById('createDesignationModal')).hide();
                 designationForm.reset();
                 location.reload();
@@ -1683,8 +1121,7 @@ if (designationForm) {
             }
         })
         .catch(err => {
-            console.error('❌ Error creating designation:', err); // Debug log
-            alert('❌ Error: ' + err.message);
+            alert('Error: ' + err.message);
         });
     });
 }
@@ -1754,344 +1191,7 @@ if (editUserModalEl) {
     });
 }
 
-        // === CREATE VOUCHER ===
-        const voucherModal = document.getElementById('createVoucherModal');
-        if (voucherModal) {
-            const form = document.getElementById('createVoucherForm');
-            const tbody = document.getElementById('particularsBody');
-            const addBtn = document.getElementById('addParticular');
-            let index = 1;
-            const paymentTypeSelect = document.getElementById('payment_type');
-            const chequeField = document.getElementById('chequeNumberField');
-            const chequeInput = document.getElementById('cheque_number');
-            const chequeAttachmentField = document.getElementById('chequeAttachmentField');
-            
-            const chequeDateField = document.getElementById('chequeDateField');
-            const chequeDateInput = document.getElementById('cheque_date');
-            const accountDetailsField = document.getElementById('accountDetailsField');
-            const accountDetailsSelect = document.getElementById('account_details');
-            
-
-           voucherModal.addEventListener('show.bs.modal', function (event) {
-    loadAccounts();
-
-    const preview = document.getElementById('voucherNumberPreview');
-    const titleEl = document.getElementById('createVoucherModalTitle');
-
-   let existingNumber = null;
-
-// ✅ Case 1: EDIT MODE
-if (typeof VOUCHER_EDIT_DATA !== "undefined" && VOUCHER_EDIT_DATA.voucher_number) {
-    existingNumber = VOUCHER_EDIT_DATA.voucher_number;
-}
-
-// ✅ Case 2: Button click (new voucher from list)
-else if (event.relatedTarget) {
-    const button = event.relatedTarget;
-    existingNumber = button.getAttribute('data-voucher-number');
-}
-
-if (existingNumber) {
-    preview.innerHTML = existingNumber;
-    if (titleEl) titleEl.innerText = "Edit Voucher";
-} else {
-    if (titleEl) titleEl.innerText = "New Voucher";
-
-    preview.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-
-    fetch("{% url 'voucher_next_number' %}")
-    .then(res => res.json())
-    .then(data => {
-        preview.innerHTML = data.next_number;
-    });
-}
-
-    // ✅ EDIT MODE
-    if (existingNumber) {
-        preview.innerHTML = existingNumber;
-        if (titleEl) titleEl.innerText = "Edit Voucher";
-    } 
-    
-    // ✅ CREATE MODE
-    else {
-        if (titleEl) titleEl.innerText = "New Voucher";
-
-        preview.innerHTML = `
-            <span class="spinner-border spinner-border-sm text-secondary"></span>
-        `;
-
-        fetch("{% url 'voucher_next_number' %}", {
-    headers: { 'Accept': 'application/json' }
-})
-.then(response => response.json())
-.then(data => {
-    console.log("Voucher API:", data); // 👈 keep for debug
-
-    const number = data.next_number || data.voucher_number || data.number;
-
-    preview.innerHTML = number ? number : "Error";
-})
-.catch(err => {
-    console.error("Voucher fetch error:", err);
-    preview.innerHTML = "Error";
-});
-    }
-});
-        // ✅ OUTSIDE event listener
-        const titleEl = document.getElementById('createVoucherModalTitle');
-        if (titleEl) titleEl.textContent = 'New Voucher';
-            // Show/Hide Cheque Fields
-function toggleChequeFields() {
-    if (!paymentTypeSelect) return;
- 
-    const accountDetailsSelect = document.getElementById('account_details');
-    const onlineAttachmentField = document.getElementById('onlineAttachmentField');
-    const onlineAttachmentInput = document.getElementById('online_attachments');
-    const paymentValue = paymentTypeSelect.value;
- 
-    if (paymentValue === "CHEQUE") {
-        chequeField.style.display = "block";
-        chequeDateField.style.display = "block";
-        accountDetailsField.style.display = "block";
-        chequeAttachmentField.style.display = "block";
-        if (onlineAttachmentField) onlineAttachmentField.style.display = "none";
-        if (onlineAttachmentInput) onlineAttachmentInput.required = false;
-        if (accountDetailsSelect) accountDetailsSelect.required = true;
-    } else if (paymentValue === "ONLINE") {
-        chequeField.style.display = "none";
-        chequeDateField.style.display = "none";
-        accountDetailsField.style.display = "block";
-        chequeAttachmentField.style.display = "none";
-        if (onlineAttachmentField) onlineAttachmentField.style.display = "block";
-        // Only require online attachment for NEW vouchers, not edits
-        // (edit mode is detected by the presence of voucher_id in the form)
-        const isEditMode = !!document.querySelector('#createVoucherForm [name="voucher_id"]') 
-                           || window.IS_EDIT_MODE === true;
-        if (onlineAttachmentInput) onlineAttachmentInput.required = !isEditMode;
-        if (accountDetailsSelect) accountDetailsSelect.required = true;
-    } else {
-        chequeField.style.display = "none";
-        chequeDateField.style.display = "none";
-        accountDetailsField.style.display = "none";
-        chequeAttachmentField.style.display = "none";
-        if (onlineAttachmentField) onlineAttachmentField.style.display = "none";
-        if (onlineAttachmentInput) onlineAttachmentInput.required = false;
-        if (accountDetailsSelect) accountDetailsSelect.required = false;
-    }
-}
-
-
-// When user changes payment type
-paymentTypeSelect?.addEventListener("change", toggleChequeFields);
-
-// When modal opens
-voucherModal?.addEventListener("shown.bs.modal", toggleChequeFields);
-
-// Initial load
-const mainAttachmentInput = document.getElementById('main_attachments');
-            const chequeAttachmentInput = document.getElementById('cheque_attachments');
-toggleChequeFields();
-
-            // File name display for main & cheque
-            mainAttachmentInput?.addEventListener('change', e => {
-                const files = Array.from(e.target.files);
-                document.getElementById('fileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
-            });
-            chequeAttachmentInput?.addEventListener('change', e => {
-                const files = Array.from(e.target.files);
-                document.getElementById('chequeFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
-            });
-            document.getElementById('online_attachments')?.addEventListener('change', e => {
-                const files = Array.from(e.target.files);
-                document.getElementById('onlineFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
-            });
-
-            
-            // Add Row handler for particulars
-addBtn.onclick = () => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td><input type="text" class="form-control form-control-sm" name="particulars[${index}][description]" required oninput="this.value = this.value.toUpperCase();"></td>
-        <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${index}][amount]" required></td>
-        <td>
-            <input type="file" class="form-control form-control-sm"
-                name="particular_attachment_${index}"
-                multiple
-                accept="image/*,application/pdf"
-                required>
-            <div class="mt-1 text-muted small particular-file-list"></div>
-        </td>
-        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
-    `;
-    tbody.appendChild(row);
-    index++;
-};
-
-
-            tbody.onclick = e => {
-                if (e.target.classList.contains('remove-row') && tbody.children.length > 1)
-                    e.target.closest('tr').remove();
-            };
-
-            // File list for each particular row
-            tbody.addEventListener('change', e => {
-                if (e.target.name.startsWith("particular_attachment_")) {
-
-                    const files = Array.from(e.target.files);
-                    const div = e.target.closest('td').querySelector('.particular-file-list');
-                    div.innerHTML = files.length ? `${files.length} file(s) selected` : '';
-                }
-            });
-
-            form.onsubmit = e => {
-                e.preventDefault();
-                const formData = new FormData();
-                const voucherDate = document.getElementById('voucher_date').value;
-                const paymentType = document.getElementById('payment_type').value;
-                const nameTitle = document.getElementById('name_title').value;
-                const payTo = document.getElementById('pay_to').value.trim();
-
-                if (!voucherDate || !paymentType || !nameTitle || !payTo)
-                    return alert('Fill all required fields');
-
-                formData.append('voucher_date', voucherDate);
-                formData.append('payment_type', paymentType);
-                formData.append('name_title', nameTitle);
-                formData.append('pay_to', payTo);
-
-                // Main attachments
-                if (mainAttachmentInput?.files.length) {
-                    Array.from(mainAttachmentInput.files).forEach(file => {
-                        formData.append('main_attachments', file);
-                    });
-                }
-
-                if (paymentType === 'CHEQUE') {
-                    const cn = chequeInput.value.trim();
-                    if (!cn) return alert('Cheque number required');
-                    formData.append('cheque_number', cn);
-                    const chequeFiles = chequeAttachmentInput?.files;
-                    if (!chequeFiles || chequeFiles.length === 0) return alert('At least one cheque attachment required');
-                    Array.from(chequeFiles).forEach(file => formData.append('cheque_attachments', file));
-                    const chequeDate = chequeDateInput.value;
-                    if (!chequeDate) return alert('Cheque date required');
-                    formData.append('cheque_date', chequeDate);
-                    const accVal = accountDetailsSelect.value;
-                    if (!accVal) return alert('Account Details required for Cheque');
-                    formData.append('account_details', accVal);
-                } else if (paymentType === 'ONLINE') {
-                    const accVal = accountDetailsSelect.value;
-                    if (!accVal) return alert('Account Details required for Online payment');
-                    formData.append('account_details', accVal);
-                    const onlineInput = document.getElementById('online_attachments');
-                    const isEdit = window.IS_EDIT_MODE === true;
-                    if (onlineInput && onlineInput.files.length > 0) {
-                        // New files selected — upload them
-                        Array.from(onlineInput.files).forEach(file => formData.append('online_attachments', file));
-                    } else if (!isEdit) {
-                        // New voucher with no online attachment — block submission
-                        return alert('At least one online attachment is required for Online payment');
-                    }
-                    // Edit mode with no new file selected — keep existing files (server handles this)
-                }
-
-                let valid = true;
-                const particulars = [];
-                document.querySelectorAll('#particularsBody tr').forEach((row, i) => {
-                    const desc = row.querySelector('input[name*="[description]"]').value.trim();
-                    const amt = row.querySelector('input[name*="[amount]"]').value.trim();
-                    const fileInput = row.querySelector('input[type="file"]');
-                    const files = fileInput.files;
-
-                    if (desc && amt && files.length > 0) {
-                        particulars.push({ description: desc, amount: amt });
-                        Array.from(files).forEach(file => {
-                            formData.append(`particular_attachment_${i}`, file);
-                        });
-                    } else if (desc || amt || files.length > 0) {
-                        valid = false;
-                    }
-                });
-
-                if (!valid || particulars.length === 0) {
-                    return alert('Complete all particulars with description, amount and at least one attachment');
-                }
-
-                particulars.forEach((p, i) => {
-                    formData.append(`particulars[${i}][description]`, p.description);
-                    formData.append(`particulars[${i}][amount]`, p.amount);
-                });
-
-                fetch("{% url 'voucher_create_api' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() },
-                    body: formData
-                })
-                .then(r => r.ok ? r.json() : r.json().then(err => Promise.reject(err)))
-                .then(data => {
-                    // ✅ FIX: Check if element exists before setting textContent
-                    const successMessageEl = document.getElementById('successMessage');
-                    if (successMessageEl) {
-                        successMessageEl.textContent = data.message || `Voucher ${data.voucher?.voucher_number || ''} created!`;
-                    }
-                    
-                    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-                    successModal.show();
-                    bootstrap.Modal.getInstance(voucherModal).hide();
-                    form.reset();
-                    
-                    const fileNameEl = document.getElementById('fileName');
-                    if (fileNameEl) fileNameEl.textContent = '';
-
-                    const chequeFileNameEl = document.getElementById('chequeFileName');
-                    if (chequeFileNameEl) chequeFileNameEl.textContent = '';
-
-                    const onlineFileNameEl = document.getElementById('onlineFileName');
-                    if (onlineFileNameEl) onlineFileNameEl.textContent = '';
-                    
-                    document.querySelectorAll('.particular-file-list').forEach(el => el.textContent = '');
-                    tbody.innerHTML = `<tr>
-                        <td><input type="text" class="form-control form-control-sm" name="particulars[0][description]" required></td>
-                        <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[0][amount]" required></td>
-                        <td>
-                            <input type="file" class="form-control form-control-sm"
-       name="particular_attachment_0"
-       multiple
-       accept="image/*,application/pdf"
-       required>
-
-                            <div class="mt-1 text-muted small particular-file-list"></div>
-                        </td>
-                        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
-                    </tr>`;
-                    index = 1;
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('Error: ' + (err.error || 'Failed to create voucher'));
-                });
-            };
-        }
-
-        // ✅ FIX: Proper focus management for success modal (MOVED OUTSIDE form.onsubmit)
-        document.getElementById('successOkBtn')?.addEventListener('click', function() {
-            // Blur the button first
-            this.blur();
-            
-            // Then close modal and redirect
-            const modal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
-            if (modal) {
-                modal.hide();
-            }
-            
-            // Wait for modal to fully close before redirecting
-            setTimeout(() => {
-                window.location.href = "{% url 'voucher_list' %}";
-            }, 300);
-        });
-           
-        
-        // === CHANGE PASSWORD MODAL - FIXED & WORKING 100% ===
+        // === CHANGE PASSWORD MODAL ===
         const passwordForm = document.getElementById('changePasswordForm');
         if (passwordForm) {
             passwordForm.onsubmit = function(e) {
@@ -3047,7 +2147,7 @@ fetch('/api/memberships/')
                                         ${escapeHtml(user.username)}
                                         ${user.is_superuser ? '<span class="badge bg-danger ms-1">Superuser</span>' : ''}
                                     </div>
-                                    <small class="text-muted">Company Assinged</small>
+                                    <small class="text-muted">Company Assigned</small>
                                 </div>
                             </div>
 
@@ -3145,12 +2245,7 @@ function toggleMembership(id, username, companyName, isActive) {
     .catch(err => alert('Network error: ' + err));
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+
 </script>
 <script>
 // ============================================
@@ -3162,10 +2257,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentCompanyId = '{{ active_company.id|default:"" }}';
     const storedCompanyId = sessionStorage.getItem('last_company_id');
     
-    // If company changed, clear any cached data
     if (storedCompanyId && storedCompanyId !== currentCompanyId) {
-        console.log('✅ Company switched - clearing cached data');
-        // You could clear specific cached data here if needed
+        // company switched — cached data cleared on next modal open
     }
     
     // Update stored company ID
@@ -3174,93 +2267,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ============================================
-// RELOAD MODALS WHEN OPENED
-// ============================================
-
-// Control Approval Modal - Reload data when opened
-const approvalControlModal = document.getElementById('approvalControlModal');
-if (approvalControlModal) {
-    approvalControlModal.addEventListener('show.bs.modal', function() {
-        console.log('🔄 Reloading approval levels for current company...');
-        loadApprovalLevels(); // This function should already exist in your base.html
-    });
-}
-
-// User Rights Modal - Reload data when opened
-const userRightsModal = document.getElementById('userRightsModal');
-if (userRightsModal) {
-    userRightsModal.addEventListener('show.bs.modal', function() {
-        console.log('🔄 Reloading user rights for current company...');
-        loadUserRights(); // This function should already exist in your base.html
-    });
-}
-
-// ============================================
-// HELPER: Load Approval Levels from API
-// ============================================
-function loadApprovalLevels() {
-    fetch('/api/approval/control/', {
-        headers: {
-            'X-CSRFToken': window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-        }
-    })
-    .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    })
-    .then(data => {
-        console.log('✅ Approval levels loaded:', data);
-        // Update the modal UI with new data
-        renderApprovalLevels(data);
-    })
-    .catch(err => {
-        console.error('❌ Error loading approval levels:', err);
-        alert('Failed to load approval levels: ' + err.message);
-    });
-}
-
-function renderApprovalLevels(data) {
-    const list = document.getElementById('approvalLevelsList');
-    const select = document.getElementById('addDesignationSelect');
-    
-    if (!list || !select) return;
-    
-    const allDesignations = data.all_designations || [];
-    const currentLevels = data.levels || [];
-    
-    // Clear and rebuild list
-    list.innerHTML = '';
-    currentLevels.forEach((lvl, idx) => {
-        const item = document.createElement('div');
-        item.className = 'list-group-item d-flex justify-content-between align-items-center';
-        item.draggable = true;
-        item.dataset.id = lvl.id;
-        item.innerHTML = `
-            <div class="d-flex align-items-center gap-3">
-                <i class="bi bi-grip-vertical grip-handle"></i>
-                <strong>${idx + 1}.</strong>
-                <span>${lvl.name}</span>
-            </div>
-            <div>
-                <button class="btn btn-sm btn-danger ms-2 remove-level">Remove</button>
-            </div>
-        `;
-        list.appendChild(item);
-    });
-    
-    // Update dropdown
-    const usedIds = currentLevels.map(l => l.id);
-    select.innerHTML = '<option value="">-- Add Designation --</option>';
-    allDesignations.forEach(d => {
-        if (!usedIds.includes(d.id)) {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.name;
-            select.appendChild(opt);
-        }
-    });
-}
 </script>
 {% endif %}
 

@@ -1,0 +1,671 @@
+{% load static %}
+
+<style>
+    #createVoucherModal .modal-dialog {
+        max-width: 90vw !important;
+        width: 1400px;
+        margin: 1.75rem auto;
+    }
+    @media (max-width: 1500px) {
+        #createVoucherModal .modal-dialog { width: 95vw; }
+    }
+    #createVoucherModal .modal-body { max-height: 75vh; overflow-y: auto; }
+    #particularsTable th, #particularsTable td { vertical-align: middle; }
+</style>
+
+<!-- CREATE VOUCHER MODAL -->
+<div class="modal fade" id="createVoucherModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createVoucherModalTitle">New Voucher</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createVoucherForm" enctype="multipart/form-data">
+                    <!-- Voucher Number (left) + Voucher Date (right) -->
+                    <div class="d-flex justify-content-between align-items-end mb-4">
+                        <div>
+                            <label class="form-label fw-bold text-primary">Voucher Number</label>
+                            <div id="voucherNumberPreview" class="form-control form-control-sm bg-light text-dark">
+                                <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+                            </div>
+                        </div>
+                        <div style="width: 180px;">
+                            <label for="voucher_date" class="form-label fw-bold text-primary">
+                                Voucher Date <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="voucher_date" name="voucher_date" max="{{ today }}" required>
+                        </div>
+                    </div>
+
+                    <!-- Title + Pay To -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-2">
+                            <label for="name_title" class="form-label">Title <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" id="name_title" name="name_title" required>
+                                <option value="MR">Mr.</option>
+                                <option value="MRS">Mrs.</option>
+                                <option value="MS">Ms.</option>
+                            </select>
+                        </div>
+                        <div class="col-md-10">
+                            <label for="pay_to" class="form-label">Pay To <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="pay_to" name="pay_to" required placeholder="Enter full name" oninput="this.value = this.value.toUpperCase();">
+                        </div>
+                    </div>
+
+                    <!-- Payment Type + Cheque/Online Fields -->
+                    <div class="mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label for="payment_type" class="form-label">Payment Type <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="payment_type" name="payment_type" required>
+                                    <option value="CASH">Cash</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                    <option value="PETTY_CASH">Petty Cash</option>
+                                    <option value="ONLINE">Online</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="chequeNumberField" style="display:none;">
+                                <label for="cheque_number" class="form-label">Cheque Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" id="cheque_number" name="cheque_number" placeholder="e.g. 123456" maxlength="20">
+                            </div>
+                            <div class="col-md-2" id="chequeDateField" style="display:none;">
+                                <label for="cheque_date" class="form-label">Cheque Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control form-control-sm" id="cheque_date" name="cheque_date" max="{{ today }}">
+                            </div>
+                            <div class="col-md-3" id="accountDetailsField" style="display:none;">
+                                <label for="account_details" class="form-label">Account Details <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="account_details" name="account_details" required>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="chequeAttachmentField" style="display:none;">
+                                <label class="form-label">Cheque Attachments <span class="text-danger">*</span></label>
+                                <div id="chequeFileName" class="text-muted small mt-1"></div>
+                                <input type="file" class="form-control form-control-sm" name="cheque_attachments" id="cheque_attachments" multiple accept="image/*,application/pdf">
+                            </div>
+                            <div class="col-md-2" id="onlineAttachmentField" style="display:none;">
+                                <label class="form-label">Online Attachments <span class="text-danger">*</span></label>
+                                <div id="onlineFileName" class="text-muted small mt-1"></div>
+                                <input type="file" class="form-control form-control-sm" name="online_attachments" id="online_attachments" multiple accept="image/*,application/pdf">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Attachments -->
+                    <div class="mb-4" style="max-width: 500px;">
+                        <label class="form-label">Main Attachments</label>
+                        <input type="file" id="main_attachments" name="main_attachments" class="form-control form-control-sm" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+                        <div id="fileName" class="text-muted small mt-1"></div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Particulars -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Particulars <span class="text-danger">*</span></label>
+                        <table class="table table-sm table-bordered" id="particularsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="40%">Description</th>
+                                    <th width="20%">Amount</th>
+                                    <th width="30%">Attachments</th>
+                                    <th width="10%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="particularsBody">
+                                <tr>
+                                    <td><input type="text" class="form-control form-control-sm" name="particulars[0][description]" required oninput="this.value = this.value.toUpperCase();"></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[0][amount]" required></td>
+                                    <td>
+                                        <input type="file" class="form-control form-control-sm" name="particular_attachment_0" multiple accept="image/*,application/pdf" required>
+                                        <div class="mt-1 text-muted small particular-file-list"></div>
+                                    </td>
+                                    <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-sm btn-primary" id="addParticular">Add Row</button>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Submit Voucher</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// -------------------------------------------------------
+// GLOBAL: Load bank accounts into the dropdown
+// (also called from account control modal when accounts change)
+// -------------------------------------------------------
+function loadAccounts() {
+    const select = document.getElementById('account_details');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Loading...</option>';
+
+    fetch("{% url 'account_list' %}", {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.json();
+    })
+    .then(accounts => {
+        select.innerHTML = '';
+
+        if (!Array.isArray(accounts) || accounts.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = "";
+            opt.textContent = "-- No Accounts for This Company --";
+            opt.disabled = true;
+            opt.selected = true;
+            select.appendChild(opt);
+            return;
+        }
+
+        const placeholder = document.createElement('option');
+        placeholder.value = "";
+        placeholder.textContent = "-- Select Account --";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.appendChild(placeholder);
+
+        accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.value;
+            opt.textContent = acc.label;
+            select.appendChild(opt);
+        });
+    })
+    .catch(error => {
+        console.error('Error loading accounts:', error);
+        select.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.textContent = "-- Load Failed --";
+        opt.disabled = true;
+        opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+// Load accounts on page load if a company is already selected
+(function () {
+    const ACTIVE_COMPANY_ID = "{{ request.session.active_company_id|default:'' }}";
+    if (ACTIVE_COMPANY_ID) loadAccounts();
+})();
+
+// -------------------------------------------------------
+// GLOBAL: Poll until account dropdown is populated then set value
+// (used by edit mode to pre-select the saved account)
+// -------------------------------------------------------
+function setAccountWhenReady(selectEl, value) {
+    if (!selectEl || !value) return;
+    if (selectEl.options.length > 1) {
+        selectEl.value = value;
+        return;
+    }
+    const t = setInterval(() => {
+        if (selectEl.options.length > 1) {
+            selectEl.value = value;
+            clearInterval(t);
+        }
+    }, 100);
+    setTimeout(() => clearInterval(t), 5000);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const getCsrfToken = () => window.csrfToken;
+
+    // Auto-fill voucher date to today
+    const dateInput = document.getElementById('voucher_date');
+    if (dateInput) {
+        dateInput.value = window.today;
+        dateInput.max = window.today;
+    }
+
+    // -------------------------------------------------------
+    // CREATE VOUCHER MODAL SETUP
+    // -------------------------------------------------------
+    const voucherModal = document.getElementById('createVoucherModal');
+    if (!voucherModal) return;
+
+    const form            = document.getElementById('createVoucherForm');
+    const tbody           = document.getElementById('particularsBody');
+    const addBtn          = document.getElementById('addParticular');
+    const paymentTypeSelect      = document.getElementById('payment_type');
+    const chequeField            = document.getElementById('chequeNumberField');
+    const chequeInput            = document.getElementById('cheque_number');
+    const chequeDateField        = document.getElementById('chequeDateField');
+    const chequeDateInput        = document.getElementById('cheque_date');
+    const chequeAttachmentField  = document.getElementById('chequeAttachmentField');
+    const accountDetailsField    = document.getElementById('accountDetailsField');
+    const accountDetailsSelect   = document.getElementById('account_details');
+    const mainAttachmentInput    = document.getElementById('main_attachments');
+    const chequeAttachmentInput  = document.getElementById('cheque_attachments');
+    let index = 1;
+
+    // --- Show/Hide payment-type-specific fields ---
+    function toggleChequeFields() {
+        if (!paymentTypeSelect) return;
+
+        const onlineAttachmentField = document.getElementById('onlineAttachmentField');
+        const onlineAttachmentInput = document.getElementById('online_attachments');
+        const paymentValue = paymentTypeSelect.value;
+
+        if (paymentValue === 'CHEQUE') {
+            chequeField.style.display            = 'block';
+            chequeDateField.style.display        = 'block';
+            accountDetailsField.style.display    = 'block';
+            chequeAttachmentField.style.display  = 'block';
+            if (onlineAttachmentField) onlineAttachmentField.style.display = 'none';
+            if (onlineAttachmentInput) onlineAttachmentInput.required = false;
+            if (accountDetailsSelect)  accountDetailsSelect.required  = true;
+        } else if (paymentValue === 'ONLINE') {
+            chequeField.style.display            = 'none';
+            chequeDateField.style.display        = 'none';
+            accountDetailsField.style.display    = 'block';
+            chequeAttachmentField.style.display  = 'none';
+            if (onlineAttachmentField) onlineAttachmentField.style.display = 'block';
+            const isEditMode = window.IS_EDIT_MODE === true;
+            if (onlineAttachmentInput) onlineAttachmentInput.required = !isEditMode;
+            if (accountDetailsSelect)  accountDetailsSelect.required  = true;
+        } else {
+            chequeField.style.display            = 'none';
+            chequeDateField.style.display        = 'none';
+            accountDetailsField.style.display    = 'none';
+            chequeAttachmentField.style.display  = 'none';
+            if (onlineAttachmentField) onlineAttachmentField.style.display = 'none';
+            if (onlineAttachmentInput) onlineAttachmentInput.required = false;
+            if (accountDetailsSelect)  accountDetailsSelect.required  = false;
+        }
+    }
+
+    paymentTypeSelect?.addEventListener('change', toggleChequeFields);
+    voucherModal.addEventListener('shown.bs.modal', toggleChequeFields);
+    toggleChequeFields();
+
+    // Full reset to create mode — called on every modal close
+    function resetModalToCreateMode() {
+        window.IS_EDIT_MODE = false;
+
+        // Remove all edit-hint elements (current file labels injected in edit mode)
+        form.querySelectorAll('.edit-hint').forEach(el => el.remove());
+
+        // Restore submit button label
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.textContent = 'Submit Voucher';
+
+        // Restore modal title
+        const titleEl = document.getElementById('createVoucherModalTitle');
+        if (titleEl) titleEl.textContent = 'New Voucher';
+
+        // Reset particulars to one empty row
+        tbody.innerHTML = `
+            <tr>
+                <td><input type="text" class="form-control form-control-sm" name="particulars[0][description]" required oninput="this.value = this.value.toUpperCase();"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[0][amount]" required></td>
+                <td>
+                    <input type="file" class="form-control form-control-sm" name="particular_attachment_0" multiple accept="image/*,application/pdf" required>
+                    <div class="mt-1 text-muted small particular-file-list"></div>
+                </td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+            </tr>`;
+        index = 1;
+
+        // Clear file name displays
+        ['fileName', 'chequeFileName', 'onlineFileName'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '';
+        });
+
+        // Reset form fields and restore create handler
+        form.reset();
+        form.onsubmit = createSubmitHandler;
+    }
+
+    voucherModal.addEventListener('hidden.bs.modal', resetModalToCreateMode);
+
+    // --- Voucher number + title on modal open ---
+    voucherModal.addEventListener('show.bs.modal', function (event) {
+        loadAccounts();
+
+        const preview = document.getElementById('voucherNumberPreview');
+        const titleEl = document.getElementById('createVoucherModalTitle');
+
+        let existingNumber = null;
+
+        if (typeof VOUCHER_EDIT_DATA !== 'undefined' && VOUCHER_EDIT_DATA.voucher_number) {
+            existingNumber = VOUCHER_EDIT_DATA.voucher_number;
+        } else if (event.relatedTarget) {
+            existingNumber = event.relatedTarget.getAttribute('data-voucher-number');
+        }
+
+        if (existingNumber) {
+            preview.innerHTML = existingNumber;
+            if (titleEl) titleEl.innerText = 'Edit Voucher';
+        } else {
+            if (titleEl) titleEl.innerText = 'New Voucher';
+            preview.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary"></span>';
+            fetch("{% url 'voucher_next_number' %}", { headers: { 'Accept': 'application/json' } })
+                .then(r => r.json())
+                .then(data => {
+                    const number = data.next_number || data.voucher_number || data.number;
+                    preview.innerHTML = number || 'Error';
+                })
+                .catch(() => { preview.innerHTML = 'Error'; });
+        }
+    });
+
+    // --- File name display ---
+    mainAttachmentInput?.addEventListener('change', e => {
+        const files = Array.from(e.target.files);
+        document.getElementById('fileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
+    });
+    chequeAttachmentInput?.addEventListener('change', e => {
+        const files = Array.from(e.target.files);
+        document.getElementById('chequeFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
+    });
+    document.getElementById('online_attachments')?.addEventListener('change', e => {
+        const files = Array.from(e.target.files);
+        document.getElementById('onlineFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
+    });
+
+    // --- Add row ---
+    addBtn.onclick = () => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm" name="particulars[${index}][description]" required oninput="this.value = this.value.toUpperCase();"></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${index}][amount]" required></td>
+            <td>
+                <input type="file" class="form-control form-control-sm" name="particular_attachment_${index}" multiple accept="image/*,application/pdf" required>
+                <div class="mt-1 text-muted small particular-file-list"></div>
+            </td>
+            <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+        `;
+        tbody.appendChild(row);
+        index++;
+    };
+
+    // --- Remove row ---
+    tbody.onclick = e => {
+        if (e.target.classList.contains('remove-row') && tbody.children.length > 1)
+            e.target.closest('tr').remove();
+    };
+
+    // --- Per-particular file list display ---
+    tbody.addEventListener('change', e => {
+        if (e.target.name && e.target.name.startsWith('particular_attachment_')) {
+            const files = Array.from(e.target.files);
+            const div = e.target.closest('td').querySelector('.particular-file-list');
+            div.innerHTML = files.length ? `${files.length} file(s) selected` : '';
+        }
+    });
+
+    // --- Helpers to reduce cognitive complexity ---
+    function appendChequeFields(formData) {
+        const cn = chequeInput.value.trim();
+        if (!cn) return 'Cheque number required';
+        const chequeFiles = chequeAttachmentInput?.files;
+        if (!chequeFiles || chequeFiles.length === 0) return 'At least one cheque attachment required';
+        const chequeDate = chequeDateInput.value;
+        if (!chequeDate) return 'Cheque date required';
+        const accVal = accountDetailsSelect.value;
+        if (!accVal) return 'Account Details required for Cheque';
+        formData.append('cheque_number', cn);
+        Array.from(chequeFiles).forEach(f => formData.append('cheque_attachments', f));
+        formData.append('cheque_date', chequeDate);
+        formData.append('account_details', accVal);
+        return null;
+    }
+
+    function appendOnlineFields(formData) {
+        const accVal = accountDetailsSelect.value;
+        if (!accVal) return 'Account Details required for Online payment';
+        formData.append('account_details', accVal);
+        const onlineInput = document.getElementById('online_attachments');
+        if (onlineInput && onlineInput.files.length > 0) {
+            Array.from(onlineInput.files).forEach(f => formData.append('online_attachments', f));
+        } else if (globalThis.IS_EDIT_MODE !== true) {
+            return 'At least one online attachment is required for Online payment';
+        }
+        return null;
+    }
+
+    function appendPaymentFields(formData, paymentType) {
+        if (paymentType === 'CHEQUE') return appendChequeFields(formData);
+        if (paymentType === 'ONLINE') return appendOnlineFields(formData);
+        return null;
+    }
+
+    function collectParticulars(formData) {
+        const particulars = [];
+        let valid = true;
+        document.querySelectorAll('#particularsBody tr').forEach((row, i) => {
+            const desc      = row.querySelector('input[name*="[description]"]').value.trim();
+            const amt       = row.querySelector('input[name*="[amount]"]').value.trim();
+            const fileInput = row.querySelector('input[type="file"]');
+            const files     = fileInput.files;
+            if (desc && amt && files.length > 0) {
+                particulars.push({ description: desc, amount: amt });
+                Array.from(files).forEach(f => formData.append(`particular_attachment_${i}`, f));
+            } else if (desc || amt || files.length > 0) {
+                valid = false;
+            }
+        });
+        return valid ? particulars : null;
+    }
+
+    // --- CREATE submit handler ---
+    function createSubmitHandler(e) {
+        e.preventDefault();
+        const voucherDate = document.getElementById('voucher_date').value;
+        const paymentType = document.getElementById('payment_type').value;
+        const nameTitle   = document.getElementById('name_title').value;
+        const payTo       = document.getElementById('pay_to').value.trim();
+
+        if (!voucherDate || !paymentType || !nameTitle || !payTo)
+            return alert('Fill all required fields');
+
+        const formData = new FormData();
+        formData.append('voucher_date', voucherDate);
+        formData.append('payment_type', paymentType);
+        formData.append('name_title',   nameTitle);
+        formData.append('pay_to',       payTo);
+
+        if (mainAttachmentInput?.files.length)
+            Array.from(mainAttachmentInput.files).forEach(f => formData.append('main_attachments', f));
+
+        const paymentError = appendPaymentFields(formData, paymentType);
+        if (paymentError) return alert(paymentError);
+
+        const particulars = collectParticulars(formData);
+        if (!particulars || particulars.length === 0)
+            return alert('Complete all particulars with description, amount and at least one attachment');
+
+        particulars.forEach((p, i) => {
+            formData.append(`particulars[${i}][description]`, p.description);
+            formData.append(`particulars[${i}][amount]`,      p.amount);
+        });
+
+        fetch("{% url 'voucher_create_api' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            body: formData
+        })
+        .then(r => r.ok ? r.json() : r.json().then(err => Promise.reject(err)))
+        .then(data => {
+            const successMessageEl = document.getElementById('successMessage');
+            if (successMessageEl)
+                successMessageEl.textContent = data.message || `Voucher ${data.voucher?.voucher_number || ''} created!`;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+            bootstrap.Modal.getInstance(voucherModal).hide();
+            // resetModalToCreateMode() fires automatically via hidden.bs.modal
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error: ' + (err.error || 'Failed to create voucher'));
+        });
+    }
+    form.onsubmit = createSubmitHandler;
+
+    // --- Success modal OK button ---
+    document.getElementById('successOkBtn')?.addEventListener('click', function () {
+        this.blur();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
+        if (modal) modal.hide();
+        setTimeout(() => { window.location.href = "{% url 'voucher_list' %}"; }, 300);
+    });
+
+    // -------------------------------------------------------
+    // EDIT MODE — triggered from voucher_detail.html
+    // VOUCHER_EDIT_DATA is defined on that page before this script runs
+    // -------------------------------------------------------
+    const editBtn = document.getElementById('editVoucherBtn');
+    if (editBtn) {
+        editBtn.addEventListener('click', function () {
+            window.IS_EDIT_MODE = true;
+
+            if (!voucherModal) { alert('Edit modal not found!'); return; }
+
+            voucherModal.setAttribute('data-voucher-number', VOUCHER_EDIT_DATA.voucher_number);
+
+            const modalTitle = voucherModal.querySelector('.modal-title');
+            if (modalTitle) modalTitle.textContent = 'Edit Voucher ' + VOUCHER_EDIT_DATA.voucher_number;
+
+            const bsModal = new bootstrap.Modal(voucherModal);
+            bsModal.show();
+
+            voucherModal.addEventListener('shown.bs.modal', function handler() {
+                // Clear particulars table
+                if (tbody) tbody.innerHTML = '';
+
+                // Basic fields
+                const voucherDateInput  = form.querySelector('[name="voucher_date"]');
+                const paymentTypeInput  = form.querySelector('[name="payment_type"]');
+                const nameTitleInput    = form.querySelector('[name="name_title"]');
+                const payToInput        = form.querySelector('[name="pay_to"]');
+
+                if (voucherDateInput) voucherDateInput.value = VOUCHER_EDIT_DATA.voucher_date;
+                if (nameTitleInput)   nameTitleInput.value   = VOUCHER_EDIT_DATA.name_title;
+                if (payToInput)       payToInput.value       = VOUCHER_EDIT_DATA.pay_to;
+
+                if (paymentTypeInput) {
+                    paymentTypeInput.value = VOUCHER_EDIT_DATA.payment_type;
+                    paymentTypeInput.dispatchEvent(new Event('change'));
+                }
+
+                // Payment-type-specific fields
+                const accountDetailsEl = document.getElementById('account_details');
+                const chequeNumberEl   = form.querySelector('[name="cheque_number"]');
+                const chequeDateEl     = form.querySelector('[name="cheque_date"]');
+
+                if (VOUCHER_EDIT_DATA.payment_type === 'CHEQUE') {
+                    if (chequeNumberEl) chequeNumberEl.value = VOUCHER_EDIT_DATA.cheque_number || '';
+                    if (chequeDateEl)   chequeDateEl.value   = VOUCHER_EDIT_DATA.cheque_date   || '';
+                    setAccountWhenReady(accountDetailsEl, VOUCHER_EDIT_DATA.account_details);
+
+                    const chequeFileInput = form.querySelector('[name="cheque_attachments"]');
+                    if (chequeFileInput && VOUCHER_EDIT_DATA.cheque_attachments.length > 0) {
+                        const existing = chequeFileInput.parentElement.querySelector('.edit-hint');
+                        if (existing) existing.remove();
+                        const hint = document.createElement('div');
+                        hint.className = 'mt-1 edit-hint';
+                        hint.innerHTML = `<small class="text-muted">Current files: ${VOUCHER_EDIT_DATA.cheque_attachments.join(', ')}</small>`;
+                        chequeFileInput.insertAdjacentElement('afterend', hint);
+                    }
+                } else if (VOUCHER_EDIT_DATA.payment_type === 'ONLINE') {
+                    if (chequeNumberEl) chequeNumberEl.value = '';
+                    if (chequeDateEl)   chequeDateEl.value   = '';
+                    setAccountWhenReady(accountDetailsEl, VOUCHER_EDIT_DATA.account_details);
+
+                    const onlineFileInput = form.querySelector('[name="online_attachments"]');
+                    if (onlineFileInput && VOUCHER_EDIT_DATA.online_attachments.length > 0) {
+                        const existing = onlineFileInput.parentElement.querySelector('.edit-hint');
+                        if (existing) existing.remove();
+                        const hint = document.createElement('div');
+                        hint.className = 'mt-1 edit-hint';
+                        hint.innerHTML = `<small class="text-muted">Current files: ${VOUCHER_EDIT_DATA.online_attachments.join(', ')}</small>`;
+                        onlineFileInput.insertAdjacentElement('afterend', hint);
+                    }
+                } else {
+                    if (chequeNumberEl) chequeNumberEl.value = '';
+                    if (chequeDateEl)   chequeDateEl.value   = '';
+                }
+
+                // Rebuild particulars rows
+                if (tbody) {
+                    VOUCHER_EDIT_DATA.particulars.forEach((p, i) => {
+                        const filesList = p.files.length > 0
+                            ? `<small class="text-muted d-block mt-1">Current: ${p.files.join(', ')}</small>`
+                            : '';
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><input type="text" class="form-control form-control-sm" name="particulars[${i}][description]" value="${p.description}" required oninput="this.value=this.value.toUpperCase()"></td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${i}][amount]" value="${p.amount}" required></td>
+                            <td>
+                                <input type="file" class="form-control form-control-sm" name="particular_attachment_${i}" multiple accept="image/*,.pdf,.doc,.docx">
+                                ${filesList}
+                                <div class="mt-1 text-muted small particular-file-list"></div>
+                            </td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-row">Remove</button></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    index = VOUCHER_EDIT_DATA.particulars.length;
+                }
+
+                // Main attachments hint
+                const mainFileInput = form.querySelector('[name="main_attachments"]');
+                if (mainFileInput) {
+                    if (VOUCHER_EDIT_DATA.main_attachments && VOUCHER_EDIT_DATA.main_attachments.length > 0) {
+                        const existing = mainFileInput.parentElement.querySelector('.edit-hint');
+                        if (existing) existing.remove();
+                        const hint = document.createElement('div');
+                        hint.className = 'mt-1 edit-hint';
+                        hint.innerHTML = `<small class="text-muted">Current: ${VOUCHER_EDIT_DATA.main_attachments.join(', ')}</small>`;
+                        mainFileInput.insertAdjacentElement('afterend', hint);
+                    }
+                    mainFileInput.value = '';
+                }
+
+                // Override submit for edit
+                form.onsubmit = function (e) {
+                    e.preventDefault();
+                    const fd = new FormData(form);
+                    fd.append('voucher_id', VOUCHER_EDIT_DATA.id);
+                    fetch("{% url 'voucher_create_api' %}", {
+                        method: 'POST',
+                        body: fd,
+                        headers: { 'X-CSRFToken': getCsrfToken() }
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            alert('Voucher updated successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (d.message || JSON.stringify(d)));
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Update failed. Check console.');
+                    });
+                };
+
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Update Voucher';
+
+                voucherModal.removeEventListener('shown.bs.modal', handler);
+            });
+        });
+    }
+});
+</script>
