@@ -81,117 +81,129 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="createHolidayForm">
-                <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto;">
+                <div class="modal-body p-4" style="max-height: 72vh; overflow-y: auto;">
                     <div id="holidayFormError" class="alert alert-danger d-none"></div>
                     <div id="holidayFormSuccess" class="alert alert-success d-none"></div>
 
                     <div class="row g-3">
-                        <!-- Trip Date -->
+
+                        <!-- Date of Journey | Purpose of Booking -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">
-                                Trip Date <span class="text-danger">*</span>
+                                Date of Journey <span class="text-danger">*</span>
                             </label>
                             <input type="date" class="form-control" id="h_trip_date" required>
                         </div>
-
-                        <!-- Destination -->
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                Destination <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" class="form-control" id="h_destination" required maxlength="200"
+                            <label class="form-label fw-semibold">Purpose of Booking</label>
+                            <input type="text" class="form-control" id="h_purpose_of_booking" maxlength="300"
+                                   placeholder="e.g. FAMILY TRIP, PILGRIMAGE..."
                                    oninput="this.value = this.value.toUpperCase();">
                         </div>
 
-                        <!-- Departure Location -->
+                        <!-- Booked By | Contact Number 1 -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">
-                                Departure Location <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" class="form-control" id="h_departure_location" required maxlength="200"
-                                   oninput="this.value = this.value.toUpperCase();">
-                        </div>
-
-                        <!-- Bus Type -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                Bus Type <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select" id="h_bus_type" required>
-                                <option value="STANDARD">Standard Bus (35-45 seats)</option>
-                                <option value="MINI">Mini Bus (15-20 seats)</option>
-                                <option value="LUXURY">Luxury Coach (45-55 seats)</option>
-                            </select>
-                        </div>
-
-                        <!-- Departure Time -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                Departure Time <span class="text-danger">*</span>
-                            </label>
-                            <input type="time" class="form-control" id="h_departure_time" required>
-                        </div>
-
-                        <!-- Return Time -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                Return Time <span class="text-muted small">(Optional)</span>
-                            </label>
-                            <input type="time" class="form-control" id="h_return_time">
-                        </div>
-
-                        <!-- No. of Passengers -->
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">
-                                No. of Passengers <span class="text-danger">*</span>
-                            </label>
-                            <input type="number" class="form-control" id="h_no_of_passengers"
-                                   required min="1" max="500" onchange="calcHolidayTotal()">
-                        </div>
-
-                        <!-- Fare Per Person -->
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">
-                                Fare Per Person (₹) <span class="text-danger">*</span>
-                            </label>
-                            <input type="number" class="form-control" id="h_fare_per_person"
-                                   required min="0" step="0.01" value="0" onchange="calcHolidayTotal()">
-                        </div>
-
-                        <!-- Advance Amount -->
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">
-                                Advance Amount (₹) <span class="text-muted small">(Optional)</span>
-                            </label>
-                            <input type="number" class="form-control" id="h_advance_amount"
-                                   min="0" step="0.01" value="0">
-                        </div>
-
-                        <!-- Total Amount Display -->
-                        <div class="col-12">
-                            <div class="alert alert-info">
-                                <h5 class="mb-0">
-                                    <strong>Total Amount: ₹<span id="holidayTotalDisplay">0.00</span></strong>
-                                </h5>
-                            </div>
-                        </div>
-
-                        <!-- Booked By -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                Booked By <span class="text-danger">*</span>
+                                Name (Booked By) <span class="text-danger">*</span>
                             </label>
                             <input type="text" class="form-control" id="h_booked_by" required maxlength="200"
                                    oninput="this.value = this.value.toUpperCase();">
                         </div>
-
-                        <!-- Contact Number -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">
-                                Contact Number <span class="text-danger">*</span>
+                                Contact Number 1 <span class="text-danger">*</span>
                             </label>
-                            <input type="tel" class="form-control" id="h_contact_number"
-                                   required maxlength="15">
+                            <input type="tel" class="form-control" id="h_contact_number" required maxlength="15">
+                        </div>
+
+                        <!-- Contact Number 2 | Payment Type -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Contact Number 2 <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="tel" class="form-control" id="h_second_contact_number" maxlength="15">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Type</label>
+                            <input type="text" class="form-control" id="h_payment_type_label" maxlength="100"
+                                   placeholder="e.g. HIGH RANGE, LOCAL..."
+                                   oninput="this.value = this.value.toUpperCase();">
+                        </div>
+
+                        <!-- Time of Journey | Date of Return -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Time of Journey <span class="text-danger">*</span>
+                            </label>
+                            <input type="time" class="form-control" id="h_departure_time" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Date of Return <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="date" class="form-control" id="h_return_date">
+                        </div>
+
+                        <!-- Time of Return -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Time of Return <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="time" class="form-control" id="h_return_time">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                No. of Passengers <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="h_no_of_passengers"
+                                   required min="1" max="500">
+                        </div>
+
+                        <!-- Place of Starting Point -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                Place of Starting Point <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="h_departure_location" required maxlength="200"
+                                   placeholder="STARTING POINT..."
+                                   oninput="this.value = this.value.toUpperCase();">
+                        </div>
+
+                        <!-- Places to Visit -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                Places to Visit During Journey <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="h_destination" required rows="2"
+                                      placeholder="e.g. MUNNAR, THEKKADY, WAYANAD..."
+                                      oninput="this.value = this.value.toUpperCase();"></textarea>
+                        </div>
+
+                        <!-- Booked Vehicle | AC/NON-AC -->
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold">Booked Vehicle</label>
+                            <select class="form-select" id="h_booked_vehicle">
+                                <option value="">-- Select Vehicle --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold">
+                                Type of Vehicle <span class="text-danger">*</span>
+                            </label>
+                            <div class="d-flex gap-4 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="h_ac_type" id="h_ac_type_ac" value="AC">
+                                    <label class="form-check-label fw-semibold" for="h_ac_type_ac">
+                                        <i class="bi bi-snow me-1 text-info"></i>AC
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="h_ac_type" id="h_ac_type_nonac" value="NON_AC" checked>
+                                    <label class="form-check-label fw-semibold" for="h_ac_type_nonac">
+                                        <i class="bi bi-fan me-1 text-secondary"></i>Non-AC
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Special Instructions -->
@@ -199,10 +211,75 @@
                             <label class="form-label fw-semibold">
                                 Special Instructions <span class="text-muted small">(Optional)</span>
                             </label>
-                            <textarea class="form-control" id="h_special_instructions" rows="3"
-                                      placeholder="Enter any special notes or requirements..."
+                            <textarea class="form-control" id="h_special_instructions" rows="2"
+                                      placeholder="Enter any special notes..."
                                       oninput="this.value = this.value.toUpperCase();"></textarea>
                         </div>
+
+                        <!-- ── JOURNEY DETAILS ── -->
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <h6 class="fw-bold text-info mb-3">
+                                <i class="bi bi-signpost-2 me-1"></i>Journey Details
+                            </h6>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Max KM (Contract) <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="number" class="form-control" id="h_max_km" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Extra KM Charge (₹/km) <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="number" class="form-control" id="h_extra_km_charge" min="0" step="0.01">
+                        </div>
+
+                        <!-- ── PAYMENT SECTION ── -->
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <h6 class="fw-bold text-info mb-3">
+                                <i class="bi bi-currency-rupee me-1"></i>Payment Details
+                            </h6>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">
+                                Total Rent (₹) <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="h_total_rent"
+                                   required min="0" step="0.01" value="0"
+                                   oninput="calcHolidayTotal()">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">
+                                Service Charge / Baatta (₹) <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="number" class="form-control" id="h_service_charge"
+                                   min="0" step="0.01" value="0"
+                                   oninput="calcHolidayTotal()">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Total Amount (₹)</label>
+                            <input type="text" class="form-control bg-light fw-bold text-success"
+                                   id="h_total_amount_display" readonly value="0.00">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Advance Amount (₹) <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <input type="number" class="form-control" id="h_advance_amount"
+                                   min="0" step="0.01" value="0"
+                                   oninput="calcHolidayTotal()">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Balance Amount (₹)</label>
+                            <input type="text" class="form-control bg-light fw-bold text-danger"
+                                   id="h_balance_amount_display" readonly value="0.00">
+                        </div>
+
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -418,9 +495,30 @@ function getCsrfTokenH() {
 }
 
 function calcHolidayTotal() {
-    const pax  = parseFloat(document.getElementById('h_no_of_passengers').value) || 0;
-    const fare = parseFloat(document.getElementById('h_fare_per_person').value)  || 0;
-    document.getElementById('holidayTotalDisplay').textContent = (pax * fare).toFixed(2);
+    const rent    = Number.parseFloat(document.getElementById('h_total_rent').value)    || 0;
+    const service = Number.parseFloat(document.getElementById('h_service_charge').value) || 0;
+    const advance = Number.parseFloat(document.getElementById('h_advance_amount').value) || 0;
+    const total   = rent + service;
+    const balance = Math.max(0, total - advance);
+    document.getElementById('h_total_amount_display').value  = total.toFixed(2);
+    document.getElementById('h_balance_amount_display').value = balance.toFixed(2);
+}
+
+function loadVehicles() {
+    fetch('/api/vehicles/', { headers: { 'X-CSRFToken': getCsrfTokenH() } })
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('h_booked_vehicle');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- Select Vehicle --</option>';
+        (data.vehicles || []).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = `${v.name} (${v.registration_number})`;
+            sel.appendChild(opt);
+        });
+    })
+    .catch(() => {});
 }
 
 function formatDateLabel(dateStr) {
@@ -507,21 +605,21 @@ function renderHolidayCalendar(date) {
 }
 
 // ── navigation ────────────────────────────────────────────────
-window.hPrevMonth = function() {
+globalThis.hPrevMonth = function() {
     hCurrentDate.setMonth(hCurrentDate.getMonth() - 1);
     loadHolidayBookedDates();
 };
-window.hNextMonth = function() {
+globalThis.hNextMonth = function() {
     hCurrentDate.setMonth(hCurrentDate.getMonth() + 1);
     loadHolidayBookedDates();
 };
-window.hToday = function() {
+globalThis.hToday = function() {
     hCurrentDate = new Date();
     loadHolidayBookedDates();
 };
 
 // ── date select ───────────────────────────────────────────────
-window.hSelectDate = function(dateStr) {
+globalThis.hSelectDate = function(dateStr) {
     hSelectedDate = dateStr;
     if (hBookedDates[dateStr]) {
         showHolidayList(dateStr);
@@ -639,7 +737,7 @@ function showHolidayList(dateStr) {
                                 <i class="bi bi-clock me-1"></i>${b.departure_time}${returnTime}
                             </p>
                             <p class="mb-1 small">
-                                <i class="bi bi-bus-front me-1"></i>${escapeHtml(b.bus_type)} &nbsp;|&nbsp;
+                                <i class="bi bi-bus-front me-1"></i>${escapeHtml(b.booked_vehicle || b.ac_type)} &nbsp;|&nbsp;
                                 <i class="bi bi-people me-1"></i>${b.no_of_passengers} pax
                             </p>
                             <p class="mb-0 small">
@@ -675,12 +773,17 @@ function escapeHtml(text) {
 
 // ── create holiday form submit ────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
-    // Set today as default / min for trip date
     const today = new Date().toISOString().split('T')[0];
     const tripDateInput = document.getElementById('h_trip_date');
-    if (tripDateInput) {
-        tripDateInput.min   = today;
-        tripDateInput.value = today;
+    if (tripDateInput) { tripDateInput.min = today; tripDateInput.value = today; }
+
+    // Load vehicles into dropdown
+    loadVehicles();
+
+    // Re-load vehicles when modal opens (in case vehicles were added)
+    const modal = document.getElementById('createHolidayModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', loadVehicles);
     }
 
     const form = document.getElementById('createHolidayForm');
@@ -697,19 +800,29 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
 
+            const acTypeEl = document.querySelector('input[name="h_ac_type"]:checked');
+
             const payload = {
-                trip_date:          document.getElementById('h_trip_date').value,
-                destination:        document.getElementById('h_destination').value,
-                departure_location: document.getElementById('h_departure_location').value,
-                departure_time:     document.getElementById('h_departure_time').value,
-                return_time:        document.getElementById('h_return_time').value || null,
-                bus_type:           document.getElementById('h_bus_type').value,
-                no_of_passengers:   document.getElementById('h_no_of_passengers').value,
-                booked_by:          document.getElementById('h_booked_by').value,
-                contact_number:     document.getElementById('h_contact_number').value,
-                fare_per_person:    document.getElementById('h_fare_per_person').value,
-                advance_amount:     document.getElementById('h_advance_amount').value || null,
-                special_instructions: document.getElementById('h_special_instructions').value,
+                trip_date:              document.getElementById('h_trip_date').value,
+                purpose_of_booking:     document.getElementById('h_purpose_of_booking').value,
+                booked_by:              document.getElementById('h_booked_by').value,
+                contact_number:         document.getElementById('h_contact_number').value,
+                second_contact_number:  document.getElementById('h_second_contact_number').value || null,
+                payment_type_label:     document.getElementById('h_payment_type_label').value,
+                departure_time:         document.getElementById('h_departure_time').value,
+                return_date:            document.getElementById('h_return_date').value || null,
+                return_time:            document.getElementById('h_return_time').value || null,
+                departure_location:     document.getElementById('h_departure_location').value,
+                destination:            document.getElementById('h_destination').value,
+                no_of_passengers:       document.getElementById('h_no_of_passengers').value,
+                booked_vehicle:         document.getElementById('h_booked_vehicle').value || null,
+                ac_type:                acTypeEl ? acTypeEl.value : 'NON_AC',
+                max_km:                 document.getElementById('h_max_km').value || null,
+                extra_km_charge:        document.getElementById('h_extra_km_charge').value || null,
+                total_rent:             document.getElementById('h_total_rent').value || '0',
+                service_charge:         document.getElementById('h_service_charge').value || '0',
+                advance_amount:         document.getElementById('h_advance_amount').value || '0',
+                special_instructions:   document.getElementById('h_special_instructions').value,
             };
 
             fetch('/api/holidays/create/', {
@@ -729,14 +842,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     successDiv.textContent = data.message;
                     successDiv.classList.remove('d-none');
                     form.reset();
-                    document.getElementById('holidayTotalDisplay').textContent = '0.00';
-                    // Reload calendar
+                    document.getElementById('h_total_amount_display').value  = '0.00';
+                    document.getElementById('h_balance_amount_display').value = '0.00';
                     loadHolidayBookedDates();
-                    // Close modal after 1.5s
                     setTimeout(() => {
                         bootstrap.Modal.getInstance(document.getElementById('createHolidayModal'))?.hide();
-                        // Navigate to the new booking detail
-                        if (data.id) window.location.href = `/holidays/${data.id}/`;
+                        if (data.id) globalThis.location.href = `/holidays/${data.id}/`;
                     }, 1500);
                 } else {
                     errorDiv.textContent = data.error || 'An error occurred.';

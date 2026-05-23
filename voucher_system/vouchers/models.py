@@ -680,6 +680,26 @@ class FunctionBooking(models.Model):
 
 
 # =============================================
+# VEHICLE MASTER
+# =============================================
+
+class Vehicle(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='vehicles')
+    name = models.CharField(max_length=200)
+    registration_number = models.CharField(max_length=50)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='vehicles_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'registration_number')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.registration_number})"
+
+
+# =============================================
 # HOLIDAY BOOKING
 # =============================================
 
@@ -689,31 +709,44 @@ class HolidayBooking(models.Model):
         ('CONFIRMED', 'Confirmed'),
         ('CANCELLED', 'Cancelled'),
     )
-    BUS_TYPE_CHOICES = (
-        ('MINI', 'Mini Bus (15-20 seats)'),
-        ('STANDARD', 'Standard Bus (35-45 seats)'),
-        ('LUXURY', 'Luxury Coach (45-55 seats)'),
+    AC_TYPE_CHOICES = (
+        ('AC', 'AC'),
+        ('NON_AC', 'Non-AC'),
     )
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='holidays')
     booking_number = models.CharField(max_length=20, blank=True)
     trip_date = models.DateField()
-    destination = models.CharField(max_length=200)
-    departure_location = models.CharField(max_length=200)
-    departure_time = models.TimeField()
-    return_time = models.TimeField(null=True, blank=True)
-    bus_type = models.CharField(max_length=20, choices=BUS_TYPE_CHOICES, default='STANDARD')
-    no_of_passengers = models.IntegerField()
+    purpose_of_booking = models.CharField(max_length=300, blank=True, null=True)
     booked_by = models.CharField(max_length=200)
     contact_number = models.CharField(max_length=15)
-    fare_per_person = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    second_contact_number = models.CharField(max_length=15, blank=True, null=True)
+    departure_location = models.CharField(max_length=200)
+    destination = models.CharField(max_length=500)
+    departure_time = models.TimeField()
+    return_date = models.DateField(null=True, blank=True)
+    return_time = models.TimeField(null=True, blank=True)
+    payment_type_label = models.CharField(max_length=100, blank=True, null=True)
+    max_km = models.IntegerField(null=True, blank=True)
+    extra_km_charge = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    no_of_passengers = models.IntegerField()
+    booked_vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings'
+    )
+    ac_type = models.CharField(max_length=10, choices=AC_TYPE_CHOICES, default='NON_AC')
+    total_rent = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    service_charge = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     advance_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0)
+    balance_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0)
     special_instructions = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='holiday_bookings')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Legacy field kept for existing records
+    fare_per_person = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         unique_together = ('company', 'booking_number')
@@ -730,5 +763,9 @@ class HolidayBooking(models.Model):
                 self.booking_number = f'HOL-{num}'
             else:
                 self.booking_number = 'HOL-1'
-        self.total_amount = Decimal(self.no_of_passengers) * Decimal(self.fare_per_person)
+        total_rent = Decimal(self.total_rent or 0)
+        service_charge = Decimal(self.service_charge or 0)
+        self.total_amount = total_rent + service_charge
+        advance = Decimal(self.advance_amount or 0)
+        self.balance_amount = max(Decimal('0.00'), self.total_amount - advance)
         super().save(*args, **kwargs)

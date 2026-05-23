@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/d/**)",
+      "Bash(dir d:/PaymentVoucher/)"
+    ]
+  }
+}

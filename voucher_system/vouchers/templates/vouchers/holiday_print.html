@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Form – {{ booking.booking_number }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #000;
+            background: #fff;
+            padding: 30px 40px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .header img.logo {
+            max-height: 80px;
+            margin-bottom: 6px;
+        }
+        .header .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .order-form-title {
+            font-size: 28px;
+            font-weight: bold;
+            text-decoration: underline;
+            text-transform: uppercase;
+            margin: 8px 0 4px;
+        }
+
+        /* ── META ROW ── */
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+        .meta-row strong { font-size: 13px; }
+
+        /* ── TABLES ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+        td, th {
+            border: 1px solid #000;
+            padding: 7px 10px;
+            vertical-align: middle;
+            font-size: 12px;
+            text-align: left;
+        }
+        th {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Section header rows */
+        .section-header td {
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            background: #f5f5f5;
+            padding: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Two-col layout inside one row */
+        .two-col th { width: 25%; }
+        .two-col td { width: 25%; }
+
+        /* ── NOTICE ── */
+        .permit-notice {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            border: 1px solid #000;
+            padding: 8px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+        }
+
+        /* ── SIGNATURE ROW ── */
+        .sig-row {
+            display: flex;
+            justify-content: space-between;
+            border: 1px solid #000;
+            padding: 10px 16px;
+            margin-bottom: 14px;
+            font-size: 12px;
+        }
+        .sig-row .sig-left { flex: 1; }
+        .sig-row .sig-right { text-align: right; font-weight: bold; }
+
+        /* ── PAGE 2 ── */
+        .page-break { page-break-before: always; padding-top: 30px; }
+        .page2-sig {
+            display: flex;
+            justify-content: space-between;
+            border: 1px solid #000;
+            padding: 10px 16px;
+            font-size: 12px;
+            margin-top: 40px;
+        }
+
+        /* ── PRINT BUTTON (screen only) ── */
+        .print-btn-bar {
+            text-align: right;
+            margin-bottom: 16px;
+        }
+        .print-btn-bar button {
+            padding: 8px 20px;
+            background: #0dcaf0;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .print-btn-bar button:hover { background: #0bb5d4; }
+
+        @media print {
+            .print-btn-bar { display: none; }
+            body { padding: 15px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── PRINT BUTTON (screen only) ── -->
+<div class="print-btn-bar">
+    <button onclick="window.print()">&#128438; Print / Save as PDF</button>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="header">
+    {% if company and company.logo %}
+        <img class="logo" src="{{ request.scheme }}://{{ request.get_host }}{{ company.logo.url }}" alt="Logo">
+    {% endif %}
+    {% if company %}
+        <div class="company-name">{{ company.name }}</div>
+    {% endif %}
+    <div class="order-form-title">Order Form</div>
+</div>
+
+<!-- ── META ROW ── -->
+<div class="meta-row">
+    <div><strong>DATE:</strong> {{ booking.created_at|date:"d/m/Y" }}</div>
+    <div><strong>ORDER FORM ID:</strong> {{ booking.booking_number }}</div>
+</div>
+
+<!-- ── MAIN DETAILS TABLE ── -->
+<table>
+    <tbody>
+        <tr>
+            <th>PURPOSE OF BOOKING:</th>
+            <td colspan="3">{{ booking.purpose_of_booking|default:"" }}</td>
+        </tr>
+        <tr>
+            <th>NAME:</th>
+            <td colspan="3">{{ booking.booked_by }}</td>
+        </tr>
+        <tr class="two-col">
+            <th>CONTACT NUM:</th>
+            <td>{{ booking.contact_number }}</td>
+            <th>CONTACT NUM:</th>
+            <td>{{ booking.second_contact_number|default:"" }}</td>
+        </tr>
+        <tr class="two-col">
+            <th>DATE OF JOURNEY:</th>
+            <td>{{ booking.trip_date|date:"d/m/Y" }}</td>
+            <th>TIME OF JOURNEY:</th>
+            <td>{{ booking.departure_time|time:"g:i A" }}</td>
+        </tr>
+        <tr class="two-col">
+            <th>DATE OF RETURN:</th>
+            <td>{% if booking.return_date %}{{ booking.return_date|date:"d/m/Y" }}{% endif %}</td>
+            <th>TIME OF RETURN:</th>
+            <td>{% if booking.return_time %}{{ booking.return_time|time:"g:i A" }}{% endif %}</td>
+        </tr>
+        <tr>
+            <th>NO: OF PASSENGERS:</th>
+            <td colspan="3">{{ booking.no_of_passengers }}</td>
+        </tr>
+        <tr>
+            <th>PLACE OF STARTING POINT:</th>
+            <td colspan="3">{{ booking.departure_location }}</td>
+        </tr>
+        <tr>
+            <th>PLACES TO VISIT DURING THE JOURNEY:</th>
+            <td colspan="3">{{ booking.destination }}</td>
+        </tr>
+        <tr>
+            <th>DETAILS OF VEHICLE:</th>
+            <td colspan="3">
+                {% if booking.booked_vehicle %}{{ booking.booked_vehicle.name }} – {% endif %}{{ booking.get_ac_type_display }}
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- ── PAYMENT DETAILS ── -->
+<table>
+    <tbody>
+        <tr>
+            <td colspan="2" class="section-header">DETAILS OF PAYMENT</td>
+        </tr>
+        {% if booking.payment_type_label %}
+        <tr>
+            <th style="width:55%;">PAYMENT TYPE</th>
+            <td>{{ booking.payment_type_label }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <th>TOTAL RENT:</th>
+            <td>{{ booking.total_rent|floatformat:0 }}</td>
+        </tr>
+        <tr>
+            <th>SERVICE CHARGE (BAATTA):</th>
+            <td>{{ booking.service_charge|floatformat:0|default:"0" }}</td>
+        </tr>
+        <tr>
+            <th>TOTAL AMOUNT:</th>
+            <td><strong>{{ booking.total_amount|floatformat:0 }}</strong></td>
+        </tr>
+        <tr>
+            <th>ADVANCE:</th>
+            <td>{{ booking.advance_amount|floatformat:0|default:"0" }}</td>
+        </tr>
+        <tr>
+            <th>BALANCE:</th>
+            <td><strong>{{ booking.balance_amount|floatformat:0 }}</strong></td>
+        </tr>
+        <tr>
+            <th>BALANCE IN WORDS:</th>
+            <td><strong>{{ balance_in_words }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- ── JOURNEY DETAILS ── -->
+{% if booking.max_km or booking.extra_km_charge %}
+<table>
+    <tbody>
+        <tr>
+            <td colspan="2" class="section-header">DETAILS OF JOURNEY</td>
+        </tr>
+        {% if booking.max_km %}
+        <tr>
+            <th style="width:75%;">MAXIMUM KM THAT CAN BE RUN THIS CONTRACT:</th>
+            <td>{{ booking.max_km }}</td>
+        </tr>
+        {% endif %}
+        {% if booking.extra_km_charge %}
+        <tr>
+            <th>AFTER MAX KM EACH KM WILL BE CHARGEABLE WITH THE AMOUNT OF:</th>
+            <td>{{ booking.extra_km_charge|floatformat:0 }}</td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- ── PERMIT NOTICE ── -->
+<div class="permit-notice">
+    THE PERMIT AMOUNT SHALL BE PAID BY THE TRAVELLER
+</div>
+
+<!-- ── SIGNATURE ── -->
+<div class="sig-row">
+    <div class="sig-left">IN-CHARGE SIGN: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+    <div class="sig-right">I AGREE ALL TERMS AND CONDITION</div>
+</div>
+
+<!-- ── PAGE 2 ── -->
+<div class="page-break">
+    <div class="page2-sig">
+        <div>DATE: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        <div><strong>SIGN OF THE TRAVELLER</strong></div>
+    </div>
+</div>
+
+</body>
+</html>

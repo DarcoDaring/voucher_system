@@ -29,7 +29,8 @@ from vouchers.function_views import (
 from vouchers.holiday_views import (
     HolidayView, HolidayDetailView, HolidayCreateAPI,
     HolidayBookedDatesAPI, HolidayListByDateAPI,
-    HolidayDeleteAPI, HolidayConfirmAPI,
+    HolidayDeleteAPI, HolidayConfirmAPI, HolidayPrintView,
+    VehicleListAPI, VehicleCreateAPI, VehicleDeleteAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
@@ -153,6 +154,7 @@ urlpatterns = [
     # =============================================
     path('holidays/', HolidayView.as_view(), name='holiday'),
     path('holidays/<int:pk>/', HolidayDetailView.as_view(), name='holiday_detail'),
+    path('holidays/<int:pk>/print/', HolidayPrintView.as_view(), name='holiday_print'),
 
     # Holiday APIs
     path('api/holidays/create/', HolidayCreateAPI.as_view(), name='holiday_create_api'),
@@ -160,6 +162,11 @@ urlpatterns = [
     path('api/holidays/by-date/', HolidayListByDateAPI.as_view(), name='holiday_list_by_date'),
     path('api/holidays/<int:pk>/delete/', HolidayDeleteAPI.as_view(), name='holiday_delete_api'),
     path('api/holidays/<int:pk>/confirm/', HolidayConfirmAPI.as_view(), name='holiday_confirm'),
+
+    # Vehicle Master APIs
+    path('api/vehicles/', VehicleListAPI.as_view(), name='vehicle_list_api'),
+    path('api/vehicles/create/', VehicleCreateAPI.as_view(), name='vehicle_create_api'),
+    path('api/vehicles/<int:pk>/delete/', VehicleDeleteAPI.as_view(), name='vehicle_delete_api'),
 
     # ── MOBILE APP (token-based) ────────────────────────────────────
 path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),
