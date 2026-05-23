@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Back button + header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'holiday' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Calendar
+            </a>
+            <div>
+                <h3 class="mb-0 fw-bold">
+                    <i class="bi bi-bus-front me-2 text-warning"></i>
+                    {{ booking.booking_number }}
+                </h3>
+                <p class="text-muted mb-0 small">{{ booking.destination }}</p>
+            </div>
+        </div>
+
+        <!-- Status Badge -->
+        <div class="d-flex align-items-center gap-2">
+            {% if booking.status == 'CONFIRMED' %}
+                <span class="badge bg-success fs-6 px-3 py-2">
+                    <i class="bi bi-check-circle me-1"></i>Confirmed
+                </span>
+            {% elif booking.status == 'CANCELLED' %}
+                <span class="badge bg-danger fs-6 px-3 py-2">
+                    <i class="bi bi-x-circle me-1"></i>Cancelled
+                </span>
+            {% else %}
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                    <i class="bi bi-clock me-1"></i>Pending
+                </span>
+            {% endif %}
+
+            <!-- Superuser status controls -->
+            {% if user.is_superuser %}
+            <div class="btn-group" id="statusControls">
+                {% if booking.status != 'CONFIRMED' %}
+                <button class="btn btn-success btn-sm" onclick="changeStatus('CONFIRMED')">
+                    <i class="bi bi-check-circle me-1"></i>Confirm
+                </button>
+                {% endif %}
+                {% if booking.status != 'CANCELLED' %}
+                <button class="btn btn-danger btn-sm" onclick="changeStatus('CANCELLED')">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                {% endif %}
+                {% if booking.status != 'PENDING' %}
+                <button class="btn btn-warning btn-sm text-dark" onclick="changeStatus('PENDING')">
+                    <i class="bi bi-clock me-1"></i>Set Pending
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Alert area -->
+    <div id="statusAlert" class="alert d-none mb-3"></div>
+
+    <div class="row g-4">
+
+        <!-- LEFT CARD: Trip Details -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    <i class="bi bi-map me-2"></i>Trip Details
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="text-muted w-45" style="width:45%;">Trip Date</th>
+                                <td class="fw-semibold">{{ booking.trip_date|date:"d M Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Destination</th>
+                                <td class="fw-semibold">{{ booking.destination }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Departure From</th>
+                                <td>{{ booking.departure_location }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Departure Time</th>
+                                <td>
+                                    <i class="bi bi-clock me-1 text-warning"></i>
+                                    {{ booking.departure_time|time:"H:i" }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Return Time</th>
+                                <td>
+                                    {% if booking.return_time %}
+                                        <i class="bi bi-clock-history me-1 text-secondary"></i>
+                                        {{ booking.return_time|time:"H:i" }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Bus Type</th>
+                                <td>
+                                    <i class="bi bi-bus-front me-1 text-warning"></i>
+                                    {{ booking.get_bus_type_display }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">No. of Passengers</th>
+                                <td>
+                                    <span class="badge bg-primary rounded-pill fs-6">
+                                        {{ booking.no_of_passengers }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if booking.special_instructions %}
+                            <tr>
+                                <th class="text-muted">Special Instructions</th>
+                                <td class="text-break">{{ booking.special_instructions }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT CARD: Booking Details -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    <i class="bi bi-person-lines-fill me-2"></i>Booking Details
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="text-muted w-45" style="width:45%;">Booking Number</th>
+                                <td class="fw-bold text-warning">{{ booking.booking_number }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Booked By</th>
+                                <td class="fw-semibold">{{ booking.booked_by }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Contact Number</th>
+                                <td>
+                                    <a href="tel:{{ booking.contact_number }}" class="text-decoration-none">
+                                        <i class="bi bi-telephone me-1"></i>{{ booking.contact_number }}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Fare Per Person</th>
+                                <td>
+                                    <i class="bi bi-currency-rupee"></i>{{ booking.fare_per_person }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Total Amount</th>
+                                <td class="fw-bold text-success fs-5">
+                                    <i class="bi bi-currency-rupee"></i>{{ booking.total_amount }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Advance Paid</th>
+                                <td>
+                                    {% if booking.advance_amount %}
+                                        <i class="bi bi-currency-rupee"></i>{{ booking.advance_amount }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Balance Due</th>
+                                <td class="fw-semibold text-danger">
+                                    {% if booking.advance_amount %}
+                                        <i class="bi bi-currency-rupee"></i>
+                                        {% widthratio booking.total_amount 1 1 as total_val %}
+                                        {{ booking.total_amount|floatformat:2 }}
+                                        <!-- calculated in template note: use inline math workaround -->
+                                        <span id="dueAmount"></span>
+                                        <script>
+                                            (function(){
+                                                const total   = parseFloat("{{ booking.total_amount }}") || 0;
+                                                const advance = parseFloat("{{ booking.advance_amount }}") || 0;
+                                                const due     = Math.max(0, total - advance).toFixed(2);
+                                                document.getElementById('dueAmount').textContent = '';
+                                                // Replace the parent td content cleanly
+                                                document.currentScript.closest('td').innerHTML =
+                                                    '<i class="bi bi-currency-rupee"></i>' + due;
+                                            })();
+                                        </script>
+                                    {% else %}
+                                        <i class="bi bi-currency-rupee"></i>{{ booking.total_amount|floatformat:2 }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Created By</th>
+                                <td>{{ booking.created_by.username }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Created At</th>
+                                <td class="small text-muted">{{ booking.created_at|date:"d M Y, H:i" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /row -->
+
+    <!-- Company info footer -->
+    {% if company %}
+    <div class="mt-4 p-3 bg-light rounded text-muted small">
+        <i class="bi bi-building me-1"></i>
+        <strong>{{ company.name }}</strong>
+        {% if company.phone %}&nbsp;|&nbsp;<i class="bi bi-telephone me-1"></i>{{ company.phone }}{% endif %}
+        {% if company.email %}&nbsp;|&nbsp;<i class="bi bi-envelope me-1"></i>{{ company.email }}{% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function changeStatus(newStatus) {
+    if (!confirm(`Set status to ${newStatus}?`)) return;
+
+    const alertEl = document.getElementById('statusAlert');
+    alertEl.className = 'alert d-none';
+
+    fetch('/api/holidays/{{ booking.pk }}/confirm/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': globalThis.csrfToken || ''
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.innerHTML = `<i class="bi bi-check-circle me-2"></i>Status updated to <strong>${data.status}</strong>. Refreshing…`;
+            alertEl.classList.remove('d-none');
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = data.error || 'Failed to update status.';
+            alertEl.classList.remove('d-none');
+        }
+    })
+    .catch(err => {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Network error: ' + err.message;
+        alertEl.classList.remove('d-none');
+    });
+}
+</script>
+
+{% endblock %}

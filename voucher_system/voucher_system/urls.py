@@ -4,24 +4,32 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
-from vouchers import views
 from vouchers.views import (
     HomeView, VoucherListView, VoucherDetailView,
     VoucherCreateAPI, VoucherApprovalAPI,
     DesignationCreateAPI, ApprovalControlAPI,
-    UserCreateAPI, UserUpdateAPI, VoucherDeleteAPI,  
+    UserCreateAPI, UserUpdateAPI, VoucherDeleteAPI,
     AccountDetailListAPI, AccountDetailCreateAPI, AccountDetailDeleteAPI,
+    UserRightsListAPI, CompanyManagementAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI,
+    CustomLoginView, SelectCompanyView, SetCompanyView,
+    CompanyListAPI, CompanyCreateAPI, CompanyUpdateAPI,
+    CompanyToggleActiveAPI, CompanyDeleteAPI,
+    UserMembershipListAPI, UserMembershipCreateAPI,
+    UserMembershipUpdateAPI, UserMembershipDeleteAPI, DesignationListAPI,
+    AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI, VoucherNextNumberAPI, WhatsAppTestLogAPI,
+)
+from vouchers.function_views import (
     FunctionDetailsView, FunctionBookedDatesAPI, FunctionListByDateAPI,
     FunctionDetailView, FunctionDeleteAPI, FunctionUpdateAPI, FunctionUpcomingEventsAPI,
     FunctionPendingByMonthAPI, FunctionUpcomingCountAPI, FunctionCompletedCountAPI,
     FunctionCompletedAPI, FunctionListByMonthAPI, FunctionUpdateDetailsAPI,
-    UserRightsListAPI, CompanyManagementAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI,
-    FunctionTimeConflictCheckAPI, CustomLoginView, SelectCompanyView, SetCompanyView,
-    CompanyListAPI, CompanyCreateAPI, CompanyUpdateAPI, 
-    CompanyToggleActiveAPI, CompanyDeleteAPI,
-    UserMembershipListAPI, UserMembershipCreateAPI,
-    UserMembershipUpdateAPI, UserMembershipDeleteAPI, DesignationListAPI,
-    AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI, VoucherNextNumberAPI,WhatsAppTestLogAPI,
+    FunctionTimeConflictCheckAPI, FunctionGenerateNumberAPI, FunctionCreateAPI,
+    FunctionConfirmAPI, FunctionPrintView,
+)
+from vouchers.holiday_views import (
+    HolidayView, HolidayDetailView, HolidayCreateAPI,
+    HolidayBookedDatesAPI, HolidayListByDateAPI,
+    HolidayDeleteAPI, HolidayConfirmAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
@@ -52,19 +60,19 @@ urlpatterns = [
     # =============================================
     path('function-details/', FunctionDetailsView.as_view(), name='function'),
     path('functions/<int:pk>/', FunctionDetailView.as_view(), name='function_detail'),
-    path('function/<int:pk>/', views.FunctionDetailView.as_view(), name='function_detail'),
-    path('function/<int:pk>/print/', views.FunctionPrintView.as_view(), name='function_print'),
-    
+    path('function/<int:pk>/', FunctionDetailView.as_view(), name='function_detail'),
+    path('function/<int:pk>/print/', FunctionPrintView.as_view(), name='function_print'),
+
     # Function APIs
-    path('api/functions/create/', views.FunctionCreateAPI.as_view(), name='function_create_api'),
-    path('api/functions/generate-number/', views.FunctionGenerateNumberAPI.as_view(), name='function_generate_number'),
+    path('api/functions/create/', FunctionCreateAPI.as_view(), name='function_create_api'),
+    path('api/functions/generate-number/', FunctionGenerateNumberAPI.as_view(), name='function_generate_number'),
     path('api/functions/booked-dates/', FunctionBookedDatesAPI.as_view(), name='function-booked-dates'),
     path('api/functions/booked-dates/', FunctionBookedDatesAPI.as_view(), name='function_booked_dates'),
     path('api/functions/by-date/', FunctionListByDateAPI.as_view(), name='function_list_by_date'),
     path('api/functions/by-month/', FunctionListByMonthAPI.as_view(), name='function_list_by_month'),
     path('api/functions/<int:pk>/update/', FunctionUpdateAPI.as_view(), name='function-update'),
     path('api/functions/<int:pk>/delete/', FunctionDeleteAPI.as_view(), name='function_delete_api'),
-    path('api/functions/<int:pk>/confirm/', views.FunctionConfirmAPI.as_view(), name='function_confirm'),
+    path('api/functions/<int:pk>/confirm/', FunctionConfirmAPI.as_view(), name='function_confirm'),
     path('api/functions/<int:pk>/update-details/', FunctionUpdateDetailsAPI.as_view(), name='function_update_details'),
     path('api/functions/upcoming/', FunctionUpcomingEventsAPI.as_view(), name='function_upcoming_events'),
     path('api/functions/upcoming-count/', FunctionUpcomingCountAPI.as_view()),
@@ -139,6 +147,19 @@ urlpatterns = [
     path('set-company/', SetCompanyView.as_view(), name='set_company'),
 
     path('api/whatsapp/test-logs/', WhatsAppTestLogAPI.as_view(), name='whatsapp_test_logs'),
+
+    # =============================================
+    # HOLIDAY BOOKING MANAGEMENT
+    # =============================================
+    path('holidays/', HolidayView.as_view(), name='holiday'),
+    path('holidays/<int:pk>/', HolidayDetailView.as_view(), name='holiday_detail'),
+
+    # Holiday APIs
+    path('api/holidays/create/', HolidayCreateAPI.as_view(), name='holiday_create_api'),
+    path('api/holidays/booked-dates/', HolidayBookedDatesAPI.as_view(), name='holiday_booked_dates'),
+    path('api/holidays/by-date/', HolidayListByDateAPI.as_view(), name='holiday_list_by_date'),
+    path('api/holidays/<int:pk>/delete/', HolidayDeleteAPI.as_view(), name='holiday_delete_api'),
+    path('api/holidays/<int:pk>/confirm/', HolidayConfirmAPI.as_view(), name='holiday_confirm'),
 
     # ── MOBILE APP (token-based) ────────────────────────────────────
 path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),

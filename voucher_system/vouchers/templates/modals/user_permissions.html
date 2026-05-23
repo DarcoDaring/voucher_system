@@ -1,85 +1,128 @@
 <!-- USER RIGHTS & PERMISSIONS MODAL -->
 <style>
-    #userRightsModal .permission-switch { cursor: pointer; width: 2.2em; height: 1.2em; }
-    #userRightsModal .avatar-initial {
-        width: 32px; height: 32px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    #userRightsModal .perm-card {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+        transition: box-shadow 0.2s;
     }
-    #userRightsModal thead tr:first-child th { border-bottom: none; }
-    #userRightsModal thead tr:last-child th  { border-top: none; font-size: 0.78rem; font-weight: 600; }
-    #userRightsModal .section-voucher   { background: rgba(13, 110, 253, 0.06) !important; }
-    #userRightsModal .section-function  { background: rgba(25, 135, 84, 0.06) !important; }
-    #userRightsModal tbody tr.row-flash { background-color: #d1e7dd !important; transition: background-color 0s; }
-    #userRightsModal tbody tr          { transition: background-color 0.6s ease; }
-    #userRightsModal .user-col         { min-width: 130px; }
-    #userRightsModal .perm-col         { min-width: 68px; }
+    #userRightsModal .perm-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+    #userRightsModal .perm-card-header {
+        background: #f8f9fa;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #userRightsModal .avatar-initial {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+    }
+
+    #userRightsModal .perm-section {
+        border-right: 1px solid #e9ecef;
+        min-width: 0;
+    }
+    #userRightsModal .perm-section:last-child { border-right: none; }
+
+    #userRightsModal .perm-section-header {
+        padding: 8px 14px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    #userRightsModal .perm-section-voucher  { background: rgba(13,110,253,0.08); color: #0a58ca; border-bottom-color: rgba(13,110,253,0.15); }
+    #userRightsModal .perm-section-function { background: rgba(25,135,84,0.08);  color: #0a6640; border-bottom-color: rgba(25,135,84,0.15); }
+    #userRightsModal .perm-section-holiday  { background: rgba(13,202,240,0.08); color: #087990; border-bottom-color: rgba(13,202,240,0.15); }
+
+    #userRightsModal .perm-list { padding: 10px 14px; }
+
+    #userRightsModal .perm-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    #userRightsModal .perm-item:last-child { border-bottom: none; }
+
+    #userRightsModal .perm-label {
+        font-size: 0.82rem;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    #userRightsModal .perm-label i { font-size: 0.75rem; opacity: 0.6; }
+
+    #userRightsModal .permission-switch {
+        cursor: pointer;
+        width: 2.2em;
+        height: 1.2em;
+    }
+
+    #userRightsModal .flash-card {
+        animation: flashGreen 0.8s ease forwards;
+    }
+    @keyframes flashGreen {
+        0%   { background-color: #d1e7dd; }
+        100% { background-color: transparent; }
+    }
+
+    #userRightsModal .perm-cols {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 768px) {
+        #userRightsModal .perm-cols { grid-template-columns: 1fr; }
+        #userRightsModal .perm-section { border-right: none; border-bottom: 1px solid #e9ecef; }
+        #userRightsModal .perm-section:last-child { border-bottom: none; }
+    }
 </style>
 
 <div class="modal fade" id="userRightsModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
 
-            <div class="modal-header border-bottom-0 pb-2">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="bg-primary bg-opacity-10 rounded p-2 d-flex align-items-center">
-                        <i class="bi bi-shield-lock text-primary fs-5"></i>
+            <div class="modal-header border-bottom pb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-shield-lock text-primary fs-4"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-semibold mb-0">User Rights &amp; Permissions</h5>
-                        <p class="text-muted mb-0" style="font-size:0.78rem;">Toggle switches to grant or revoke access</p>
+                        <h5 class="modal-title fw-bold mb-0">User Rights &amp; Permissions</h5>
+                        <p class="text-muted mb-0" style="font-size:0.78rem;">
+                            Toggle switches to grant or revoke access. Changes save automatically.
+                        </p>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
-            <div class="modal-body p-0">
+            <div class="modal-body p-3" style="background:#f8f9fa;">
 
                 <!-- Loading -->
-                <div id="userRightsLoading" class="text-center py-5" aria-live="polite" aria-busy="true">
+                <div id="userRightsLoading" class="text-center py-5" aria-live="polite">
                     <div class="spinner-border text-primary">
                         <span class="visually-hidden">Loading…</span>
                     </div>
                     <p class="text-muted mt-3 mb-0">Loading user permissions…</p>
                 </div>
 
-                <!-- Main content -->
+                <!-- Cards container -->
                 <div id="userRightsContent" style="display:none;">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle mb-0" style="min-width:1050px;">
-                            <thead>
-                                <!-- Group header row -->
-                                <tr class="text-center">
-                                    <th scope="col" rowspan="2" class="text-start user-col bg-light" style="vertical-align:middle;">
-                                        <i class="bi bi-person me-1 text-muted"></i>User
-                                    </th>
-                                    <th scope="col" rowspan="2" class="bg-light perm-col" style="vertical-align:middle;">Group</th>
-                                    <th scope="col" rowspan="2" class="bg-light" style="vertical-align:middle; min-width:110px;">Designation</th>
-                                    <th scope="colgroup" colspan="5" class="section-voucher text-primary" style="border-left: 2px solid rgba(13,110,253,0.3);">
-                                        <i class="bi bi-receipt me-1"></i>Voucher Permissions
-                                    </th>
-                                    <th scope="colgroup" colspan="6" class="section-function text-success" style="border-left: 2px solid rgba(25,135,84,0.3);">
-                                        <i class="bi bi-calendar-event me-1"></i>Function Permissions
-                                    </th>
-                                </tr>
-                                <!-- Permission label row -->
-                                <tr class="text-center">
-                                    <th scope="col" class="section-voucher perm-col" style="border-left: 2px solid rgba(13,110,253,0.3);">Create</th>
-                                    <th scope="col" class="section-voucher perm-col">Edit</th>
-                                    <th scope="col" class="section-voucher perm-col">List</th>
-                                    <th scope="col" class="section-voucher perm-col">Detail</th>
-                                    <th scope="col" class="section-voucher perm-col">Print</th>
-                                    <th scope="col" class="section-function perm-col" style="border-left: 2px solid rgba(25,135,84,0.3);">Create</th>
-                                    <th scope="col" class="section-function perm-col">Edit</th>
-                                    <th scope="col" class="section-function perm-col">Delete</th>
-                                    <th scope="col" class="section-function perm-col">List</th>
-                                    <th scope="col" class="section-function perm-col">Detail</th>
-                                    <th scope="col" class="section-function perm-col">Print</th>
-                                </tr>
-                            </thead>
-                            <tbody id="userRightsTableBody"></tbody>
-                        </table>
-                    </div>
+                    <div id="userRightsCards" class="d-flex flex-column gap-3"></div>
                 </div>
 
                 <!-- Error -->
@@ -93,7 +136,7 @@
 
             </div>
 
-            <div class="modal-footer bg-light border-top-0 pt-2">
+            <div class="modal-footer bg-white border-top pt-3">
                 <small class="text-muted me-auto">
                     <i class="bi bi-check-circle text-success me-1"></i>Changes are saved automatically
                 </small>
@@ -105,7 +148,7 @@
 </div>
 
 <script>
-window.CURRENT_USER_ID = "{{ user.id }}";
+globalThis.CURRENT_USER_ID = "{{ user.id }}";
 
 function loadUserRights() {
     const loading = document.getElementById('userRightsLoading');
@@ -117,24 +160,18 @@ function loadUserRights() {
     error.style.display   = 'none';
 
     fetch('/api/user-rights/', {
-        headers: {
-            'X-CSRFToken': globalThis.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-        }
+        headers: { 'X-CSRFToken': globalThis.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' }
     })
-    .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    })
+    .then(r => { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
     .then(data => {
-        renderUserRightsTable(data.users);
+        renderUserRightsCards(data.users);
         loading.style.display = 'none';
         content.style.display = 'block';
     })
     .catch(err => {
         loading.style.display = 'none';
         error.style.display   = 'block';
-        document.getElementById('userRightsErrorMessage').textContent =
-            'Failed to load user rights: ' + err.message;
+        document.getElementById('userRightsErrorMessage').textContent = 'Failed to load: ' + err.message;
     });
 }
 
@@ -144,72 +181,120 @@ function getAvatarColor(group) {
     return { bg: '#e2e3e5', text: '#41464b' };
 }
 
-function renderUserRightsTable(users) {
-    const tbody = document.getElementById('userRightsTableBody');
-    tbody.innerHTML = '';
+function getGroupBadge(group) {
+    if (group === 'Admin Staff') return 'primary';
+    if (group === 'Accountants') return 'success';
+    return 'secondary';
+}
+
+const PERM_GROUPS = [
+    {
+        key:   'voucher',
+        label: 'Voucher',
+        icon:  'bi-receipt',
+        perms: [
+            { key: 'can_create_voucher',      label: 'Create',      icon: 'bi-plus-circle' },
+            { key: 'can_edit_voucher',        label: 'Edit',        icon: 'bi-pencil' },
+            { key: 'can_view_voucher_list',   label: 'View List',   icon: 'bi-list-ul' },
+            { key: 'can_view_voucher_detail', label: 'View Detail', icon: 'bi-eye' },
+            { key: 'can_print_voucher',       label: 'Print',       icon: 'bi-printer' },
+        ]
+    },
+    {
+        key:   'function',
+        label: 'Function',
+        icon:  'bi-calendar-event',
+        perms: [
+            { key: 'can_create_function',      label: 'Create',      icon: 'bi-plus-circle' },
+            { key: 'can_edit_function',        label: 'Edit',        icon: 'bi-pencil' },
+            { key: 'can_delete_function',      label: 'Delete',      icon: 'bi-trash' },
+            { key: 'can_view_function_list',   label: 'View List',   icon: 'bi-list-ul' },
+            { key: 'can_view_function_detail', label: 'View Detail', icon: 'bi-eye' },
+            { key: 'can_print_function',       label: 'Print',       icon: 'bi-printer' },
+        ]
+    },
+    {
+        key:   'holiday',
+        label: 'Holiday',
+        icon:  'bi-bus-front',
+        perms: [
+            { key: 'can_create_holiday',      label: 'Create',      icon: 'bi-plus-circle' },
+            { key: 'can_edit_holiday',        label: 'Edit',        icon: 'bi-pencil' },
+            { key: 'can_delete_holiday',      label: 'Delete',      icon: 'bi-trash' },
+            { key: 'can_view_holiday_list',   label: 'View List',   icon: 'bi-list-ul' },
+            { key: 'can_view_holiday_detail', label: 'View Detail', icon: 'bi-eye' },
+        ]
+    }
+];
+
+function renderUserRightsCards(users) {
+    const container = document.getElementById('userRightsCards');
+    container.innerHTML = '';
 
     if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">No users found</td></tr>';
+        container.innerHTML = '<div class="text-center text-muted py-4">No users found</div>';
         return;
     }
 
     users.forEach(user => {
-        const row = document.createElement('tr');
-        const isCurrentUser = String(user.id) === String(window.CURRENT_USER_ID);
+        const isCurrentUser = String(user.id) === String(globalThis.CURRENT_USER_ID);
         const avatar = getAvatarColor(user.group);
         const initial = escapeHtml(user.username.charAt(0).toUpperCase());
 
-        row.innerHTML = `
-            <td class="user-col">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-initial" style="background:${avatar.bg}; color:${avatar.text};">${initial}</div>
-                    <div>
-                        <div class="fw-semibold lh-1">${escapeHtml(user.username)}</div>
-                        ${isCurrentUser ? '<span class="badge bg-info-subtle text-info border border-info-subtle mt-1" style="font-size:0.65rem;">You</span>' : ''}
+        // Build permission columns
+        const colsHTML = PERM_GROUPS.map(group => `
+            <div class="perm-section">
+                <div class="perm-section-header perm-section-${group.key}">
+                    <i class="bi ${group.icon}"></i>${group.label}
+                </div>
+                <div class="perm-list">
+                    ${group.perms.map(p => `
+                        <div class="perm-item">
+                            <span class="perm-label">
+                                <i class="bi ${p.icon}"></i>${p.label}
+                            </span>
+                            <div class="form-check form-switch m-0 p-0">
+                                <input class="form-check-input permission-checkbox permission-switch"
+                                       type="checkbox"
+                                       role="switch"
+                                       data-user-id="${user.id}"
+                                       data-permission="${p.key}"
+                                       ${user.permissions[p.key] ? 'checked' : ''}>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+
+        const card = document.createElement('div');
+        card.className = 'perm-card bg-white';
+        card.dataset.userCardId = user.id;
+        card.innerHTML = `
+            <div class="perm-card-header">
+                <div class="avatar-initial" style="background:${avatar.bg}; color:${avatar.text};">${initial}</div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold lh-1">
+                        ${escapeHtml(user.username)}
+                        ${isCurrentUser ? '<span class="badge bg-info-subtle text-info border border-info-subtle ms-1" style="font-size:0.65rem;">You</span>' : ''}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="badge bg-${getGroupBadge(user.group)} bg-opacity-75" style="font-size:0.7rem;">${escapeHtml(user.group)}</span>
+                        ${user.designation && user.designation !== 'N/A'
+                            ? `<span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-briefcase me-1"></i>${escapeHtml(user.designation)}</span>`
+                            : ''}
                     </div>
                 </div>
-            </td>
-            <td>
-                <span class="badge bg-${getGroupColor(user.group)} bg-opacity-75">${escapeHtml(user.group)}</span>
-            </td>
-            <td><span class="text-muted small">${escapeHtml(user.designation || '—')}</span></td>
-            <td class="text-center section-voucher" style="border-left: 2px solid rgba(13,110,253,0.15);">${createPermissionSwitch(user.id, 'can_create_voucher',       user.permissions.can_create_voucher)}</td>
-            <td class="text-center section-voucher">${createPermissionSwitch(user.id, 'can_edit_voucher',         user.permissions.can_edit_voucher)}</td>
-            <td class="text-center section-voucher">${createPermissionSwitch(user.id, 'can_view_voucher_list',    user.permissions.can_view_voucher_list)}</td>
-            <td class="text-center section-voucher">${createPermissionSwitch(user.id, 'can_view_voucher_detail',  user.permissions.can_view_voucher_detail)}</td>
-            <td class="text-center section-voucher">${createPermissionSwitch(user.id, 'can_print_voucher',        user.permissions.can_print_voucher)}</td>
-            <td class="text-center section-function" style="border-left: 2px solid rgba(25,135,84,0.15);">${createPermissionSwitch(user.id, 'can_create_function',      user.permissions.can_create_function)}</td>
-            <td class="text-center section-function">${createPermissionSwitch(user.id, 'can_edit_function',        user.permissions.can_edit_function)}</td>
-            <td class="text-center section-function">${createPermissionSwitch(user.id, 'can_delete_function',      user.permissions.can_delete_function)}</td>
-            <td class="text-center section-function">${createPermissionSwitch(user.id, 'can_view_function_list',   user.permissions.can_view_function_list)}</td>
-            <td class="text-center section-function">${createPermissionSwitch(user.id, 'can_view_function_detail', user.permissions.can_view_function_detail)}</td>
-            <td class="text-center section-function">${createPermissionSwitch(user.id, 'can_print_function',       user.permissions.can_print_function)}</td>
+            </div>
+            <div class="perm-cols">${colsHTML}</div>
         `;
-        tbody.appendChild(row);
+
+        container.appendChild(card);
     });
 
     document.querySelectorAll('.permission-checkbox').forEach(cb => {
         cb.addEventListener('change', handlePermissionChange);
     });
-}
-
-function createPermissionSwitch(userId, permission, checked) {
-    return `
-        <div class="form-check form-switch d-flex justify-content-center m-0 p-0">
-            <input class="form-check-input permission-checkbox permission-switch"
-                   type="checkbox"
-                   role="switch"
-                   data-user-id="${userId}"
-                   data-permission="${permission}"
-                   ${checked ? 'checked' : ''}>
-        </div>
-    `;
-}
-
-function getGroupColor(group) {
-    if (group === 'Admin Staff') return 'primary';
-    if (group === 'Accountants') return 'success';
-    return 'secondary';
 }
 
 function handlePermissionChange(event) {
@@ -219,9 +304,8 @@ function handlePermissionChange(event) {
 
     checkbox.disabled = true;
 
-    const row = checkbox.closest('tr');
     const permissions = {};
-    row.querySelectorAll('.permission-checkbox').forEach(cb => {
+    document.querySelectorAll(`.permission-checkbox[data-user-id="${userId}"]`).forEach(cb => {
         permissions[cb.dataset.permission] = cb.checked;
     });
 
@@ -231,16 +315,16 @@ function handlePermissionChange(event) {
             'Content-Type': 'application/json',
             'X-CSRFToken': globalThis.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
         },
-        body: JSON.stringify({ user_id: userId, permissions: permissions })
+        body: JSON.stringify({ user_id: userId, permissions })
     })
-    .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    })
+    .then(r => { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
     .then(() => {
         checkbox.disabled = false;
-        row.classList.add('row-flash');
-        setTimeout(() => row.classList.remove('row-flash'), 800);
+        const card = checkbox.closest('[data-user-card-id]');
+        if (card) {
+            card.classList.add('flash-card');
+            setTimeout(() => card.classList.remove('flash-card'), 800);
+        }
     })
     .catch(err => {
         checkbox.checked  = !isChecked;

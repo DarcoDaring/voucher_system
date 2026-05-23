@@ -470,7 +470,14 @@ class UserPermission(models.Model):
     can_view_function_list = models.BooleanField(default=True, help_text="User can view function calendar/list page")
     can_view_function_detail = models.BooleanField(default=True, help_text="User can view individual function details")
     can_print_function = models.BooleanField(default=True, help_text="User can print function prospectus")
-    
+
+    # Holiday Permissions
+    can_create_holiday = models.BooleanField(default=True, help_text="User can create holiday bookings")
+    can_edit_holiday = models.BooleanField(default=False, help_text="User can edit holiday bookings")
+    can_delete_holiday = models.BooleanField(default=False, help_text="User can delete holiday bookings")
+    can_view_holiday_list = models.BooleanField(default=True, help_text="User can view holiday calendar")
+    can_view_holiday_detail = models.BooleanField(default=True, help_text="User can view holiday booking details")
+
     # Metadata
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='permission_updates')
     updated_at = models.DateTimeField(auto_now=True)
@@ -501,6 +508,11 @@ class UserPermission(models.Model):
                 'can_view_function_list': True,
                 'can_view_function_detail': True,
                 'can_print_function': True,
+                'can_create_holiday': True,
+                'can_edit_holiday': False,
+                'can_delete_holiday': False,
+                'can_view_holiday_list': True,
+                'can_view_holiday_detail': True,
             }
         )
         return obj
@@ -659,9 +671,64 @@ class FunctionBooking(models.Model):
         """
         from django.utils import timezone
         import datetime
-        
+
         now = timezone.localtime(timezone.now())
         function_end_datetime = timezone.make_aware(
             datetime.datetime.combine(self.function_date, self.time_to)
         )
         return now >= function_end_datetime
+
+
+# =============================================
+# HOLIDAY BOOKING
+# =============================================
+
+class HolidayBooking(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('CONFIRMED', 'Confirmed'),
+        ('CANCELLED', 'Cancelled'),
+    )
+    BUS_TYPE_CHOICES = (
+        ('MINI', 'Mini Bus (15-20 seats)'),
+        ('STANDARD', 'Standard Bus (35-45 seats)'),
+        ('LUXURY', 'Luxury Coach (45-55 seats)'),
+    )
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='holidays')
+    booking_number = models.CharField(max_length=20, blank=True)
+    trip_date = models.DateField()
+    destination = models.CharField(max_length=200)
+    departure_location = models.CharField(max_length=200)
+    departure_time = models.TimeField()
+    return_time = models.TimeField(null=True, blank=True)
+    bus_type = models.CharField(max_length=20, choices=BUS_TYPE_CHOICES, default='STANDARD')
+    no_of_passengers = models.IntegerField()
+    booked_by = models.CharField(max_length=200)
+    contact_number = models.CharField(max_length=15)
+    fare_per_person = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    advance_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0)
+    special_instructions = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='holiday_bookings')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('company', 'booking_number')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.booking_number} - {self.destination}"
+
+    def save(self, *args, **kwargs):
+        if not self.booking_number:
+            last = HolidayBooking.objects.filter(company=self.company).order_by('-id').first()
+            if last and last.booking_number.startswith('HOL-'):
+                num = int(last.booking_number[4:]) + 1
+                self.booking_number = f'HOL-{num}'
+            else:
+                self.booking_number = 'HOL-1'
+        self.total_amount = Decimal(self.no_of_passengers) * Decimal(self.fare_per_person)
+        super().save(*args, **kwargs)
