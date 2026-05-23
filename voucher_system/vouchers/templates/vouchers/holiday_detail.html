@@ -268,14 +268,6 @@
 
     </div>
 
-    {% if company %}
-    <div class="mt-4 p-3 bg-light rounded text-muted small">
-        <i class="bi bi-building me-1"></i>
-        <strong>{{ company.name }}</strong>
-        {% if company.phone %}&nbsp;|&nbsp;<i class="bi bi-telephone me-1"></i>{{ company.phone }}{% endif %}
-        {% if company.email %}&nbsp;|&nbsp;<i class="bi bi-envelope me-1"></i>{{ company.email }}{% endif %}
-    </div>
-    {% endif %}
 
 </div>
 

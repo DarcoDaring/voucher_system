@@ -117,7 +117,7 @@
                             <tbody id="particularsBody">
                                 <tr>
                                     <td><input type="text" class="form-control form-control-sm" name="particulars[0][description]" required oninput="this.value = this.value.toUpperCase();"></td>
-                                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[0][amount]" required></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[0][amount]" required oninput="calcGrandTotal()"></td>
                                     <td>
                                         <input type="file" class="form-control form-control-sm" name="particular_attachment_0" multiple accept="image/*,application/pdf" required>
                                         <div class="mt-1 text-muted small particular-file-list"></div>
@@ -127,6 +127,14 @@
                             </tbody>
                         </table>
                         <button type="button" class="btn btn-sm btn-primary" id="addParticular">Add Row</button>
+                    </div>
+
+                    <!-- Grand Total -->
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="bg-light border rounded px-4 py-2 d-flex align-items-center gap-3">
+                            <span class="fw-semibold text-muted">Grand Total:</span>
+                            <span class="fw-bold fs-5 text-success">₹<span id="voucherGrandTotal">0.00</span></span>
+                        </div>
                     </div>
 
                     <div class="d-grid">
@@ -377,12 +385,21 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('onlineFileName').innerHTML = files.length ? files.map(f => `Selected: ${f.name}`).join('<br>') : '';
     });
 
+    // --- Grand total ---
+    function calcGrandTotal() {
+        let total = 0;
+        tbody.querySelectorAll('input[name*="[amount]"]').forEach(inp => {
+            total += Number.parseFloat(inp.value) || 0;
+        });
+        document.getElementById('voucherGrandTotal').textContent = total.toFixed(2);
+    }
+
     // --- Add row ---
     addBtn.onclick = () => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="text" class="form-control form-control-sm" name="particulars[${index}][description]" required oninput="this.value = this.value.toUpperCase();"></td>
-            <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${index}][amount]" required></td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm" name="particulars[${index}][amount]" required oninput="calcGrandTotal()"></td>
             <td>
                 <input type="file" class="form-control form-control-sm" name="particular_attachment_${index}" multiple accept="image/*,application/pdf" required>
                 <div class="mt-1 text-muted small particular-file-list"></div>
@@ -395,9 +412,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Remove row ---
     tbody.onclick = e => {
-        if (e.target.classList.contains('remove-row') && tbody.children.length > 1)
+        if (e.target.classList.contains('remove-row') && tbody.children.length > 1) {
             e.target.closest('tr').remove();
+            calcGrandTotal();
+        }
     };
+
+    // --- Live total on amount change ---
+    tbody.addEventListener('input', e => {
+        if (e.target.name && e.target.name.includes('[amount]')) calcGrandTotal();
+    });
 
     // --- Per-particular file list display ---
     tbody.addEventListener('change', e => {

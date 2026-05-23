@@ -50,7 +50,10 @@
     data-particulars="{% for p in voucher.particulars.all %}{{ p.description|lower }}{% if not forloop.last %} {% endif %}{% endfor %}"
     data-needs-approval="{{ voucher.can_approve|yesno:'true,false' }}">
 
-                    <td><strong>{{ voucher.voucher_number }}</strong></td>
+                    <td>
+                        <strong>{{ voucher.voucher_number }}</strong>
+                        <div class="text-muted small">{{ voucher.created_at|date:"d M Y" }}</div>
+                    </td>
 
                     <td>{{ voucher.name_title }} {{ voucher.pay_to }}</td>
 
