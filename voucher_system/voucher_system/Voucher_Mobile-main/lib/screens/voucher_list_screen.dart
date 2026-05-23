@@ -13,7 +13,8 @@ class VoucherListScreen extends StatefulWidget {
   State<VoucherListScreen> createState() => _VoucherListScreenState();
 }
 
-class _VoucherListScreenState extends State<VoucherListScreen> {
+class _VoucherListScreenState extends State<VoucherListScreen>
+    with WidgetsBindingObserver {
   List<VoucherSummary> _vouchers = [];
   bool _loading = true;
   String? _error;
@@ -28,7 +29,33 @@ class _VoucherListScreenState extends State<VoucherListScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSessionExpiry();
+    }
+  }
+
+  Future<void> _checkSessionExpiry() async {
+    if (await ApiService.instance.isSessionExpired()) {
+      await ApiService.instance.logout();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    }
   }
 
   // ── CHANGE 3: Returns true when this PENDING voucher is waiting on [currentUsername] ──

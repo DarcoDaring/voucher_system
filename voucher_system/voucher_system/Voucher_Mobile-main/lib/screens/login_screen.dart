@@ -17,7 +17,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
+  bool _rememberMe = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
 
   @override
   void dispose() {
@@ -26,15 +33,32 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _loadSavedCredentials() async {
+    final saved = await ApiService.instance.loadSavedCredentials();
+    if (saved != null && mounted) {
+      setState(() {
+        _userCtrl.text = saved.username;
+        _passCtrl.text = saved.password;
+        _rememberMe = true;
+      });
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
 
     try {
-      final user = await ApiService.instance.login(
-        _userCtrl.text.trim(),
-        _passCtrl.text,
-      );
+      final username = _userCtrl.text.trim();
+      final password = _passCtrl.text;
+
+      if (_rememberMe) {
+        await ApiService.instance.saveCredentials(username, password);
+      } else {
+        await ApiService.instance.clearSavedCredentials();
+      }
+
+      final user = await ApiService.instance.login(username, password);
 
       if (!mounted) return;
 
@@ -166,7 +190,32 @@ class _LoginScreenState extends State<LoginScreen> {
                               validator: (v) =>
                                   v == null || v.isEmpty ? 'Enter password' : null,
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 8),
+
+                            // Remember me
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (v) =>
+                                      setState(() => _rememberMe = v ?? false),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => setState(
+                                      () => _rememberMe = !_rememberMe),
+                                  child: const Text(
+                                    'Remember me',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16),
 
                             // Login button
                             SizedBox(
