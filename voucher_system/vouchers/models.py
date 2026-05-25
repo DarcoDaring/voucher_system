@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 import os
@@ -206,12 +206,13 @@ class Voucher(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.voucher_number:
-            last_voucher = Voucher.objects.filter(company=self.company).order_by('-id').first()
-            if last_voucher and last_voucher.voucher_number.startswith('VCH'):
-                num = int(last_voucher.voucher_number[3:]) + 1
-                self.voucher_number = f'VCH{num:04d}'
-            else:
-                self.voucher_number = 'VCH0001'
+            with transaction.atomic():
+                last_voucher = Voucher.objects.filter(company=self.company).select_for_update().order_by('-id').first()
+                if last_voucher and last_voucher.voucher_number.startswith('VCH'):
+                    num = int(last_voucher.voucher_number[3:]) + 1
+                    self.voucher_number = f'VCH{num:04d}'
+                else:
+                    self.voucher_number = 'VCH0001'
 
         if not self.pk:
             super().save(*args, **kwargs)
@@ -632,12 +633,13 @@ class FunctionBooking(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.function_number:
-            last_function = FunctionBooking.objects.filter(company=self.company).order_by('-id').first()
-            if last_function and last_function.function_number.startswith('FN'):
-                num = int(last_function.function_number[2:]) + 1
-                self.function_number = f'FN{num:04d}'
-            else:
-                self.function_number = 'FN0001'
+            with transaction.atomic():
+                last_function = FunctionBooking.objects.filter(company=self.company).select_for_update().order_by('-id').first()
+                if last_function and last_function.function_number.startswith('FN'):
+                    num = int(last_function.function_number[2:]) + 1
+                    self.function_number = f'FN{num:04d}'
+                else:
+                    self.function_number = 'FN0001'
 
         self.calculate_total_amount()
         total = Decimal(self.total_amount or 0)

@@ -11,7 +11,7 @@ from vouchers.views import (
     UserCreateAPI, UserUpdateAPI, VoucherDeleteAPI,
     AccountDetailListAPI, AccountDetailCreateAPI, AccountDetailDeleteAPI,
     UserRightsListAPI, CompanyManagementAPI, UserRightsUpdateAPI, UserRightsBulkUpdateAPI,
-    CustomLoginView, SelectCompanyView, SetCompanyView,
+    CustomLoginView, RememberMeLoginView, SelectCompanyView, SetCompanyView,
     CompanyListAPI, CompanyCreateAPI, CompanyUpdateAPI,
     CompanyToggleActiveAPI, CompanyDeleteAPI,
     UserMembershipListAPI, UserMembershipCreateAPI,
@@ -138,7 +138,7 @@ urlpatterns = [
     # AUTHENTICATION & COMPANY SELECTION
     # ⚠️ KEEP THIS ORDER - Django's LoginView first, then custom paths
     # =============================================
-    path('accounts/login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('accounts/login/', RememberMeLoginView.as_view(template_name='login.html'), name='login'),
     path('accounts/', include('django.contrib.auth.urls')),
     
     # ✅ Custom login/company selection (override with different name)

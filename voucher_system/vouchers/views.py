@@ -27,6 +27,7 @@ from django.utils import timezone
 from .models import UserPermission, CompanyMembership
 from django.views import View
 from django.contrib.auth import authenticate, login as auth_login, logout
+from django.contrib.auth.views import LoginView
 from .whatsapp_notification import notify_approvers_new_voucher
 
 from vouchers.mobile_api import (
@@ -147,6 +148,17 @@ class AdminStaffRequiredMixin(LoginRequiredMixin):
 # =============================================
 # AUTHENTICATION & COMPANY SELECTION VIEWS
 # =============================================
+
+class RememberMeLoginView(LoginView):
+    """Django's built-in LoginView extended to support Remember Me."""
+
+    def form_valid(self, form):
+        if self.request.POST.get('remember_me'):
+            self.request.session.set_expiry(60 * 60 * 24 * 30)  # 30 days
+        else:
+            self.request.session.set_expiry(0)  # expires on browser close
+        return super().form_valid(form)
+
 
 class CustomLoginView(View):
     def get(self, request):
