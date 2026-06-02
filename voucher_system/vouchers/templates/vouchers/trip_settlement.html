@@ -1,0 +1,733 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid p-0" style="height: calc(100vh - 80px); overflow: hidden;">
+    <div class="row g-0 h-100">
+
+        <!-- LEFT SIDEBAR -->
+        <div class="col-md-3 col-lg-2 bg-light border-end" style="height: 100%; overflow-y: auto;">
+            <div class="p-3">
+                <h5 class="mb-4 text-info fw-bold">
+                    <i class="bi bi-bus-front me-2"></i>Holidays
+                </h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-dark" href="{% url 'holiday' %}">
+                            <i class="bi bi-calendar3 me-2"></i> Calendar View
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link active bg-info text-dark rounded" href="{% url 'trip_settlement' %}">
+                            <i class="bi bi-check2-circle me-2"></i> Trip Settlement
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-dark" href="{% url 'bank_settlement' %}">
+                            <i class="bi bi-bank me-2"></i> Bank
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- RIGHT CONTENT -->
+        <div class="col-md-9 col-lg-10" style="height: 100%; overflow-y: auto;">
+            <div class="p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0"><i class="bi bi-check2-circle me-2 text-info"></i>Trip Settlement</h4>
+                </div>
+
+                <div id="settlementAlert" class="alert d-none mb-3"></div>
+
+                <!-- Tabs -->
+                <ul class="nav nav-pills mb-3" id="settlementTabs">
+                    <li class="nav-item me-2">
+                        <button class="nav-link active" id="tab-pending" onclick="showTab('pending')">
+                            <i class="bi bi-hourglass-split me-1"></i>Pending Settlement
+                            <span class="badge bg-warning text-dark ms-1" id="pendingBadge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tab-settled" onclick="showTab('settled')">
+                            <i class="bi bi-check-circle me-1"></i>Settled
+                            <span class="badge bg-success ms-1" id="settledBadge">0</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div id="settlementTableWrap">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-info"></div>
+                        <p class="text-muted mt-2">Loading…</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     VIEW ORDER FORM MODAL (Read-Only)
+     ============================================================ -->
+<div class="modal fade" id="settlementDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-file-text me-2"></i>Order Form — <span id="sdm_booking_number"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="max-height: 72vh; overflow-y: auto;">
+                <div class="alert alert-info py-2 mb-3">
+                    <i class="bi bi-lock me-1"></i> This is a completed trip. The order form is read-only.
+                </div>
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <label for="sdm_trip_date" class="form-label fw-semibold">Date of Journey</label>
+                        <input type="date" class="form-control" id="sdm_trip_date" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_purpose_of_booking" class="form-label fw-semibold">Purpose of Booking</label>
+                        <input type="text" class="form-control" id="sdm_purpose_of_booking" disabled>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="sdm_booked_by" class="form-label fw-semibold">Name (Booked By)</label>
+                        <input type="text" class="form-control" id="sdm_booked_by" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_contact_number" class="form-label fw-semibold">Contact Number 1</label>
+                        <input type="text" class="form-control" id="sdm_contact_number" disabled>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="sdm_second_contact_number" class="form-label fw-semibold">Contact Number 2</label>
+                        <input type="text" class="form-control" id="sdm_second_contact_number" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_payment_type_label" class="form-label fw-semibold">Payment Type</label>
+                        <input type="text" class="form-control" id="sdm_payment_type_label" disabled>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="sdm_departure_time" class="form-label fw-semibold">Time of Journey</label>
+                        <input type="time" class="form-control" id="sdm_departure_time" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_return_date" class="form-label fw-semibold">Date of Return</label>
+                        <input type="date" class="form-control" id="sdm_return_date" disabled>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="sdm_return_time" class="form-label fw-semibold">Time of Return</label>
+                        <input type="time" class="form-control" id="sdm_return_time" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_no_of_passengers" class="form-label fw-semibold">No. of Passengers</label>
+                        <input type="number" class="form-control" id="sdm_no_of_passengers" disabled>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="sdm_departure_location" class="form-label fw-semibold">Place of Starting Point</label>
+                        <input type="text" class="form-control" id="sdm_departure_location" disabled>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="sdm_destination" class="form-label fw-semibold">Places to Visit During Journey</label>
+                        <textarea class="form-control" id="sdm_destination" rows="2" disabled></textarea>
+                    </div>
+
+                    <div class="col-md-7">
+                        <label for="sdm_booked_vehicle" class="form-label fw-semibold">Booked Vehicle</label>
+                        <input type="text" class="form-control" id="sdm_booked_vehicle" disabled>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="sdm_ac_type" class="form-label fw-semibold">Type of Vehicle</label>
+                        <input type="text" class="form-control" id="sdm_ac_type" disabled>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="sdm_special_instructions" class="form-label fw-semibold">Special Instructions</label>
+                        <textarea class="form-control" id="sdm_special_instructions" rows="2" disabled></textarea>
+                    </div>
+
+                    <div class="col-12"><hr class="my-1">
+                        <h6 class="fw-bold text-info mb-3"><i class="bi bi-signpost-2 me-1"></i>Journey Details</h6>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_max_km" class="form-label fw-semibold">Max KM (Contract)</label>
+                        <input type="number" class="form-control" id="sdm_max_km" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_extra_km_charge" class="form-label fw-semibold">Extra KM Charge (₹/km)</label>
+                        <input type="number" class="form-control" id="sdm_extra_km_charge" disabled>
+                    </div>
+
+                    <div class="col-12"><hr class="my-1">
+                        <h6 class="fw-bold text-info mb-3"><i class="bi bi-currency-rupee me-1"></i>Payment Details</h6>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="sdm_total_rent" class="form-label fw-semibold">Total Rent (₹)</label>
+                        <input type="number" class="form-control" id="sdm_total_rent" disabled>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="sdm_service_charge" class="form-label fw-semibold">Service Charge (₹)</label>
+                        <input type="number" class="form-control" id="sdm_service_charge" disabled>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="sdm_total_amount" class="form-label fw-semibold">Total Amount (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-success" id="sdm_total_amount" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_advance_amount" class="form-label fw-semibold">Advance Amount (₹)</label>
+                        <input type="number" class="form-control" id="sdm_advance_amount" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_balance_amount" class="form-label fw-semibold">Balance Amount (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-danger" id="sdm_balance_amount" disabled>
+                    </div>
+
+                    <!-- ── SETTLEMENT SECTION ── -->
+                    <div class="col-12 mt-2">
+                        <hr>
+                        <h5 class="fw-bold text-success mb-4">
+                            <i class="bi bi-calculator me-2"></i>Settlement
+                        </h5>
+                    </div>
+
+                    <!-- Commission -->
+                    <div class="col-md-4">
+                        <label for="s_commission_pct" class="form-label fw-semibold">Commission %</label>
+                        <input type="number" class="form-control s-field" id="s_commission_pct"
+                               min="0" max="100" step="0.01" placeholder="0.00" oninput="calcSettlement()">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="s_commission_amt" class="form-label fw-semibold">Commission Amount (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-danger" id="s_commission_amt" readonly value="0.00">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="s_net_rent" class="form-label fw-semibold">Net Rent (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-success" id="s_net_rent" readonly value="0.00">
+                        <small class="text-muted">Total Amount − Commission</small>
+                    </div>
+
+                    <!-- Batta -->
+                    <div class="col-md-4">
+                        <label for="s_batta_pct" class="form-label fw-semibold">Batta %
+                            <span class="text-muted small">(from vehicle)</span>
+                        </label>
+                        <input type="number" class="form-control bg-light" id="s_batta_pct"
+                               min="0" max="100" step="0.01" placeholder="0.00" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="s_batta_amt" class="form-label fw-semibold">Batta Amount (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-warning" id="s_batta_amt" readonly value="0.00">
+                        <small class="text-muted">Net Rent × Batta %</small>
+                    </div>
+                    <div class="col-md-4"></div>
+
+                    <!-- Diesel -->
+                    <div class="col-md-4">
+                        <label for="s_diesel_charge" class="form-label fw-semibold">Diesel Charge (₹)</label>
+                        <input type="number" class="form-control s-field" id="s_diesel_charge"
+                               min="0" step="0.01" placeholder="0.00" oninput="calcSettlement()">
+                    </div>
+                    <div class="col-md-8">
+                        <label for="s_diesel_bill" class="form-label fw-semibold">Diesel Bill
+                            <span class="text-muted small">(Optional)</span>
+                        </label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="file" class="form-control s-field" id="s_diesel_bill" accept="image/*,.pdf">
+                            <a id="s_diesel_bill_link" href="#" target="_blank" class="btn btn-outline-secondary btn-sm d-none">
+                                <i class="bi bi-file-earmark me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Cleaning -->
+                    <div class="col-md-4">
+                        <label for="s_cleaning_charge" class="form-label fw-semibold">Cleaning Charge (₹)</label>
+                        <input type="number" class="form-control s-field" id="s_cleaning_charge"
+                               min="0" step="0.01" placeholder="0.00" oninput="calcSettlement()">
+                    </div>
+                    <div class="col-md-8"></div>
+
+                    <!-- Grease -->
+                    <div class="col-md-4">
+                        <label for="s_grease_charge" class="form-label fw-semibold">Grease Charge (₹)</label>
+                        <input type="number" class="form-control s-field" id="s_grease_charge"
+                               min="0" step="0.01" placeholder="0.00" oninput="calcSettlement()">
+                    </div>
+                    <div class="col-md-8">
+                        <label for="s_grease_bill" class="form-label fw-semibold">Grease Bill
+                            <span class="text-muted small">(Optional)</span>
+                        </label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="file" class="form-control s-field" id="s_grease_bill" accept="image/*,.pdf">
+                            <a id="s_grease_bill_link" href="#" target="_blank" class="btn btn-outline-secondary btn-sm d-none">
+                                <i class="bi bi-file-earmark me-1"></i>View
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Custom Charges -->
+                    <div class="col-12 mt-1">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-semibold">Custom Charges</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm s-field" id="addCustomChargeBtn" onclick="addCustomCharge()">
+                                <i class="bi bi-plus-lg me-1"></i>Add Custom Charge
+                            </button>
+                        </div>
+                        <div id="customChargesContainer"></div>
+                    </div>
+
+                    <!-- Net Balance -->
+                    <div class="col-12 mt-2">
+                        <hr>
+                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3"
+                             style="background: linear-gradient(135deg, #e8f8f0, #d4edda);">
+                            <span class="fw-bold fs-5">Total Net Balance</span>
+                            <span class="fw-bold fs-4 text-success" id="s_net_balance_display">₹ 0.00</span>
+                            <input type="hidden" id="s_net_balance_val" value="0">
+                        </div>
+                        <div id="settlementSaveAlert" class="alert d-none mt-2 mb-0"></div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="sdm_detail_link" href="#" class="btn btn-outline-info" target="_blank">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Full Detail
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-warning d-none" id="cancelEditBtn" onclick="cancelEditMode()">
+                    <i class="bi bi-x-lg me-1"></i>Cancel Edit
+                </button>
+                <button type="button" class="btn btn-warning fw-semibold d-none" id="editSettlementBtn" onclick="enableEditMode()">
+                    <i class="bi bi-pencil me-1"></i>Edit Settlement
+                </button>
+                <button type="button" class="btn btn-success fw-bold px-4 d-none" id="saveSettlementBtn" onclick="saveSettlement()">
+                    <i class="bi bi-check-lg me-2"></i>Update Settlement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .trip-row { cursor: pointer; transition: all 0.2s; }
+    .trip-row:hover { background: #e8f8fd !important; transform: translateX(3px); }
+    .nav-link { transition: all 0.3s; padding: 10px 15px; border-radius: 8px; }
+    .nav-link:hover:not(.active) { background: #e9ecef; }
+</style>
+
+<script>
+function getCsrfTS() {
+    return globalThis.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+function escapeHtmlTS(text) {
+    if (!text) return '';
+    return String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+}
+
+function formatDateTS(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ── state ──────────────────────────────────────────────────────
+let completedBookings = [];
+let pendingList = [];
+let settledList = [];
+let activeBookingId = null;
+let customChargeIndex = 0;
+let currentTab = 'pending';
+let settlementBackupData = null; // for cancel edit
+
+// ── tabs ───────────────────────────────────────────────────────
+function showTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
+    document.getElementById('tab-settled').classList.toggle('active', tab === 'settled');
+    renderCurrentTab();
+}
+
+function renderCurrentTab() {
+    if (currentTab === 'pending') renderPendingTable();
+    else renderSettledTable();
+}
+
+// ── load all completed trips ───────────────────────────────────
+function loadCompletedTrips() {
+    const wrap = document.getElementById('settlementTableWrap');
+    fetch('/api/holidays/completed/', { headers: { 'X-CSRFToken': getCsrfTS() } })
+    .then(r => r.json())
+    .then(data => {
+        completedBookings = data.bookings || [];
+        pendingList = completedBookings.filter(b => !b.has_settlement);
+        settledList = completedBookings.filter(b => b.has_settlement);
+        document.getElementById('pendingBadge').textContent = pendingList.length;
+        document.getElementById('settledBadge').textContent = settledList.length;
+        renderCurrentTab();
+    })
+    .catch(err => {
+        wrap.innerHTML = `<div class="alert alert-danger">Error loading trips: ${err.message}</div>`;
+    });
+}
+
+function renderPendingTable() {
+    const wrap = document.getElementById('settlementTableWrap');
+    if (pendingList.length === 0) {
+        wrap.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-hourglass fs-1 mb-3 d-block"></i>No pending trips. All completed trips are settled.</div>';
+        return;
+    }
+    let html = `<div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light"><tr>
+                <th>#</th><th>Booking No.</th><th>Trip Date</th><th>Return</th>
+                <th>Booked By</th><th>Vehicle</th><th class="text-center">Action</th>
+            </tr></thead><tbody>`;
+    pendingList.forEach((b, i) => {
+        html += `<tr>
+            <td class="text-muted small">${i + 1}</td>
+            <td class="fw-bold text-info"><a href="/holidays/${b.id}/" class="text-info text-decoration-none">${escapeHtmlTS(b.booking_number)}</a></td>
+            <td>${formatDateTS(b.trip_date)}</td>
+            <td>${formatDateTS(b.return_date)} ${b.return_time}</td>
+            <td>${escapeHtmlTS(b.booked_by)}</td>
+            <td>${escapeHtmlTS(b.booked_vehicle) || '—'}</td>
+            <td class="text-center">
+                <button class="btn btn-info btn-sm fw-semibold" onclick="openSettlementModal(${i}, false)">
+                    <i class="bi bi-calculator me-1"></i>Settle
+                </button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+}
+
+function renderSettledTable() {
+    const wrap = document.getElementById('settlementTableWrap');
+    if (settledList.length === 0) {
+        wrap.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-check-circle fs-1 mb-3 d-block text-success"></i>No settled trips yet.</div>';
+        return;
+    }
+    let html = `<div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light"><tr>
+                <th>#</th><th>Booking No.</th><th>Trip Date</th><th>Booked By</th>
+                <th>Vehicle</th><th>Net Balance (₹)</th><th class="text-center">Action</th>
+            </tr></thead><tbody>`;
+    settledList.forEach((b, i) => {
+        html += `<tr>
+            <td class="text-muted small">${i + 1}</td>
+            <td class="fw-bold text-info"><a href="/holidays/${b.id}/" class="text-info text-decoration-none">${escapeHtmlTS(b.booking_number)}</a></td>
+            <td>${formatDateTS(b.trip_date)}</td>
+            <td>${escapeHtmlTS(b.booked_by)}</td>
+            <td>${escapeHtmlTS(b.booked_vehicle) || '—'}</td>
+            <td class="fw-bold text-success" id="netbal-${b.id}">—</td>
+            <td class="text-center">
+                <button class="btn btn-outline-info btn-sm" onclick="openSettlementModal(${i}, true)">
+                    <i class="bi bi-eye me-1"></i>View
+                </button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+}
+
+// ── open settlement modal ──────────────────────────────────────
+function openSettlementModal(listIdx, isSettled) {
+    const b = isSettled ? settledList[listIdx] : pendingList[listIdx];
+    if (!b) return;
+    activeBookingId = b.id;
+
+    // fill order form (read-only)
+    document.getElementById('sdm_booking_number').textContent  = b.booking_number;
+    document.getElementById('sdm_trip_date').value             = b.trip_date;
+    document.getElementById('sdm_purpose_of_booking').value    = b.purpose_of_booking;
+    document.getElementById('sdm_booked_by').value             = b.booked_by;
+    document.getElementById('sdm_contact_number').value        = b.contact_number;
+    document.getElementById('sdm_second_contact_number').value = b.second_contact_number;
+    document.getElementById('sdm_payment_type_label').value    = b.payment_type_label;
+    document.getElementById('sdm_departure_time').value        = b.departure_time;
+    document.getElementById('sdm_return_date').value           = b.return_date;
+    document.getElementById('sdm_return_time').value           = b.return_time;
+    document.getElementById('sdm_no_of_passengers').value      = b.no_of_passengers;
+    document.getElementById('sdm_departure_location').value    = b.departure_location;
+    document.getElementById('sdm_destination').value           = b.destination;
+    document.getElementById('sdm_booked_vehicle').value        = b.booked_vehicle;
+    document.getElementById('sdm_ac_type').value               = b.ac_type === 'AC' ? 'AC' : 'Non-AC';
+    document.getElementById('sdm_special_instructions').value  = b.special_instructions;
+    document.getElementById('sdm_max_km').value                = b.max_km;
+    document.getElementById('sdm_extra_km_charge').value       = b.extra_km_charge;
+    document.getElementById('sdm_total_rent').value            = b.total_rent;
+    document.getElementById('sdm_service_charge').value        = b.service_charge;
+    document.getElementById('sdm_total_amount').value          = b.total_amount;
+    document.getElementById('sdm_advance_amount').value        = b.advance_amount;
+    document.getElementById('sdm_balance_amount').value        = b.balance_amount;
+    document.getElementById('sdm_detail_link').href            = `/holidays/${b.id}/`;
+
+    resetSettlement();
+    document.getElementById('s_batta_pct').value = b.booked_vehicle_batta || '0';
+    document.getElementById('settlementSaveAlert').className = 'alert d-none mt-2 mb-0';
+
+    new bootstrap.Modal(document.getElementById('settlementDetailModal')).show();
+
+    if (isSettled) {
+        fetch(`/api/holidays/${b.id}/settlement/`, { headers: { 'X-CSRFToken': getCsrfTS() } })
+        .then(r => r.json())
+        .then(data => {
+            if (data.exists) {
+                fillSettlementData(data);
+                // update net balance in settled table
+                const cell = document.getElementById(`netbal-${b.id}`);
+                if (cell) cell.textContent = `₹ ${data.net_balance}`;
+                setSettlementMode(data.bank_is_approved ? 'locked' : 'view', data);
+            } else {
+                setSettlementMode('edit', null);
+            }
+        })
+        .catch(() => setSettlementMode('edit', null));
+    } else {
+        setSettlementMode('edit', null);
+    }
+}
+
+// ── settlement mode: 'edit' | 'view' | 'locked' ───────────────
+function setSettlementMode(mode, data) {
+    const fields    = document.querySelectorAll('.s-field');
+    const editBtn   = document.getElementById('editSettlementBtn');
+    const saveBtn   = document.getElementById('saveSettlementBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const header    = document.getElementById('settlementDetailModal').querySelector('.modal-header');
+
+    if (mode === 'view') {
+        fields.forEach(f => { f.disabled = true; });
+        editBtn.classList.remove('d-none');
+        saveBtn.classList.add('d-none');
+        cancelBtn.classList.add('d-none');
+        header.style.background = '';
+        settlementBackupData = data;
+    } else if (mode === 'edit') {
+        fields.forEach(f => { f.disabled = false; });
+        editBtn.classList.add('d-none');
+        saveBtn.classList.remove('d-none');
+        cancelBtn.classList.toggle('d-none', !data); // show cancel only when editing existing
+        header.style.background = '';
+    } else { // locked
+        fields.forEach(f => { f.disabled = true; });
+        editBtn.classList.add('d-none');
+        saveBtn.classList.add('d-none');
+        cancelBtn.classList.add('d-none');
+        header.style.background = 'linear-gradient(135deg,#198754,#0f5132)';
+    }
+    calcSettlement();
+}
+
+function enableEditMode() {
+    document.querySelectorAll('.s-field').forEach(f => { f.disabled = false; });
+    document.getElementById('editSettlementBtn').classList.add('d-none');
+    document.getElementById('saveSettlementBtn').classList.remove('d-none');
+    document.getElementById('cancelEditBtn').classList.remove('d-none');
+}
+
+function cancelEditMode() {
+    resetSettlement();
+    document.getElementById('s_batta_pct').value = settlementBackupData?.batta_percentage || '0';
+    if (settlementBackupData) {
+        fillSettlementData(settlementBackupData);
+    }
+    setSettlementMode('view', settlementBackupData);
+}
+
+// ── fill settlement data from API response ─────────────────────
+function fillSettlementData(data) {
+    document.getElementById('s_commission_pct').value  = data.commission_percentage;
+    document.getElementById('s_diesel_charge').value   = data.diesel_charge;
+    document.getElementById('s_cleaning_charge').value = data.cleaning_charge;
+    document.getElementById('s_grease_charge').value   = data.grease_charge;
+    document.getElementById('s_batta_pct').value       = data.batta_percentage;
+
+    const dieselLink = document.getElementById('s_diesel_bill_link');
+    if (data.diesel_bill_url) {
+        dieselLink.href = data.diesel_bill_url;
+        dieselLink.title = data.diesel_bill_name;
+        dieselLink.classList.remove('d-none');
+    } else {
+        dieselLink.classList.add('d-none');
+    }
+    const greaseLink = document.getElementById('s_grease_bill_link');
+    if (data.grease_bill_url) {
+        greaseLink.href = data.grease_bill_url;
+        greaseLink.title = data.grease_bill_name;
+        greaseLink.classList.remove('d-none');
+    } else {
+        greaseLink.classList.add('d-none');
+    }
+    (data.custom_charges || []).forEach(c => {
+        addCustomCharge(c.name, c.amount, c.attachment_url, c.attachment_name, true);
+    });
+    calcSettlement();
+}
+
+// ── settlement calculations ────────────────────────────────────
+function resetSettlement() {
+    document.getElementById('s_commission_pct').value  = '';
+    document.getElementById('s_commission_amt').value  = '0.00';
+    document.getElementById('s_net_rent').value        = '0.00';
+    document.getElementById('s_batta_pct').value       = '0';
+    document.getElementById('s_batta_amt').value       = '0.00';
+    document.getElementById('s_diesel_charge').value   = '';
+    document.getElementById('s_diesel_bill').value     = '';
+    document.getElementById('s_diesel_bill_link').classList.add('d-none');
+    document.getElementById('s_cleaning_charge').value = '';
+    document.getElementById('s_grease_charge').value   = '';
+    document.getElementById('s_grease_bill').value     = '';
+    document.getElementById('s_grease_bill_link').classList.add('d-none');
+    document.getElementById('customChargesContainer').innerHTML = '';
+    document.getElementById('s_net_balance_display').textContent = '₹ 0.00';
+    document.getElementById('s_net_balance_val').value = '0';
+    customChargeIndex = 0;
+}
+
+function calcSettlement() {
+    const totalAmount   = Number.parseFloat(document.getElementById('sdm_total_amount').value) || 0;
+    const commissionPct = Number.parseFloat(document.getElementById('s_commission_pct').value) || 0;
+    const commissionAmt = +(totalAmount * commissionPct / 100).toFixed(2);
+    const netRent       = +(totalAmount - commissionAmt).toFixed(2);
+
+    const battaPct = Number.parseFloat(document.getElementById('s_batta_pct').value) || 0;
+    const battaAmt = +(netRent * battaPct / 100).toFixed(2);
+
+    const diesel   = Number.parseFloat(document.getElementById('s_diesel_charge').value)   || 0;
+    const cleaning = Number.parseFloat(document.getElementById('s_cleaning_charge').value) || 0;
+    const grease   = Number.parseFloat(document.getElementById('s_grease_charge').value)   || 0;
+
+    let customTotal = 0;
+    document.querySelectorAll('.s-custom-amount').forEach(inp => {
+        customTotal += Number.parseFloat(inp.value) || 0;
+    });
+
+    const netBalance = +(netRent - battaAmt - diesel - cleaning - grease - customTotal).toFixed(2);
+
+    document.getElementById('s_commission_amt').value    = commissionAmt.toFixed(2);
+    document.getElementById('s_net_rent').value          = netRent.toFixed(2);
+    document.getElementById('s_batta_amt').value         = battaAmt.toFixed(2);
+    document.getElementById('s_net_balance_display').textContent = `₹ ${netBalance.toFixed(2)}`;
+    document.getElementById('s_net_balance_val').value   = netBalance.toFixed(2);
+}
+
+// ── custom charges ─────────────────────────────────────────────
+function addCustomCharge(name = '', amount = '', fileUrl = null, fileName = null, disabled = false) {
+    const idx = customChargeIndex++;
+    const container = document.getElementById('customChargesContainer');
+    const div = document.createElement('div');
+    div.className = 'row g-2 align-items-end mb-2 custom-charge-row';
+    div.dataset.idx = idx;
+    const dis = disabled ? 'disabled' : '';
+    div.innerHTML = `
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold mb-1">Charge Name</label>
+            <input type="text" class="form-control form-control-sm s-custom-name s-field"
+                   placeholder="e.g. TOLL FEE" value="${escapeHtmlTS(name)}" ${dis}
+                   oninput="this.value=this.value.toUpperCase();">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold mb-1">Amount (₹)</label>
+            <input type="number" class="form-control form-control-sm s-custom-amount s-field"
+                   min="0" step="0.01" placeholder="0.00" value="${escapeHtmlTS(String(amount))}" ${dis}
+                   oninput="calcSettlement()">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold mb-1">Attachment</label>
+            <div class="d-flex gap-1 align-items-center">
+                <input type="file" class="form-control form-control-sm s-custom-file s-field" accept="image/*,.pdf" ${dis}>
+                ${fileUrl ? `<a href="${fileUrl}" target="_blank" class="btn btn-outline-secondary btn-sm" title="${escapeHtmlTS(fileName)}"><i class="bi bi-file-earmark"></i></a>` : ''}
+            </div>
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-outline-danger btn-sm w-100 s-field" ${dis}
+                    onclick="removeCustomCharge(this)"><i class="bi bi-x-lg"></i></button>
+        </div>`;
+    container.appendChild(div);
+}
+
+function removeCustomCharge(btn) {
+    btn.closest('.custom-charge-row').remove();
+    calcSettlement();
+}
+
+// ── save settlement ────────────────────────────────────────────
+function saveSettlement() {
+    if (!activeBookingId) return;
+
+    const alertEl = document.getElementById('settlementSaveAlert');
+    const saveBtn = document.getElementById('saveSettlementBtn');
+    alertEl.className = 'alert d-none mt-2 mb-0';
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
+
+    const fd = new FormData();
+    fd.append('commission_percentage', document.getElementById('s_commission_pct').value || '0');
+    fd.append('batta_percentage',      document.getElementById('s_batta_pct').value || '0');
+    fd.append('diesel_charge',         document.getElementById('s_diesel_charge').value || '0');
+    fd.append('cleaning_charge',       document.getElementById('s_cleaning_charge').value || '0');
+    fd.append('grease_charge',         document.getElementById('s_grease_charge').value || '0');
+
+    const dieselFile = document.getElementById('s_diesel_bill').files[0];
+    if (dieselFile) fd.append('diesel_bill', dieselFile);
+
+    const greaseFile = document.getElementById('s_grease_bill').files[0];
+    if (greaseFile) fd.append('grease_bill', greaseFile);
+
+    const rows = document.querySelectorAll('.custom-charge-row');
+    fd.append('custom_count', rows.length);
+    rows.forEach((row, i) => {
+        fd.append(`custom_name_${i}`,   row.querySelector('.s-custom-name').value);
+        fd.append(`custom_amount_${i}`, row.querySelector('.s-custom-amount').value || '0');
+        const file = row.querySelector('.s-custom-file').files[0];
+        if (file) fd.append(`custom_file_${i}`, file);
+    });
+
+    fetch(`/api/holidays/${activeBookingId}/settlement/save/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfTS() },
+        body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Update Settlement';
+        if (data.success) {
+            alertEl.className = 'alert alert-success mt-2 mb-0';
+            alertEl.innerHTML = `<i class="bi bi-check-circle me-2"></i>${data.message}`;
+            currentTab = 'settled';
+            loadCompletedTrips();
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('settlementDetailModal'))?.hide();
+            }, 1200);
+        } else {
+            alertEl.className = 'alert alert-danger mt-2 mb-0';
+            alertEl.textContent = data.error || 'Failed to save.';
+        }
+        alertEl.classList.remove('d-none');
+    })
+    .catch(err => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Update Settlement';
+        alertEl.className = 'alert alert-danger mt-2 mb-0';
+        alertEl.textContent = 'Network error: ' + err.message;
+        alertEl.classList.remove('d-none');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', loadCompletedTrips);
+</script>
+
+{% endblock %}

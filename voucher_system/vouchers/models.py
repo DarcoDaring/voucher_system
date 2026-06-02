@@ -689,6 +689,7 @@ class Vehicle(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='vehicles')
     name = models.CharField(max_length=200)
     registration_number = models.CharField(max_length=50)
+    batta_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='vehicles_created')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -699,6 +700,25 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.registration_number})"
+
+
+# =============================================
+# PAYMENT TYPE MASTER
+# =============================================
+
+class PaymentType(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payment_types')
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='payment_types_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'name')
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 # =============================================
@@ -771,3 +791,83 @@ class HolidayBooking(models.Model):
         advance = Decimal(self.advance_amount or 0)
         self.balance_amount = max(Decimal('0.00'), self.total_amount - advance)
         super().save(*args, **kwargs)
+
+
+# =============================================
+# TRIP SETTLEMENT
+# =============================================
+
+class TripSettlement(models.Model):
+    booking = models.OneToOneField(HolidayBooking, on_delete=models.CASCADE, related_name='settlement')
+    commission_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    commission_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    net_rent = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    batta_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    batta_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    diesel_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    diesel_bill = models.FileField(upload_to='settlement/diesel/', null=True, blank=True)
+    cleaning_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    grease_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    grease_bill = models.FileField(upload_to='settlement/grease/', null=True, blank=True)
+    net_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='settlements_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Settlement – {self.booking.booking_number}"
+
+
+class TripSettlementCharge(models.Model):
+    settlement = models.ForeignKey(TripSettlement, on_delete=models.CASCADE, related_name='custom_charges')
+    name = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    attachment = models.FileField(upload_to='settlement/custom/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name}: {self.amount}"
+
+
+# =============================================
+# BANK SETTLEMENT
+# =============================================
+
+class BankSettlement(models.Model):
+    STATUS_PENDING  = 'PENDING_APPROVAL'
+    STATUS_APPROVED = 'APPROVED'
+    STATUS_CHOICES  = (
+        (STATUS_PENDING,  'Pending Approval'),
+        (STATUS_APPROVED, 'Approved'),
+    )
+
+    settlement    = models.OneToOneField(TripSettlement, on_delete=models.CASCADE, related_name='bank')
+    bank_document = models.FileField(upload_to='settlement/bank/')
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    approved_by   = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_approvals')
+    approved_at   = models.DateTimeField(null=True, blank=True)
+    submitted_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='bank_submissions')
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Bank – {self.settlement.booking.booking_number}"
+
+
+# =============================================
+# HOLIDAY BANK APPROVAL MASTER
+# =============================================
+
+class HolidayBankApprover(models.Model):
+    company    = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='bank_approvers')
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='holiday_bank_approvals')
+    is_active  = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='bank_approvers_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'user')
+        ordering = ['user__username']
+
+    def __str__(self):
+        return f"{self.user.username} – {self.company.name}"

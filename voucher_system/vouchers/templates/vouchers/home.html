@@ -243,6 +243,14 @@
                                                 data-bs-toggle="modal" data-bs-target="#vehicleMasterModal" data-bs-dismiss="modal">
                                             <i class="bi bi-truck me-2"></i>Vehicle Master
                                         </button>
+                                        <button class="btn btn-outline-info fw-semibold py-3 rounded-pill modal-btn"
+                                                data-bs-toggle="modal" data-bs-target="#paymentTypeMasterModal" data-bs-dismiss="modal">
+                                            <i class="bi bi-credit-card me-2"></i>Payment Type Master
+                                        </button>
+                                        <button class="btn btn-outline-info fw-semibold py-3 rounded-pill modal-btn"
+                                                data-bs-toggle="modal" data-bs-target="#approvalMasterModal" data-bs-dismiss="modal">
+                                            <i class="bi bi-person-check me-2"></i>Approval Master
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -265,20 +273,27 @@
                                     <div class="card border-0 bg-light rounded-3 mb-4">
                                         <div class="card-body p-3">
                                             <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2 text-info"></i>Add New Vehicle</h6>
-                                            <div class="row g-2">
-                                                <div class="col-md-5">
-                                                    <input type="text" class="form-control" id="vm_name"
-                                                           placeholder="Vehicle Name"
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small mb-1 fw-semibold">Vehicle Name <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control form-control-sm" id="vm_name"
+                                                           placeholder="e.g. TEMPO TRAVELLER"
                                                            oninput="this.value = this.value.toUpperCase();">
                                                 </div>
-                                                <div class="col-md-5">
-                                                    <input type="text" class="form-control" id="vm_reg"
-                                                           placeholder="Registration Number"
+                                                <div class="col-md-4">
+                                                    <label class="form-label small mb-1 fw-semibold">Registration No. <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control form-control-sm" id="vm_reg"
+                                                           placeholder="e.g. KL-01-AB-1234"
                                                            oninput="this.value = this.value.toUpperCase();">
                                                 </div>
                                                 <div class="col-md-2">
-                                                    <button class="btn btn-info w-100 fw-bold" onclick="addVehicle()">
-                                                        <i class="bi bi-plus-lg"></i>
+                                                    <label class="form-label small mb-1 fw-semibold">Batta %</label>
+                                                    <input type="number" class="form-control form-control-sm" id="vm_batta"
+                                                           placeholder="0.00" min="0" max="100" step="0.01">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <button class="btn btn-info btn-sm w-100 fw-semibold" style="min-width:0;" onclick="addVehicle()">
+                                                        <i class="bi bi-plus-lg me-1"></i>Add
                                                     </button>
                                                 </div>
                                             </div>
@@ -290,6 +305,91 @@
                                         <div class="text-center py-3">
                                             <div class="spinner-border text-info spinner-border-sm"></div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Type Master Modal -->
+                    <div class="modal fade" id="paymentTypeMasterModal" tabindex="-1" aria-labelledby="paymentTypeMasterModalLabel">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content border-0 rounded-4 shadow-lg">
+                                <div class="modal-header text-white rounded-top-4" style="background: linear-gradient(135deg, #0dcaf0, #0aa2c0);">
+                                    <i class="bi bi-credit-card me-2"></i>
+                                    <h5 class="modal-title fw-bold mb-0" id="paymentTypeMasterModalLabel">Payment Type Master</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div id="paymentTypeMasterAlert" class="alert d-none mb-3"></div>
+
+                                    <!-- Add Payment Type Form -->
+                                    <div class="card border-0 bg-light rounded-3 mb-4">
+                                        <div class="card-body p-3">
+                                            <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2 text-info"></i>Add New Payment Type</h6>
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-md-10">
+                                                    <label class="form-label small mb-1 fw-semibold">Payment Type Name <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control form-control-sm" id="pt_name"
+                                                           placeholder="e.g. HIGH RANGE, LOCAL, OUTSTATION..."
+                                                           oninput="this.value = this.value.toUpperCase();">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <button class="btn btn-info btn-sm w-100 fw-semibold" style="min-width:0;" onclick="addPaymentType()">
+                                                        <i class="bi bi-plus-lg me-1"></i>Add
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Payment Type List -->
+                                    <div id="paymentTypeListContainer">
+                                        <div class="text-center py-3">
+                                            <div class="spinner-border text-info spinner-border-sm"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approval Master Modal -->
+                    <div class="modal fade" id="approvalMasterModal" tabindex="-1" aria-labelledby="approvalMasterModalLabel">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content border-0 rounded-4 shadow-lg">
+                                <div class="modal-header text-white rounded-top-4" style="background: linear-gradient(135deg, #0dcaf0, #0aa2c0);">
+                                    <i class="bi bi-person-check me-2"></i>
+                                    <h5 class="modal-title fw-bold mb-0" id="approvalMasterModalLabel">Bank Approval Master</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div id="approvalMasterAlert" class="alert d-none mb-3"></div>
+
+                                    <!-- Add Approver -->
+                                    <div class="card border-0 bg-light rounded-3 mb-4">
+                                        <div class="card-body p-3">
+                                            <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2 text-info"></i>Add Approver</h6>
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-md-10">
+                                                    <label for="am_user_select" class="form-label small fw-semibold mb-1">Select User <span class="text-danger">*</span></label>
+                                                    <select class="form-select form-select-sm" id="am_user_select">
+                                                        <option value="">-- Select a user --</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <button class="btn btn-info btn-sm w-100 fw-semibold" style="min-width:0;" onclick="addApprover()">
+                                                        <i class="bi bi-plus-lg me-1"></i>Add
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Approver List -->
+                                    <h6 class="fw-bold mb-2 text-muted">Current Approvers</h6>
+                                    <div id="approverListContainer">
+                                        <div class="text-center py-3"><div class="spinner-border text-info spinner-border-sm"></div></div>
                                     </div>
                                 </div>
                             </div>
@@ -512,7 +612,7 @@ function showVehicleAlert(msg, type) {
 function loadVehicleList() {
     const container = document.getElementById('vehicleListContainer');
     if (!container) return;
-    fetch('/api/vehicles/', { headers: { 'X-CSRFToken': getCsrfHome() } })
+    fetch('/api/vehicles/?all=1', { headers: { 'X-CSRFToken': getCsrfHome() } })
     .then(r => r.json())
     .then(data => {
         const vehicles = data.vehicles || [];
@@ -520,16 +620,33 @@ function loadVehicleList() {
             container.innerHTML = '<p class="text-muted text-center py-3">No vehicles added yet.</p>';
             return;
         }
-        let html = '<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>#</th><th>Vehicle Name</th><th>Registration No.</th><th></th></tr></thead><tbody>';
+        let html = `<div class="table-responsive"><table class="table table-sm align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light">
+                <tr><th>#</th><th>Vehicle Name</th><th>Reg. No.</th><th>Batta %</th><th>Status</th><th class="text-end">Actions</th></tr>
+            </thead><tbody>`;
         vehicles.forEach((v, i) => {
-            html += `<tr>
-                <td class="text-muted small">${i + 1}</td>
-                <td class="fw-semibold">${escapeHtmlV(v.name)}</td>
-                <td><span class="badge bg-light text-dark border">${escapeHtmlV(v.registration_number)}</span></td>
-                <td class="text-end">
-                    <button class="btn btn-outline-danger btn-sm" onclick="deleteVehicle(${v.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
+            const batta = v.batta_percentage ? `${v.batta_percentage}%` : '—';
+            const statusBadge = v.is_active
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disabled</span>';
+            const toggleLabel = v.is_active ? 'Disable' : 'Enable';
+            const toggleClass = v.is_active ? 'btn-outline-warning' : 'btn-outline-success';
+            const toggleIcon  = v.is_active ? 'bi-slash-circle' : 'bi-check-circle';
+            html += `<tr id="vrow-${v.id}">
+                <td class="text-muted small ps-2">${i + 1}</td>
+                <td class="fw-semibold" id="vtd-name-${v.id}">${escapeHtmlV(v.name)}</td>
+                <td id="vtd-reg-${v.id}"><span class="badge bg-light text-dark border">${escapeHtmlV(v.registration_number)}</span></td>
+                <td id="vtd-batta-${v.id}">${escapeHtmlV(batta)}</td>
+                <td>${statusBadge}</td>
+                <td class="text-end pe-2">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-info" onclick="editVehicleRow(${v.id},'${escapeHtmlV(v.name)}','${escapeHtmlV(v.registration_number)}','${v.batta_percentage || ''}')" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn ${toggleClass}" onclick="toggleVehicle(${v.id})" title="${toggleLabel}">
+                            <i class="bi ${toggleIcon}"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>`;
         });
@@ -539,9 +656,58 @@ function loadVehicleList() {
     .catch(() => { container.innerHTML = '<p class="text-danger text-center py-3">Error loading vehicles.</p>'; });
 }
 
+function editVehicleRow(id, name, reg, batta) {
+    const row = document.getElementById(`vrow-${id}`);
+    if (!row) return;
+    row.innerHTML = `
+        <td class="text-muted small ps-2"></td>
+        <td><input type="text" class="form-control form-control-sm" id="vedit-name-${id}" value="${escapeHtmlV(name)}" oninput="this.value=this.value.toUpperCase();"></td>
+        <td><input type="text" class="form-control form-control-sm" id="vedit-reg-${id}" value="${escapeHtmlV(reg)}" oninput="this.value=this.value.toUpperCase();"></td>
+        <td><input type="number" class="form-control form-control-sm" id="vedit-batta-${id}" value="${escapeHtmlV(batta)}" min="0" max="100" step="0.01" placeholder="0.00"></td>
+        <td></td>
+        <td class="text-end pe-2">
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-success" onclick="saveVehicle(${id})"><i class="bi bi-check-lg"></i> Save</button>
+                <button class="btn btn-secondary" onclick="loadVehicleList()"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </td>`;
+}
+
+function saveVehicle(id) {
+    const name  = document.getElementById(`vedit-name-${id}`)?.value.trim();
+    const reg   = document.getElementById(`vedit-reg-${id}`)?.value.trim();
+    const batta = document.getElementById(`vedit-batta-${id}`)?.value.trim();
+    if (!name || !reg) { showVehicleAlert('Name and registration are required.', 'warning'); return; }
+    fetch(`/api/vehicles/${id}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() },
+        body: JSON.stringify({ name, registration_number: reg, batta_percentage: batta || null })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { showVehicleAlert(data.message, 'success'); loadVehicleList(); }
+        else showVehicleAlert(data.error || 'Failed to update.', 'danger');
+    })
+    .catch(() => showVehicleAlert('Network error.', 'danger'));
+}
+
+function toggleVehicle(id) {
+    fetch(`/api/vehicles/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { showVehicleAlert(data.message, 'success'); loadVehicleList(); }
+        else showVehicleAlert(data.error || 'Failed.', 'danger');
+    })
+    .catch(() => showVehicleAlert('Network error.', 'danger'));
+}
+
 function addVehicle() {
-    const name = document.getElementById('vm_name').value.trim();
-    const reg  = document.getElementById('vm_reg').value.trim();
+    const name  = document.getElementById('vm_name').value.trim();
+    const reg   = document.getElementById('vm_reg').value.trim();
+    const batta = document.getElementById('vm_batta').value.trim();
     if (!name || !reg) {
         showVehicleAlert('Please enter both vehicle name and registration number.', 'warning');
         return;
@@ -549,14 +715,15 @@ function addVehicle() {
     fetch('/api/vehicles/create/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() },
-        body: JSON.stringify({ name, registration_number: reg })
+        body: JSON.stringify({ name, registration_number: reg, batta_percentage: batta || null })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
             showVehicleAlert(data.message, 'success');
-            document.getElementById('vm_name').value = '';
-            document.getElementById('vm_reg').value  = '';
+            document.getElementById('vm_name').value  = '';
+            document.getElementById('vm_reg').value   = '';
+            document.getElementById('vm_batta').value = '';
             loadVehicleList();
         } else {
             showVehicleAlert(data.error || 'Failed to add vehicle.', 'danger');
@@ -565,23 +732,6 @@ function addVehicle() {
     .catch(() => showVehicleAlert('Network error.', 'danger'));
 }
 
-function deleteVehicle(id) {
-    if (!confirm('Delete this vehicle?')) return;
-    fetch(`/api/vehicles/${id}/delete/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': getCsrfHome() }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showVehicleAlert('Vehicle deleted.', 'success');
-            loadVehicleList();
-        } else {
-            showVehicleAlert(data.error || 'Failed to delete.', 'danger');
-        }
-    })
-    .catch(() => showVehicleAlert('Network error.', 'danger'));
-}
 
 function escapeHtmlV(text) {
     if (!text) return '';
@@ -590,13 +740,232 @@ function escapeHtmlV(text) {
         .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 
-// Load vehicle list when modal opens
+// Load lists when modals open
 document.addEventListener('DOMContentLoaded', function() {
     const vModal = document.getElementById('vehicleMasterModal');
-    if (vModal) {
-        vModal.addEventListener('show.bs.modal', loadVehicleList);
-    }
+    if (vModal) vModal.addEventListener('show.bs.modal', loadVehicleList);
+
+    const ptModal = document.getElementById('paymentTypeMasterModal');
+    if (ptModal) ptModal.addEventListener('show.bs.modal', loadPaymentTypeList);
+
+    const amModal = document.getElementById('approvalMasterModal');
+    if (amModal) amModal.addEventListener('show.bs.modal', loadApproverList);
 });
+
+// ── Approval Master ────────────────────────────────────────────
+function showApprovalAlert(msg, type) {
+    const el = document.getElementById('approvalMasterAlert');
+    if (!el) return;
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('d-none');
+    setTimeout(() => el.classList.add('d-none'), 3500);
+}
+
+function loadApproverList() {
+    const container = document.getElementById('approverListContainer');
+    const select = document.getElementById('am_user_select');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-info spinner-border-sm"></div></div>';
+
+    fetch('/api/holidays/bank-approvers/', { headers: { 'X-CSRFToken': getCsrfHome() } })
+    .then(r => r.json())
+    .then(data => {
+        // populate the add-approver dropdown with available users
+        if (select) {
+            select.innerHTML = '<option value="">-- Select a user --</option>';
+            (data.available_users || []).forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.full_name === u.username ? u.username : `${u.full_name} (${u.username})`;
+                select.appendChild(opt);
+            });
+        }
+
+        // render approver list
+        const approvers = data.approvers || [];
+        if (approvers.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-3">No approvers added yet.</p>';
+            return;
+        }
+        let html = `<div class="table-responsive"><table class="table table-sm align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light"><tr><th>#</th><th>User</th><th>Status</th><th class="text-end">Actions</th></tr></thead><tbody>`;
+        approvers.forEach((a, i) => {
+            const statusBadge = a.is_active
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disabled</span>';
+            const toggleLabel = a.is_active ? 'Disable' : 'Enable';
+            const toggleClass = a.is_active ? 'btn-outline-warning' : 'btn-outline-success';
+            const toggleIcon  = a.is_active ? 'bi-slash-circle' : 'bi-check-circle';
+            html += `<tr>
+                <td class="text-muted small ps-2">${i + 1}</td>
+                <td class="fw-semibold">${escapeHtmlV(a.full_name === a.username ? a.username : `${a.full_name} (${a.username})`)}</td>
+                <td>${statusBadge}</td>
+                <td class="text-end pe-2">
+                    <button class="btn ${toggleClass} btn-sm" onclick="toggleApprover(${a.id})" title="${toggleLabel}">
+                        <i class="bi ${toggleIcon}"></i> ${toggleLabel}
+                    </button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    })
+    .catch(() => { container.innerHTML = '<p class="text-danger text-center py-3">Error loading approvers.</p>'; });
+}
+
+function addApprover() {
+    const sel = document.getElementById('am_user_select');
+    const userId = sel?.value;
+    if (!userId) { showApprovalAlert('Please select a user.', 'warning'); return; }
+
+    fetch('/api/holidays/bank-approvers/add/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() },
+        body: JSON.stringify({ user_id: userId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { showApprovalAlert(data.message, 'success'); loadApproverList(); }
+        else showApprovalAlert(data.error || 'Failed to add approver.', 'danger');
+    })
+    .catch(() => showApprovalAlert('Network error.', 'danger'));
+}
+
+function toggleApprover(id) {
+    fetch(`/api/holidays/bank-approvers/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { showApprovalAlert(data.message, 'success'); loadApproverList(); }
+        else showApprovalAlert(data.error || 'Failed.', 'danger');
+    })
+    .catch(() => showApprovalAlert('Network error.', 'danger'));
+}
+
+// ── Payment Type Master ─────────────────────────────────────────
+function showPaymentTypeAlert(msg, type) {
+    const el = document.getElementById('paymentTypeMasterAlert');
+    if (!el) return;
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('d-none');
+    setTimeout(() => el.classList.add('d-none'), 3500);
+}
+
+function loadPaymentTypeList() {
+    const container = document.getElementById('paymentTypeListContainer');
+    if (!container) return;
+    fetch('/api/payment-types/?all=1', { headers: { 'X-CSRFToken': getCsrfHome() } })
+    .then(r => r.json())
+    .then(data => {
+        const pts = data.payment_types || [];
+        if (pts.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-3">No payment types added yet.</p>';
+            return;
+        }
+        let html = `<div class="table-responsive"><table class="table table-sm align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light">
+                <tr><th>#</th><th>Payment Type</th><th>Status</th><th class="text-end">Actions</th></tr>
+            </thead><tbody>`;
+        pts.forEach((pt, i) => {
+            const statusBadge = pt.is_active
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disabled</span>';
+            const toggleLabel = pt.is_active ? 'Disable' : 'Enable';
+            const toggleClass = pt.is_active ? 'btn-outline-warning' : 'btn-outline-success';
+            const toggleIcon  = pt.is_active ? 'bi-slash-circle' : 'bi-check-circle';
+            html += `<tr id="ptrow-${pt.id}">
+                <td class="text-muted small ps-2">${i + 1}</td>
+                <td class="fw-semibold" id="pttd-name-${pt.id}">${escapeHtmlV(pt.name)}</td>
+                <td>${statusBadge}</td>
+                <td class="text-end pe-2">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-info" onclick="editPaymentTypeRow(${pt.id},'${escapeHtmlV(pt.name)}')" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn ${toggleClass}" onclick="togglePaymentType(${pt.id})" title="${toggleLabel}">
+                            <i class="bi ${toggleIcon}"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    })
+    .catch(() => { container.innerHTML = '<p class="text-danger text-center py-3">Error loading payment types.</p>'; });
+}
+
+function editPaymentTypeRow(id, name) {
+    const row = document.getElementById(`ptrow-${id}`);
+    if (!row) return;
+    row.innerHTML = `
+        <td class="text-muted small ps-2"></td>
+        <td colspan="2"><input type="text" class="form-control form-control-sm" id="ptedit-name-${id}" value="${escapeHtmlV(name)}" oninput="this.value=this.value.toUpperCase();"></td>
+        <td class="text-end pe-2">
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-success" onclick="savePaymentType(${id})"><i class="bi bi-check-lg"></i> Save</button>
+                <button class="btn btn-secondary" onclick="loadPaymentTypeList()"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </td>`;
+}
+
+function savePaymentType(id) {
+    const name = document.getElementById(`ptedit-name-${id}`)?.value.trim();
+    if (!name) { showPaymentTypeAlert('Name is required.', 'warning'); return; }
+    fetch(`/api/payment-types/${id}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() },
+        body: JSON.stringify({ name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { showPaymentTypeAlert(data.message, 'success'); loadPaymentTypeList(); }
+        else showPaymentTypeAlert(data.error || 'Failed to update.', 'danger');
+    })
+    .catch(() => showPaymentTypeAlert('Network error.', 'danger'));
+}
+
+function togglePaymentType(id) {
+    fetch(`/api/payment-types/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { showPaymentTypeAlert(data.message, 'success'); loadPaymentTypeList(); }
+        else showPaymentTypeAlert(data.error || 'Failed.', 'danger');
+    })
+    .catch(() => showPaymentTypeAlert('Network error.', 'danger'));
+}
+
+function addPaymentType() {
+    const name = document.getElementById('pt_name').value.trim();
+    if (!name) {
+        showPaymentTypeAlert('Please enter a payment type name.', 'warning');
+        return;
+    }
+    fetch('/api/payment-types/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfHome() },
+        body: JSON.stringify({ name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showPaymentTypeAlert(data.message, 'success');
+            document.getElementById('pt_name').value = '';
+            loadPaymentTypeList();
+        } else {
+            showPaymentTypeAlert(data.error || 'Failed to add payment type.', 'danger');
+        }
+    })
+    .catch(() => showPaymentTypeAlert('Network error.', 'danger'));
+}
+
 </script>
 
 {% endblock %}

@@ -29,8 +29,14 @@ from vouchers.function_views import (
 from vouchers.holiday_views import (
     HolidayView, HolidayDetailView, HolidayCreateAPI,
     HolidayBookedDatesAPI, HolidayListByDateAPI,
-    HolidayDeleteAPI, HolidayConfirmAPI, HolidayPrintView,
-    VehicleListAPI, VehicleCreateAPI, VehicleDeleteAPI,
+    HolidayDeleteAPI, HolidayUpdateAPI, HolidayPrintView,
+    VehicleListAPI, VehicleCreateAPI,
+    PaymentTypeListAPI, PaymentTypeCreateAPI, PaymentTypeToggleAPI, PaymentTypeUpdateAPI,
+    VehicleToggleAPI, VehicleUpdateAPI,
+    TripSettlementView, HolidayCompletedListAPI, HolidayCompletedCountAPI,
+    TripSettlementGetAPI, TripSettlementSaveAPI,
+    BankView, BankListAPI, BankDocumentUploadAPI, BankApproveAPI,
+    BankApproverListAPI, BankApproverAddAPI, BankApproverToggleAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
@@ -161,12 +167,37 @@ urlpatterns = [
     path('api/holidays/booked-dates/', HolidayBookedDatesAPI.as_view(), name='holiday_booked_dates'),
     path('api/holidays/by-date/', HolidayListByDateAPI.as_view(), name='holiday_list_by_date'),
     path('api/holidays/<int:pk>/delete/', HolidayDeleteAPI.as_view(), name='holiday_delete_api'),
-    path('api/holidays/<int:pk>/confirm/', HolidayConfirmAPI.as_view(), name='holiday_confirm'),
+    path('api/holidays/<int:pk>/update/', HolidayUpdateAPI.as_view(), name='holiday_update_api'),
 
     # Vehicle Master APIs
     path('api/vehicles/', VehicleListAPI.as_view(), name='vehicle_list_api'),
     path('api/vehicles/create/', VehicleCreateAPI.as_view(), name='vehicle_create_api'),
-    path('api/vehicles/<int:pk>/delete/', VehicleDeleteAPI.as_view(), name='vehicle_delete_api'),
+    path('api/vehicles/<int:pk>/toggle/', VehicleToggleAPI.as_view(), name='vehicle_toggle_api'),
+    path('api/vehicles/<int:pk>/update/', VehicleUpdateAPI.as_view(), name='vehicle_update_api'),
+
+    # Payment Type Master APIs
+    path('api/payment-types/', PaymentTypeListAPI.as_view(), name='payment_type_list_api'),
+    path('api/payment-types/create/', PaymentTypeCreateAPI.as_view(), name='payment_type_create_api'),
+    path('api/payment-types/<int:pk>/toggle/', PaymentTypeToggleAPI.as_view(), name='payment_type_toggle_api'),
+    path('api/payment-types/<int:pk>/update/', PaymentTypeUpdateAPI.as_view(), name='payment_type_update_api'),
+
+    # Trip Settlement
+    path('holidays/trip-settlement/', TripSettlementView.as_view(), name='trip_settlement'),
+    path('api/holidays/completed/', HolidayCompletedListAPI.as_view(), name='holiday_completed_list'),
+    path('api/holidays/completed-count/', HolidayCompletedCountAPI.as_view(), name='holiday_completed_count'),
+    path('api/holidays/<int:pk>/settlement/', TripSettlementGetAPI.as_view(), name='holiday_settlement_get'),
+    path('api/holidays/<int:pk>/settlement/save/', TripSettlementSaveAPI.as_view(), name='holiday_settlement_save'),
+
+    # Bank Settlement
+    path('holidays/bank/', BankView.as_view(), name='bank_settlement'),
+    path('api/holidays/bank/list/', BankListAPI.as_view(), name='bank_list_api'),
+    path('api/holidays/bank/<int:settlement_pk>/upload/', BankDocumentUploadAPI.as_view(), name='bank_upload_api'),
+    path('api/holidays/bank/<int:bank_pk>/approve/', BankApproveAPI.as_view(), name='bank_approve_api'),
+
+    # Bank Approval Master
+    path('api/holidays/bank-approvers/', BankApproverListAPI.as_view(), name='bank_approver_list'),
+    path('api/holidays/bank-approvers/add/', BankApproverAddAPI.as_view(), name='bank_approver_add'),
+    path('api/holidays/bank-approvers/<int:pk>/toggle/', BankApproverToggleAPI.as_view(), name='bank_approver_toggle'),
 
     # ── MOBILE APP (token-based) ────────────────────────────────────
 path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),

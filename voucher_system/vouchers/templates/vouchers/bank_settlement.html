@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid p-0" style="height: calc(100vh - 80px); overflow: hidden;">
+    <div class="row g-0 h-100">
+
+        <!-- LEFT SIDEBAR -->
+        <div class="col-md-3 col-lg-2 bg-light border-end" style="height: 100%; overflow-y: auto;">
+            <div class="p-3">
+                <h5 class="mb-4 text-info fw-bold">
+                    <i class="bi bi-bus-front me-2"></i>Holidays
+                </h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-dark" href="{% url 'holiday' %}">
+                            <i class="bi bi-calendar3 me-2"></i> Calendar View
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-dark" href="{% url 'trip_settlement' %}">
+                            <i class="bi bi-check2-circle me-2"></i> Trip Settlement
+                        </a>
+                    </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link active bg-info text-dark rounded" href="{% url 'bank_settlement' %}">
+                            <i class="bi bi-bank me-2"></i> Bank
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- RIGHT CONTENT -->
+        <div class="col-md-9 col-lg-10" style="height: 100%; overflow-y: auto;">
+            <div class="p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0"><i class="bi bi-bank me-2 text-info"></i>Bank Settlement</h4>
+                </div>
+
+                <div id="bankAlert" class="alert d-none mb-3"></div>
+
+                <!-- Tabs -->
+                <ul class="nav nav-pills mb-3">
+                    <li class="nav-item me-2">
+                        <button class="nav-link active" id="btab-pending" onclick="showBankTab('pending')">
+                            <i class="bi bi-upload me-1"></i>Pending Settlement
+                            <span class="badge bg-secondary ms-1" id="bBadgePending">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item me-2">
+                        <button class="nav-link" id="btab-approval" onclick="showBankTab('approval')">
+                            <i class="bi bi-clock me-1"></i>Pending Approval
+                            <span class="badge bg-warning text-dark ms-1" id="bBadgeApproval">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="btab-approved" onclick="showBankTab('approved')">
+                            <i class="bi bi-check-circle me-1"></i>Approved
+                            <span class="badge bg-success ms-1" id="bBadgeApproved">0</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div id="bankTableWrap">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-info"></div>
+                        <p class="text-muted mt-2">Loading…</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     VIEW DETAIL MODAL (Read-Only)
+     ============================================================ -->
+<div class="modal fade" id="bankDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-file-text me-2"></i>Settlement Detail — <span id="bdm_booking_number"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="bankDetailBody">
+                <div class="text-center py-4"><div class="spinner-border text-info"></div></div>
+            </div>
+            <div class="modal-footer">
+                <a id="bdm_booking_link" href="#" class="btn btn-outline-info" target="_blank">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Full Detail
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .nav-link { transition: all 0.3s; padding: 10px 15px; border-radius: 8px; }
+    .nav-link:hover:not(.active) { background: #e9ecef; }
+    .status-badge-pending  { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+    .status-badge-approved { background: #d1e7dd; color: #0f5132; border: 1px solid #198754; }
+    .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #6c757d; font-size: 0.9rem; }
+    .info-value { font-weight: 600; }
+</style>
+
+<script>
+function getCsrfB() {
+    return globalThis.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+function escapeHtmlB(text) {
+    if (!text) return '';
+    return String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+}
+function showBankAlert(msg, type) {
+    const el = document.getElementById('bankAlert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('d-none');
+    setTimeout(() => el.classList.add('d-none'), 4000);
+}
+
+// ── data + tab state ───────────────────────────────────────────
+let allEntries = [];
+let currentBankTab = 'pending';
+
+function showBankTab(tab) {
+    currentBankTab = tab;
+    ['pending','approval','approved'].forEach(t => {
+        document.getElementById(`btab-${t}`).classList.toggle('active', t === tab);
+    });
+    renderBankTab();
+}
+
+// ── load all entries ───────────────────────────────────────────
+function loadBankList() {
+    fetch('/api/holidays/bank/list/', { headers: { 'X-CSRFToken': getCsrfB() } })
+    .then(r => r.json())
+    .then(data => {
+        allEntries = data.entries || [];
+        const pending  = allEntries.filter(e => !e.bank);
+        const approval = allEntries.filter(e => e.bank?.status === 'PENDING_APPROVAL');
+        const approved = allEntries.filter(e => e.bank?.status === 'APPROVED');
+        document.getElementById('bBadgePending').textContent  = pending.length;
+        document.getElementById('bBadgeApproval').textContent = approval.length;
+        document.getElementById('bBadgeApproved').textContent = approved.length;
+        renderBankTab();
+    })
+    .catch(err => {
+        document.getElementById('bankTableWrap').innerHTML =
+            `<div class="alert alert-danger">Error loading data: ${err.message}</div>`;
+    });
+}
+
+function renderBankTab() {
+    const wrap = document.getElementById('bankTableWrap');
+    let list;
+    if (currentBankTab === 'pending')  list = allEntries.filter(e => !e.bank);
+    else if (currentBankTab === 'approval') list = allEntries.filter(e => e.bank?.status === 'PENDING_APPROVAL');
+    else list = allEntries.filter(e => e.bank?.status === 'APPROVED');
+
+    if (list.length === 0) {
+        const msgs = {
+            pending:  'No settlements awaiting bank document upload.',
+            approval: 'No settlements pending approval.',
+            approved: 'No approved settlements yet.',
+        };
+        wrap.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-bank fs-1 mb-3 d-block"></i>${msgs[currentBankTab]}</div>`;
+        return;
+    }
+
+    // column headers differ per tab
+    let extraCol = '';
+    if (currentBankTab === 'pending')  extraCol = '<th class="text-center">Upload Document</th>';
+    if (currentBankTab === 'approval') extraCol = '<th class="text-center">Actions</th>';
+    if (currentBankTab === 'approved') extraCol = '<th>Approved By</th>';
+
+    let html = `<div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light"><tr>
+                <th>#</th><th>Booking No.</th><th>Booked By</th><th>Vehicle</th>
+                <th>Net Balance (₹)</th>${extraCol}<th class="text-center">View</th>
+            </tr></thead><tbody>`;
+
+    list.forEach((e, i) => {
+        const bank = e.bank;
+        let extraCell = '';
+
+        if (currentBankTab === 'pending') {
+            extraCell = `<td class="text-center">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <input type="file" class="form-control form-control-sm" id="bankfile-${e.settlement_id}"
+                           accept="image/*,.pdf" style="max-width:180px;">
+                    <button class="btn btn-info btn-sm fw-semibold" onclick="uploadBankDoc(${e.settlement_id})">
+                        <i class="bi bi-upload me-1"></i>Upload
+                    </button>
+                </div>
+            </td>`;
+        } else if (currentBankTab === 'approval') {
+            extraCell = `<td class="text-center">
+                <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+                    <a href="${escapeHtmlB(bank.document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-file-earmark me-1"></i>Doc
+                    </a>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="file" class="form-control form-control-sm" id="bankfile-${e.settlement_id}"
+                               accept="image/*,.pdf" style="max-width:130px;">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="uploadBankDoc(${e.settlement_id})" title="Replace">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+                    {% if is_superuser %}
+                    <button class="btn btn-success btn-sm fw-semibold" onclick="approveBank(${bank.id})">
+                        <i class="bi bi-check-circle me-1"></i>Approve
+                    </button>
+                    {% endif %}
+                </div>
+            </td>`;
+        } else {
+            const approvedInfo = bank.approved_by
+                ? `${escapeHtmlB(bank.approved_by)}<br><small class="text-muted">${escapeHtmlB(bank.approved_at)}</small>`
+                : '—';
+            extraCell = `<td>${approvedInfo}</td>`;
+        }
+
+        html += `<tr>
+            <td class="text-muted small">${i + 1}</td>
+            <td class="fw-bold text-info">
+                <a href="/holidays/${e.booking_id}/" class="text-info text-decoration-none">${escapeHtmlB(e.booking_number)}</a>
+            </td>
+            <td>${escapeHtmlB(e.booked_by)}</td>
+            <td>${escapeHtmlB(e.vehicle)}</td>
+            <td class="fw-bold text-success">₹${escapeHtmlB(e.net_balance)}</td>
+            ${extraCell}
+            <td class="text-center">
+                <button class="btn btn-outline-info btn-sm" onclick="openBankDetail(${e.booking_id}, '${escapeHtmlB(e.booking_number)}')">
+                    <i class="bi bi-eye me-1"></i>View
+                </button>
+            </td>
+        </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+}
+
+// ── view detail modal ──────────────────────────────────────────
+function openBankDetail(bookingId, bookingNumber) {
+    document.getElementById('bdm_booking_number').textContent = bookingNumber;
+    document.getElementById('bdm_booking_link').href          = `/holidays/${bookingId}/`;
+    document.getElementById('bankDetailBody').innerHTML =
+        '<div class="text-center py-4"><div class="spinner-border text-info"></div></div>';
+    new bootstrap.Modal(document.getElementById('bankDetailModal')).show();
+
+    fetch(`/api/holidays/${bookingId}/settlement/`, { headers: { 'X-CSRFToken': getCsrfB() } })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.exists) {
+            document.getElementById('bankDetailBody').innerHTML =
+                '<p class="text-muted text-center py-4">No settlement data found.</p>';
+            return;
+        }
+        const bankEntry = allEntries.find(e => e.booking_id === bookingId);
+        const bankDoc   = bankEntry?.bank;
+
+        let customRows = '';
+        (data.custom_charges || []).forEach(c => {
+            customRows += `<div class="info-row">
+                <span class="info-label">${escapeHtmlB(c.name)}</span>
+                <span class="info-value text-danger">₹${escapeHtmlB(c.amount)}</span>
+            </div>`;
+        });
+
+        let bankDocHtml = '<span class="text-muted">No document uploaded</span>';
+        if (bankDoc?.document_url) {
+            const statusBadge = bankDoc.status === 'APPROVED'
+                ? '<span class="badge status-badge-approved ms-2">Approved</span>'
+                : '<span class="badge status-badge-pending ms-2">Pending Approval</span>';
+            const approvedLine = bankDoc.approved_by
+                ? `<div class="text-muted small mt-1">Approved by ${escapeHtmlB(bankDoc.approved_by)} on ${escapeHtmlB(bankDoc.approved_at)}</div>`
+                : '';
+            bankDocHtml = `<a href="${escapeHtmlB(bankDoc.document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="bi bi-file-earmark me-1"></i>${escapeHtmlB(bankDoc.document_name)}
+                </a>${statusBadge}${approvedLine}`;
+        }
+
+        document.getElementById('bankDetailBody').innerHTML = `
+            <div class="row g-3">
+                <div class="col-12">
+                    <h6 class="fw-bold text-info border-bottom pb-2 mb-3"><i class="bi bi-calculator me-1"></i>Settlement Breakdown</h6>
+                    <div class="info-row">
+                        <span class="info-label">Total Amount</span>
+                        <span class="info-value text-primary">₹${escapeHtmlB(String((Number.parseFloat(data.net_rent) + Number.parseFloat(data.commission_amount)).toFixed(2)))}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Commission (${escapeHtmlB(data.commission_percentage)}%)</span>
+                        <span class="info-value text-danger">− ₹${escapeHtmlB(data.commission_amount)}</span>
+                    </div>
+                    <div class="info-row fw-bold">
+                        <span class="info-label fw-bold">Net Rent</span>
+                        <span class="info-value text-success">₹${escapeHtmlB(data.net_rent)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Batta (${escapeHtmlB(data.batta_percentage)}%)</span>
+                        <span class="info-value text-warning">− ₹${escapeHtmlB(data.batta_amount)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Diesel Charge</span>
+                        <span class="info-value text-danger">− ₹${escapeHtmlB(data.diesel_charge)}</span>
+                    </div>
+                    ${data.diesel_bill_url ? `<div class="info-row"><span class="info-label">Diesel Bill</span><a href="${escapeHtmlB(data.diesel_bill_url)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark me-1"></i>${escapeHtmlB(data.diesel_bill_name)}</a></div>` : ''}
+                    <div class="info-row">
+                        <span class="info-label">Cleaning Charge</span>
+                        <span class="info-value text-danger">− ₹${escapeHtmlB(data.cleaning_charge)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Grease Charge</span>
+                        <span class="info-value text-danger">− ₹${escapeHtmlB(data.grease_charge)}</span>
+                    </div>
+                    ${data.grease_bill_url ? `<div class="info-row"><span class="info-label">Grease Bill</span><a href="${escapeHtmlB(data.grease_bill_url)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark me-1"></i>${escapeHtmlB(data.grease_bill_name)}</a></div>` : ''}
+                    ${customRows}
+                    <div class="info-row mt-2 pt-2 border-top">
+                        <span class="fw-bold fs-5">Total Net Balance</span>
+                        <span class="fw-bold fs-5 text-success">₹${escapeHtmlB(data.net_balance)}</span>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <h6 class="fw-bold text-info border-bottom pb-2 mb-3"><i class="bi bi-bank me-1"></i>Bank Document</h6>
+                    ${bankDocHtml}
+                </div>
+            </div>`;
+    })
+    .catch(err => {
+        document.getElementById('bankDetailBody').innerHTML =
+            `<div class="alert alert-danger">Error loading settlement: ${err.message}</div>`;
+    });
+}
+
+// ── upload bank doc ────────────────────────────────────────────
+function uploadBankDoc(settlementId) {
+    const fileInput = document.getElementById(`bankfile-${settlementId}`);
+    if (!fileInput?.files[0]) { showBankAlert('Please select a file first.', 'warning'); return; }
+    const fd = new FormData();
+    fd.append('bank_document', fileInput.files[0]);
+    fetch(`/api/holidays/bank/${settlementId}/upload/`, {
+        method: 'POST', headers: { 'X-CSRFToken': getCsrfB() }, body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showBankAlert(data.message, 'success');
+            currentBankTab = 'approval';
+            loadBankList();
+            showBankTab('approval');
+        } else { showBankAlert(data.error || 'Upload failed.', 'danger'); }
+    })
+    .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
+}
+
+// ── approve ────────────────────────────────────────────────────
+function approveBank(bankId) {
+    if (!confirm('Approve this bank settlement?')) return;
+    fetch(`/api/holidays/bank/${bankId}/approve/`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfB() },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showBankAlert(data.message, 'success');
+            showBankTab('approved');
+            loadBankList();
+        } else { showBankAlert(data.error || 'Approval failed.', 'danger'); }
+    })
+    .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
+}
+
+document.addEventListener('DOMContentLoaded', loadBankList);
+</script>
+
+{% endblock %}
