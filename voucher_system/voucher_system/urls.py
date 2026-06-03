@@ -37,11 +37,15 @@ from vouchers.holiday_views import (
     TripSettlementGetAPI, TripSettlementSaveAPI,
     BankView, BankListAPI, BankDocumentUploadAPI, BankApproveAPI,
     BankApproverListAPI, BankApproverAddAPI, BankApproverToggleAPI,
+    RepairListAPI, RepairCreateAPI, RepairDetailAPI,
+    RepairBankSubmitAPI, RepairBankApproveAPI, RepairBankDocumentUploadAPI,
+    RepairListForBankAPI, RepairDeleteAPI, RepairUpdateAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
     MobileVoucherDetailAPI, MobileVoucherApprovalAPI,
 )
+from vouchers.backup_views import BackupDownloadView, BackupRestoreView
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -156,6 +160,12 @@ urlpatterns = [
     path('api/whatsapp/test-logs/', WhatsAppTestLogAPI.as_view(), name='whatsapp_test_logs'),
 
     # =============================================
+    # BACKUP
+    # =============================================
+    path('backup/download/', BackupDownloadView.as_view(), name='backup_download'),
+    path('backup/restore/', BackupRestoreView.as_view(), name='backup_restore'),
+
+    # =============================================
     # HOLIDAY BOOKING MANAGEMENT
     # =============================================
     path('holidays/', HolidayView.as_view(), name='holiday'),
@@ -198,6 +208,17 @@ urlpatterns = [
     path('api/holidays/bank-approvers/', BankApproverListAPI.as_view(), name='bank_approver_list'),
     path('api/holidays/bank-approvers/add/', BankApproverAddAPI.as_view(), name='bank_approver_add'),
     path('api/holidays/bank-approvers/<int:pk>/toggle/', BankApproverToggleAPI.as_view(), name='bank_approver_toggle'),
+
+    # Repair & Maintenance
+    path('api/repairs/', RepairListAPI.as_view(), name='repair_list'),
+    path('api/repairs/create/', RepairCreateAPI.as_view(), name='repair_create'),
+    path('api/repairs/for-bank/', RepairListForBankAPI.as_view(), name='repair_for_bank'),
+    path('api/repairs/<int:pk>/', RepairDetailAPI.as_view(), name='repair_detail'),
+    path('api/repairs/<int:pk>/submit-to-bank/', RepairBankSubmitAPI.as_view(), name='repair_submit_bank'),
+    path('api/repairs/<int:pk>/bank/upload/', RepairBankDocumentUploadAPI.as_view(), name='repair_bank_upload'),
+    path('api/repairs/<int:pk>/bank/approve/', RepairBankApproveAPI.as_view(), name='repair_bank_approve'),
+    path('api/repairs/<int:pk>/delete/', RepairDeleteAPI.as_view(), name='repair_delete'),
+    path('api/repairs/<int:pk>/update/', RepairUpdateAPI.as_view(), name='repair_update'),
 
     # ── MOBILE APP (token-based) ────────────────────────────────────
 path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),

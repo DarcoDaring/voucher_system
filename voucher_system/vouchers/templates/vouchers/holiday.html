@@ -34,6 +34,11 @@
                     </button>
                 </li>
                 <li class="nav-item mb-1">
+                    <button class="hol-nav-btn" data-sec="repair" onclick="showSection('repair')">
+                        <i class="bi bi-tools me-2"></i>Repair &amp; Maintenance
+                    </button>
+                </li>
+                <li class="nav-item mb-1">
                     <button class="hol-nav-btn" data-sec="bank" onclick="showSection('bank')">
                         <i class="bi bi-bank me-2"></i>Bank
                     </button>
@@ -237,10 +242,90 @@
             </div>
         </div>
 
+        <!-- ▸ REPAIR & MAINTENANCE ─────────────────────────── -->
+        <div id="section-repair" class="hol-section p-4">
+          <!-- Header -->
+          <div class="d-flex align-items-center mb-4 gap-3">
+            <button class="btn btn-outline-secondary btn-sm" onclick="showSection('calendar')">
+              <i class="bi bi-arrow-left me-1"></i>Back
+            </button>
+            <h4 class="mb-0 fw-bold"><i class="bi bi-tools me-2 text-info"></i>Repair &amp; Maintenance</h4>
+          </div>
+
+          <div class="row justify-content-center">
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info bg-opacity-10 border-0">
+                  <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2 text-info"></i>New Repair Entry</h6>
+                </div>
+                <div class="card-body p-3">
+                  <div id="repairAlert" class="alert d-none mb-3"></div>
+
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Vehicle <span class="text-danger">*</span></label>
+                    <select class="form-select" id="repair_vehicle_id" required>
+                      <option value="">-- Select Vehicle --</option>
+                    </select>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Notes</label>
+                    <textarea class="form-control form-control-sm" id="repair_notes" rows="2" placeholder="Optional notes"></textarea>
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
+                    <div id="repairItemsContainer"></div>
+                    <button type="button" class="btn btn-outline-info btn-sm mt-2" onclick="addRepairItem()">
+                      <i class="bi bi-plus-lg me-1"></i>Add Item
+                    </button>
+                  </div>
+
+                  <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                    <span class="fw-bold">Total Amount</span>
+                    <span class="fw-bold text-info fs-5">&#8377;<span id="repairTotalDisplay">0.00</span></span>
+                  </div>
+
+                  <button class="btn btn-info w-100 fw-semibold text-dark" onclick="submitRepair()">
+                    <i class="bi bi-check-lg me-2"></i>Submit to Bank
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Repair History List -->
+          <div class="mt-4">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-info bg-opacity-10 border-0 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-info"></i>Repair History</h6>
+                <button class="btn btn-outline-secondary btn-sm" onclick="loadRepairSectionList()">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+              <div class="card-body p-0" id="repairSectionListContainer">
+                <div class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ▸ BANK ─────────────────────────────────────────── -->
         <div id="section-bank" class="hol-section p-4">
             <h4 class="fw-bold mb-3"><i class="bi bi-bank me-2 text-info"></i>Bank Settlement</h4>
             <div id="bankAlert" class="alert d-none mb-3"></div>
+
+            <!-- Type toggle -->
+            <div class="mb-3">
+                <div class="btn-group">
+                    <button class="btn btn-info active" id="hbtype-order" onclick="hSwitchBankType('order')">
+                        <i class="bi bi-receipt-cutoff me-1"></i>Order Form
+                    </button>
+                    <button class="btn btn-outline-info" id="hbtype-repair" onclick="hSwitchBankType('repair')">
+                        <i class="bi bi-tools me-1"></i>Repair &amp; Maintenance
+                    </button>
+                </div>
+            </div>
 
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div class="btn-group">
@@ -273,6 +358,64 @@
 <!-- ═══════════════════════════════════════════════════════════
      MODALS (always present, triggered by JS)
      ═══════════════════════════════════════════════════════════ -->
+
+<!-- Repair View Modal -->
+<div class="modal fade" id="hRepairViewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info bg-opacity-10">
+                <h5 class="modal-title fw-bold"><i class="bi bi-eye me-2 text-info"></i>Repair Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="hRepairViewBody">
+                <div class="text-center py-4"><div class="spinner-border text-info"></div></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Repair Edit Modal -->
+<div class="modal fade" id="hRepairEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i>Edit Repair</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <input type="hidden" id="hEditRepairId">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Vehicle <span class="text-danger">*</span></label>
+                    <select class="form-select" id="hEditRepairVehicle"><option value="">-- Select Vehicle --</option></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Notes</label>
+                    <textarea class="form-control form-control-sm" id="hEditRepairNotes" rows="2"></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
+                    <div id="hEditRepairItems"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="hAddEditItem()">
+                        <i class="bi bi-plus-lg me-1"></i>Add Item
+                    </button>
+                </div>
+                <div class="d-flex justify-content-between p-2 bg-light rounded mt-2">
+                    <span class="fw-bold">Total</span>
+                    <span class="fw-bold text-primary">₹<span id="hEditRepairTotal">0.00</span></span>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary fw-semibold" onclick="hSaveEditRepair()">
+                    <i class="bi bi-check-lg me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Bookings on a calendar date -->
 <div class="modal fade" id="holidayListModal" tabindex="-1">
@@ -464,6 +607,34 @@
 </div>
 
 
+<!-- Repair Detail Modal -->
+<div class="modal fade" id="repairDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title fw-bold"><i class="bi bi-tools me-2 text-warning"></i>Repair Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="repairDetailBody">
+                <div class="text-center py-4"><div class="spinner-border text-info"></div></div>
+            </div>
+            <div class="modal-footer border-0">
+                <input type="hidden" id="repairDetailCurrentId">
+                <input type="hidden" id="repairDetailStatus">
+                <div id="repairSubmitBankBtn" style="display:none; width:100%">
+                    <label class="form-label small fw-semibold">Attach Bank Document (optional)</label>
+                    <input type="file" class="form-control form-control-sm mb-2" id="repairBankDocInput" accept="image/*,.pdf">
+                    <button class="btn btn-info w-100 fw-semibold text-dark" onclick="submitRepairToBank()">
+                        <i class="bi bi-bank me-2"></i>Submit to Bank
+                    </button>
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- ═══════════════════════════════════════════════════════════
      STYLES
      ═══════════════════════════════════════════════════════════ -->
@@ -570,6 +741,11 @@ function showSection(name) {
     if (name === 'calendar') { renderHolidayCalendar(hCurrentDate); }
     else if (name === 'trip-settlement') { loadCompletedTrips(); }
     else if (name === 'bank') { loadBankList(); }
+    else if (name === 'repair') {
+        loadRepairVehicles();
+        loadRepairSectionList();
+        if (document.getElementById('repairItemsContainer').children.length === 0) addRepairItem();
+    }
 }
 
 // ─── CALENDAR STATE ───────────────────────────────────────────
@@ -1194,6 +1370,248 @@ function saveSettlement() {
 
 // ─── BANK SECTION ─────────────────────────────────────────────
 let allEntries = [];
+let hBankRepairEntries = { pending: [], pending_approval: [], approved: [] };
+let hCurrentBankType = 'order';
+
+function hSwitchBankType(type) {
+    hCurrentBankType = type;
+    document.getElementById('hbtype-order').className  = type === 'order'  ? 'btn btn-info active'     : 'btn btn-outline-info';
+    document.getElementById('hbtype-repair').className = type === 'repair' ? 'btn btn-info active'  : 'btn btn-outline-info';
+    // reset to pending tab
+    document.querySelectorAll('.filter-b-btn').forEach(b => b.classList.toggle('active', b.dataset.status === 'pending'));
+    if (type === 'repair') {
+        loadRepairBankEntries();
+    } else {
+        loadBankList();
+    }
+}
+
+function loadRepairBankEntries() {
+    const wrap = document.getElementById('bankTableWrap');
+    wrap.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-info"></div></div>';
+    fetch('/api/repairs/for-bank/', { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        hBankRepairEntries = { pending: data.pending || [], pending_approval: data.pending_approval || [], approved: data.approved || [] };
+        document.getElementById('bBadgePending').textContent  = hBankRepairEntries.pending.length;
+        document.getElementById('bBadgeApproval').textContent = hBankRepairEntries.pending_approval.length;
+        document.getElementById('bBadgeApproved').textContent = hBankRepairEntries.approved.length;
+        renderRepairBankTable('pending');
+    })
+    .catch(err => { wrap.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; });
+}
+
+function renderRepairBankTable(tab) {
+    const wrap = document.getElementById('bankTableWrap');
+    const tabMap = { pending: hBankRepairEntries.pending, approval: hBankRepairEntries.pending_approval, approved: hBankRepairEntries.approved };
+    const repairs = tabMap[tab] || [];
+
+    if (repairs.length === 0) {
+        wrap.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-tools fs-1 mb-3 d-block"></i>No repair records for this filter.</div>';
+        return;
+    }
+
+    let html = `<table class="table table-striped table-hover align-middle" id="bankTable">
+        <thead class="table-info"><tr>
+            <th>#</th><th>Repair No.</th><th>Vehicle</th><th>Items</th>
+            <th>Total (₹)</th><th>Status</th><th class="text-center">Actions</th>
+        </tr></thead><tbody>`;
+
+    repairs.forEach((r, i) => {
+        const isApproved = r.status === 'APPROVED';
+        const isDraft    = r.status === 'DRAFT';
+
+        // View button — always
+        let actions = `<button class="btn btn-outline-info btn-sm" onclick="hViewRepair(${r.id})" title="View"><i class="bi bi-eye"></i></button> `;
+
+        // Edit — not approved + permission
+        {% if can_edit_holiday %}
+        if (!isApproved) actions += `<button class="btn btn-outline-primary btn-sm" onclick="hEditRepair(${r.id})" title="Edit"><i class="bi bi-pencil"></i></button> `;
+        {% endif %}
+
+        // Delete — not approved + permission
+        {% if can_delete_holiday %}
+        if (!isApproved) actions += `<button class="btn btn-outline-danger btn-sm" onclick="hDeleteRepair(${r.id},'${esc(r.repair_number)}')" title="Delete"><i class="bi bi-trash"></i></button> `;
+        {% endif %}
+
+        if (!r.bank_id) {
+            // Pending Settlement tab — can upload doc + submit
+            actions += `<div class="d-flex gap-1 align-items-center mt-1 flex-wrap">
+                <input type="file" class="form-control form-control-sm" id="hrbfile-${r.id}" accept="image/*,.pdf" style="max-width:130px;">
+                <button class="btn btn-info btn-sm text-dark" onclick="hUploadRepairDoc(${r.id})"><i class="bi bi-upload me-1"></i>Submit</button>
+            </div>`;
+        } else if (r.bank_status === 'PENDING_APPROVAL') {
+            if (r.bank_document_url) actions += ` <a href="${esc(r.bank_document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark"></i></a>`;
+            {% if is_approver %}
+            actions += ` <button class="btn btn-success btn-sm fw-semibold" onclick="hApproveRepair(${r.id})"><i class="bi bi-check-circle me-1"></i>Approve</button>`;
+            {% endif %}
+        } else {
+            if (r.bank_document_url) actions += ` <a href="${esc(r.bank_document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark"></i></a>`;
+            if (r.approved_by) actions += ` <span class="small text-success fw-semibold d-block mt-1">${esc(r.approved_by)}<br><small class="text-muted">${esc(r.approved_at)}</small></span>`;
+        }
+
+        html += `<tr><td class="text-muted">${i+1}</td>
+            <td><span class="badge bg-info text-dark">${esc(r.repair_number)}</span></td>
+            <td>${esc(r.vehicle)}</td>
+            <td class="text-center">${r.items_count}</td>
+            <td class="fw-bold">₹${esc(String(r.total_amount))}</td>
+            <td><span class="badge bg-${isApproved?'success':r.status==='SUBMITTED'?'info':'secondary'}">${esc(r.status)}</span></td>
+            <td>${actions}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+}
+
+function hViewRepair(id) {
+    fetch(`/api/repairs/${id}/`, { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const r = data.repair;
+        let rows = r.items.map(it => `<tr>
+            <td>${esc(it.name)}</td>
+            <td class="small text-muted">${esc(it.description)||'—'}</td>
+            <td>₹${it.amount}</td>
+            <td>${it.attachment_url ? `<a href="${it.attachment_url}" target="_blank"><i class="bi bi-paperclip"></i></a>` : '—'}</td>
+        </tr>`).join('');
+        document.getElementById('hRepairViewBody').innerHTML = `
+            <div class="d-flex justify-content-between mb-3">
+                <div><h6 class="fw-bold mb-0">${esc(r.repair_number)}</h6>
+                <small class="text-muted">${esc(r.vehicle)} &bull; ${esc(r.created_at)}</small></div>
+                <span class="badge bg-${r.status==='APPROVED'?'success':r.status==='SUBMITTED'?'info':'secondary'}">${r.status}</span>
+            </div>
+            <table class="table table-sm table-bordered mb-2">
+                <thead class="table-light"><tr><th>Name</th><th>Description</th><th>Amount</th><th>Attach</th></tr></thead>
+                <tbody>${rows}</tbody>
+                <tfoot><tr class="table-info"><td colspan="2" class="fw-bold">Total</td><td class="fw-bold" colspan="2">₹${r.total_amount}</td></tr></tfoot>
+            </table>
+            ${r.notes ? `<p class="small text-muted mb-0"><i class="bi bi-sticky me-1"></i>${esc(r.notes)}</p>` : ''}`;
+        new bootstrap.Modal(document.getElementById('hRepairViewModal')).show();
+    }).catch(() => showBankAlert('Failed to load repair.', 'danger'));
+}
+
+function hEditRepair(id) {
+    fetch(`/api/repairs/${id}/`, { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const r = data.repair;
+        document.getElementById('hEditRepairId').value = id;
+        // Load vehicles into select
+        fetch('/api/vehicles/?all=1', { headers: { 'X-CSRFToken': getCSRF() } })
+        .then(rv => rv.json())
+        .then(vd => {
+            const sel = document.getElementById('hEditRepairVehicle');
+            sel.innerHTML = '<option value="">-- Select Vehicle --</option>';
+            (vd.vehicles || []).filter(v => v.is_active).forEach(v => {
+                const o = document.createElement('option');
+                o.value = v.id; o.textContent = `${v.name} (${v.registration_number})`;
+                if (v.id == r.vehicle_id) o.selected = true;
+                sel.appendChild(o);
+            });
+        });
+        document.getElementById('hEditRepairNotes').value = r.notes || '';
+        // Populate items
+        const container = document.getElementById('hEditRepairItems');
+        container.innerHTML = '';
+        hEditRepairItemCount = 0;
+        r.items.forEach(it => hAddEditItem(it.name, it.description, it.amount));
+        calcEditRepairTotal();
+        new bootstrap.Modal(document.getElementById('hRepairEditModal')).show();
+    }).catch(() => showBankAlert('Failed to load repair for edit.', 'danger'));
+}
+
+let hEditRepairItemCount = 0;
+function hAddEditItem(name='', desc='', amount='') {
+    const idx = hEditRepairItemCount++;
+    const c = document.getElementById('hEditRepairItems');
+    const d = document.createElement('div');
+    d.className = 'card border-0 bg-light p-2 mb-2';
+    d.id = `heitem_${idx}`;
+    d.innerHTML = `
+        <div class="d-flex justify-content-between mb-1">
+            <small class="fw-bold text-muted">Item ${idx+1}</small>
+            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="document.getElementById('heitem_${idx}').remove();calcEditRepairTotal()"><i class="bi bi-x"></i></button>
+        </div>
+        <input type="text" class="form-control form-control-sm mb-1" id="heit_name_${idx}" placeholder="Name *" value="${esc(name)}" oninput="this.value=this.value.toUpperCase()">
+        <textarea class="form-control form-control-sm mb-1" id="heit_desc_${idx}" rows="1" placeholder="Description">${esc(desc)}</textarea>
+        <div class="row g-1">
+            <div class="col-6"><input type="number" class="form-control form-control-sm" id="heit_amt_${idx}" placeholder="Amount ₹" value="${esc(String(amount))}" min="0" step="0.01" oninput="calcEditRepairTotal()"></div>
+            <div class="col-6"><input type="file" class="form-control form-control-sm" id="heit_file_${idx}" accept="image/*,.pdf"></div>
+        </div>`;
+    c.appendChild(d);
+}
+function calcEditRepairTotal() {
+    let total = 0;
+    document.querySelectorAll('[id^="heit_amt_"]').forEach(inp => total += parseFloat(inp.value)||0);
+    const el = document.getElementById('hEditRepairTotal');
+    if (el) el.textContent = total.toFixed(2);
+}
+function hSaveEditRepair() {
+    const id = document.getElementById('hEditRepairId').value;
+    const fd = new FormData();
+    fd.append('vehicle_id', document.getElementById('hEditRepairVehicle').value);
+    fd.append('notes', document.getElementById('hEditRepairNotes').value);
+    let idx = 0;
+    document.querySelectorAll('[id^="heitem_"]').forEach(card => {
+        const cid = card.id.split('_')[1];
+        const name = document.getElementById(`heit_name_${cid}`)?.value.trim();
+        const amt  = document.getElementById(`heit_amt_${cid}`)?.value.trim();
+        if (!name || !amt) return;
+        fd.append(`item_name_${idx}`, name);
+        fd.append(`item_description_${idx}`, document.getElementById(`heit_desc_${cid}`)?.value||'');
+        fd.append(`item_amount_${idx}`, amt);
+        const f = document.getElementById(`heit_file_${cid}`)?.files[0];
+        if (f) fd.append(`item_attachment_${idx}`, f);
+        idx++;
+    });
+    if (idx === 0) { showBankAlert('Add at least one item.', 'warning'); return; }
+    fetch(`/api/repairs/${id}/update/`, { method: 'POST', headers: { 'X-CSRFToken': getCSRF() }, body: fd })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            bootstrap.Modal.getInstance(document.getElementById('hRepairEditModal'))?.hide();
+            showBankAlert('Repair updated.', 'success');
+            loadRepairBankEntries();
+        } else showBankAlert(d.error||'Failed.', 'danger');
+    }).catch(() => showBankAlert('Network error.', 'danger'));
+}
+
+function hDeleteRepair(id, repairNumber) {
+    if (!confirm(`Delete repair ${repairNumber}? This cannot be undone.`)) return;
+    fetch(`/api/repairs/${id}/delete/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showBankAlert('Repair deleted.', 'success'); loadRepairBankEntries(); }
+        else showBankAlert(d.error||'Failed.', 'danger');
+    }).catch(() => showBankAlert('Network error.', 'danger'));
+}
+
+function hDeleteOrderForm(id, bookingNumber) {
+    if (!confirm(`Delete order form ${bookingNumber}? This will remove the booking and all settlement records.`)) return;
+    fetch(`/api/holidays/${id}/delete/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showBankAlert('Order form deleted.', 'success'); loadBankList(); }
+        else showBankAlert(d.error||'Failed.', 'danger');
+    }).catch(() => showBankAlert('Network error.', 'danger'));
+}
+
+function hUploadRepairDoc(repairId) {
+    const fi = document.getElementById(`hrbfile-${repairId}`);
+    const fd = new FormData();
+    if (fi?.files[0]) fd.append('bank_document', fi.files[0]);
+    fetch(`/api/repairs/${repairId}/bank/upload/`, { method: 'POST', headers: { 'X-CSRFToken': getCSRF() }, body: fd })
+    .then(r => r.json())
+    .then(d => { if (d.success) { showBankAlert(d.message || 'Submitted.', 'success'); loadRepairBankEntries(); } else showBankAlert(d.error || 'Failed.', 'danger'); })
+    .catch(() => showBankAlert('Network error.', 'danger'));
+}
+
+function hApproveRepair(repairId) {
+    if (!confirm('Approve this repair?')) return;
+    fetch(`/api/repairs/${repairId}/bank/approve/`, { method: 'POST', headers: { 'X-CSRFToken': getCSRF(), 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => r.json())
+    .then(d => { if (d.success) { showBankAlert('Repair approved!', 'success'); loadRepairBankEntries(); } else showBankAlert(d.error || 'Failed.', 'danger'); })
+    .catch(() => showBankAlert('Network error.', 'danger'));
+}
 
 function loadBankList() {
     const wrap = document.getElementById('bankTableWrap');
@@ -1275,6 +1693,7 @@ function renderBankTable() {
                 </button>
             </div>`;
         } else {
+            // Approved — no delete allowed
             actions = `<div class="d-flex align-items-center gap-2">
                 <a href="${esc(bank.document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-file-earmark me-1"></i>Doc
@@ -1284,6 +1703,13 @@ function renderBankTable() {
                 </button>
             </div>`;
         }
+
+        // Delete button for non-approved order forms
+        {% if can_delete_holiday %}
+        if (!bank || bank.status !== 'APPROVED') {
+            actions += ` <button class="btn btn-outline-danger btn-sm" onclick="hDeleteOrderForm(${e.booking_id},'${esc(e.booking_number)}')" title="Delete"><i class="bi bi-trash"></i></button>`;
+        }
+        {% endif %}
 
         const bq = `${e.booking_number} ${e.booked_by} ${e.vehicle}`.toLowerCase();
         html += `<tr class="b-row" data-status="${rowStatus}" data-search="${esc(bq)}">
@@ -1308,7 +1734,11 @@ function renderBankTable() {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-b-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            applyBankFilter();
+            if (hCurrentBankType === 'repair') {
+                renderRepairBankTable(this.dataset.status);
+            } else {
+                applyBankFilter();
+            }
         });
     });
 
@@ -1411,6 +1841,271 @@ document.addEventListener('DOMContentLoaded', function() {
     initOrderForm();
     loadHolidayBookedDates();
 });
+
+// ── Repair & Maintenance ──────────────────────────────────────
+let repairItemCount = 0;
+
+function addRepairItem() {
+    const idx = repairItemCount++;
+    const container = document.getElementById('repairItemsContainer');
+    const div = document.createElement('div');
+    div.className = 'card border-0 bg-light p-2 mb-2 repair-item-card';
+    div.id = `repairItem_${idx}`;
+    div.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="fw-bold text-muted">Item ${idx + 1}</small>
+            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="removeRepairItem(${idx})"><i class="bi bi-x"></i></button>
+        </div>
+        <input type="text" class="form-control form-control-sm mb-2" id="item_name_${idx}" placeholder="Repair name *" oninput="this.value=this.value.toUpperCase()">
+        <textarea class="form-control form-control-sm mb-2" id="item_desc_${idx}" rows="1" placeholder="Description (optional)"></textarea>
+        <div class="row g-2">
+            <div class="col-6">
+                <input type="number" class="form-control form-control-sm" id="item_amount_${idx}" placeholder="Amount &#8377;" min="0" step="0.01" oninput="calcRepairTotal()">
+            </div>
+            <div class="col-6">
+                <input type="file" class="form-control form-control-sm" id="item_attachment_${idx}" accept="image/*,.pdf">
+            </div>
+        </div>`;
+    container.appendChild(div);
+    calcRepairTotal();
+}
+
+function removeRepairItem(idx) {
+    const el = document.getElementById(`repairItem_${idx}`);
+    if (el) el.remove();
+    calcRepairTotal();
+}
+
+function calcRepairTotal() {
+    let total = 0;
+    document.querySelectorAll('[id^="item_amount_"]').forEach(inp => {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('repairTotalDisplay').textContent = total.toFixed(2);
+}
+
+function showRepairAlert(msg, type) {
+    const el = document.getElementById('repairAlert');
+    if (!el) return;
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('d-none');
+    if (type !== 'danger') setTimeout(() => el.classList.add('d-none'), 4000);
+}
+
+function loadRepairVehicles() {
+    fetch('/api/vehicles/?all=1', { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('repair_vehicle_id');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- Select Vehicle --</option>';
+        (data.vehicles || []).filter(v => v.is_active).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = `${v.name} (${v.registration_number})`;
+            sel.appendChild(opt);
+        });
+    }).catch(() => {});
+}
+
+function loadRepairList() {
+    const container = document.getElementById('repairListContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div></div>';
+    fetch('/api/repairs/', { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const repairs = data.repairs || [];
+        if (repairs.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-4">No repair records yet.</p>';
+            return;
+        }
+        let html = '<div class="table-responsive"><table class="table table-sm align-middle mb-0">';
+        html += '<thead class="table-light"><tr><th>#</th><th>Vehicle</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>';
+        repairs.forEach(r => {
+            const statusColor = r.status === 'APPROVED' ? 'success' : r.status === 'SUBMITTED' ? 'info' : 'secondary';
+            html += `<tr style="cursor:pointer" onclick="viewRepairDetail(${r.id})">
+                <td><span class="badge bg-info text-dark">${esc(r.repair_number)}</span></td>
+                <td class="small">${esc(r.vehicle)}</td>
+                <td class="small">${r.items_count}</td>
+                <td class="small fw-bold">&#8377;${r.total_amount}</td>
+                <td><span class="badge bg-${statusColor}">${esc(r.status)}</span></td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }).catch(() => { container.innerHTML = '<p class="text-danger text-center py-4">Error loading repairs.</p>'; });
+}
+
+function loadRepairSectionList() {
+    const container = document.getElementById('repairSectionListContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div></div>';
+    fetch('/api/repairs/', { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const repairs = data.repairs || [];
+        if (repairs.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-4">No repair records yet.</p>';
+            return;
+        }
+        let html = `<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+            <thead class="table-light"><tr>
+                <th>Repair No.</th><th>Vehicle</th><th>Items</th><th>Total</th><th>Status</th><th class="text-center">Actions</th>
+            </tr></thead><tbody>`;
+        repairs.forEach(r => {
+            const isApproved = r.status === 'APPROVED';
+            const isDraft    = r.status === 'DRAFT';
+            const statusColor = isApproved ? 'success' : r.status === 'SUBMITTED' ? 'info' : 'secondary';
+
+            let btns = `<button class="btn btn-outline-info btn-sm" onclick="hViewRepair(${r.id})" title="View"><i class="bi bi-eye"></i></button>`;
+            {% if can_edit_holiday %}
+            if (!isApproved) btns += ` <button class="btn btn-outline-primary btn-sm" onclick="hEditRepair(${r.id})" title="Edit"><i class="bi bi-pencil"></i></button>`;
+            {% endif %}
+            {% if can_delete_holiday %}
+            if (!isApproved) btns += ` <button class="btn btn-outline-danger btn-sm" onclick="hDeleteRepairFromList(${r.id},'${esc(r.repair_number)}')" title="Delete"><i class="bi bi-trash"></i></button>`;
+            {% endif %}
+
+            html += `<tr>
+                <td><span class="badge bg-info text-dark">${esc(r.repair_number)}</span></td>
+                <td class="small">${esc(r.vehicle)}</td>
+                <td class="text-center small">${r.items_count}</td>
+                <td class="fw-bold small">&#8377;${esc(r.total_amount)}</td>
+                <td><span class="badge bg-${statusColor}">${esc(r.status)}</span></td>
+                <td class="text-center">${btns}</td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }).catch(() => { container.innerHTML = '<p class="text-danger text-center py-4">Error loading repairs.</p>'; });
+}
+
+function hDeleteRepairFromList(id, repairNumber) {
+    if (!confirm(`Delete repair ${repairNumber}? This cannot be undone.`)) return;
+    fetch(`/api/repairs/${id}/delete/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showRepairAlert('Repair deleted.', 'success'); loadRepairSectionList(); }
+        else showRepairAlert(d.error || 'Failed.', 'danger');
+    }).catch(() => showRepairAlert('Network error.', 'danger'));
+}
+
+function submitRepair() {
+    const vehicleId = document.getElementById('repair_vehicle_id').value;
+    if (!vehicleId) { showRepairAlert('Please select a vehicle.', 'warning'); return; }
+
+    const itemCards = document.querySelectorAll('.repair-item-card');
+    if (itemCards.length === 0) { showRepairAlert('Please add at least one repair item.', 'warning'); return; }
+
+    const fd = new FormData();
+    fd.append('vehicle_id', vehicleId);
+    fd.append('notes', document.getElementById('repair_notes').value);
+
+    let valid = true;
+    let idx = 0;
+    itemCards.forEach(card => {
+        const cardId = card.id.split('_')[1];
+        const name = document.getElementById(`item_name_${cardId}`)?.value.trim();
+        const desc = document.getElementById(`item_desc_${cardId}`)?.value.trim() || '';
+        const amount = document.getElementById(`item_amount_${cardId}`)?.value.trim();
+        const file = document.getElementById(`item_attachment_${cardId}`)?.files[0];
+        if (!name || !amount) { valid = false; return; }
+        fd.append(`item_name_${idx}`, name);
+        fd.append(`item_description_${idx}`, desc);
+        fd.append(`item_amount_${idx}`, amount);
+        if (file) fd.append(`item_attachment_${idx}`, file);
+        idx++;
+    });
+
+    if (!valid) { showRepairAlert('Please fill in all item names and amounts.', 'warning'); return; }
+
+    fetch('/api/repairs/create/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCSRF() },
+        body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('repair_vehicle_id').value = '';
+            document.getElementById('repair_notes').value = '';
+            document.getElementById('repairItemsContainer').innerHTML = '';
+            repairItemCount = 0;
+            calcRepairTotal();
+            addRepairItem();
+            showRepairAlert(`${data.repair_number} submitted to bank successfully!`, 'success');
+            loadRepairSectionList();
+            setTimeout(() => showSection('bank'), 1200);
+        } else {
+            showRepairAlert(data.error || 'Failed to create repair.', 'danger');
+        }
+    })
+    .catch(() => showRepairAlert('Network error.', 'danger'));
+}
+
+function viewRepairDetail(id) {
+    fetch(`/api/repairs/${id}/`, { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const r = data.repair;
+        let itemsHtml = r.items.map(item => `
+            <tr>
+                <td>${esc(item.name)}</td>
+                <td class="small text-muted">${esc(item.description) || '—'}</td>
+                <td>&#8377;${item.amount}</td>
+                <td>${item.attachment_url ? `<a href="${item.attachment_url}" target="_blank"><i class="bi bi-paperclip"></i></a>` : '—'}</td>
+            </tr>`).join('');
+
+        const body = document.getElementById('repairDetailBody');
+        const statusColor = r.status === 'APPROVED' ? 'success' : r.status === 'SUBMITTED' ? 'info' : 'secondary';
+        body.innerHTML = `
+            <div class="d-flex justify-content-between mb-3">
+                <div>
+                    <h6 class="fw-bold mb-0">${esc(r.repair_number)}</h6>
+                    <small class="text-muted">${esc(r.vehicle)} &bull; ${esc(r.created_at)}</small>
+                </div>
+                <span class="badge bg-${statusColor} align-self-start">${r.status}</span>
+            </div>
+            <table class="table table-sm table-bordered mb-3">
+                <thead class="table-light"><tr><th>Name</th><th>Description</th><th>Amount</th><th>Attachment</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+                <tfoot><tr class="table-info"><td colspan="2" class="fw-bold">Total</td><td class="fw-bold" colspan="2">&#8377;${r.total_amount}</td></tr></tfoot>
+            </table>
+            ${r.notes ? `<p class="small text-muted mb-3"><i class="bi bi-sticky me-1"></i>${esc(r.notes)}</p>` : ''}`;
+
+        document.getElementById('repairDetailCurrentId').value = id;
+        document.getElementById('repairDetailStatus').value = r.status;
+        const submitBtn = document.getElementById('repairSubmitBankBtn');
+        if (submitBtn) submitBtn.style.display = r.status === 'DRAFT' ? 'block' : 'none';
+        new bootstrap.Modal(document.getElementById('repairDetailModal')).show();
+    })
+    .catch(() => alert('Failed to load repair details.'));
+}
+
+function submitRepairToBank() {
+    const id = document.getElementById('repairDetailCurrentId').value;
+    const file = document.getElementById('repairBankDocInput').files[0];
+    const fd = new FormData();
+    if (file) fd.append('bank_document', file);
+
+    fetch(`/api/repairs/${id}/submit-to-bank/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCSRF() },
+        body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('repairDetailModal'))?.hide();
+            loadRepairList();
+            showRepairAlert('Repair submitted to bank successfully!', 'success');
+        } else {
+            alert(data.error || 'Failed to submit.');
+        }
+    })
+    .catch(() => alert('Network error.'));
+}
 </script>
 
 {% endblock %}

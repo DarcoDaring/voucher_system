@@ -5,7 +5,7 @@ from django.contrib import messages
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import HolidayBooking, Company, UserPermission, Vehicle, PaymentType, TripSettlement, TripSettlementCharge, BankSettlement, HolidayBankApprover
+from .models import HolidayBooking, Company, UserPermission, Vehicle, PaymentType, TripSettlement, TripSettlementCharge, BankSettlement, HolidayBankApprover, RepairMaintenance, RepairItem, RepairBankSettlement
 from .views import check_user_permission
 from decimal import Decimal
 
@@ -47,6 +47,14 @@ class HolidayView(LoginRequiredMixin, TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         active_company_id = request.session.get('active_company_id')
+        if active_company_id:
+            try:
+                co = Company.objects.get(id=active_company_id)
+                if not co.enable_holidays:
+                    messages.error(request, 'Holidays module is not enabled for this company.')
+                    return redirect('home')
+            except Company.DoesNotExist:
+                pass
         has_perm, error = check_user_permission(request.user, 'can_view_holiday_list', active_company_id)
         if not has_perm:
             messages.error(request, error)
@@ -71,7 +79,11 @@ class HolidayView(LoginRequiredMixin, TemplateView):
         )
         context['can_create_holiday'] = self.request.user.is_superuser or (perms and perms.can_create_holiday)
         context['can_edit_holiday']   = self.request.user.is_superuser or (perms and perms.can_edit_holiday)
+        context['can_delete_holiday'] = self.request.user.is_superuser or (perms and perms.can_delete_holiday)
         context['is_superuser']       = self.request.user.is_superuser
+        context['is_approver']        = HolidayBankApprover.objects.filter(
+            user=self.request.user, is_active=True
+        ).exists() or self.request.user.is_superuser
         return context
 
 
@@ -97,7 +109,8 @@ class HolidayDetailView(LoginRequiredMixin, DetailView):
             except Company.DoesNotExist:
                 context['company'] = None
         if self.request.user.is_superuser:
-            context['can_edit'] = True
+            context['can_edit']   = True
+            context['can_delete'] = True
         else:
             perms = (
                 UserPermission.get_or_create_for_user(
@@ -105,7 +118,8 @@ class HolidayDetailView(LoginRequiredMixin, DetailView):
                     Company.objects.get(id=active_company_id)
                 ) if active_company_id else None
             )
-            context['can_edit'] = bool(perms and perms.can_edit_holiday)
+            context['can_edit']   = bool(perms and perms.can_edit_holiday)
+            context['can_delete'] = bool(perms and perms.can_delete_holiday)
         return context
 
 
@@ -246,6 +260,12 @@ class HolidayDeleteAPI(APIView):
             return Response({'error': error}, status=403)
         try:
             booking = HolidayBooking.objects.get(pk=pk, company_id=active_company_id)
+            # Block deletion if bank settlement is approved
+            try:
+                if booking.settlement.bank.status == BankSettlement.STATUS_APPROVED:
+                    return Response({'error': 'Cannot delete an approved order form.'}, status=400)
+            except (TripSettlement.DoesNotExist, BankSettlement.DoesNotExist, AttributeError):
+                pass
             booking.delete()
             return Response({'success': True, 'message': 'Booking deleted'})
         except HolidayBooking.DoesNotExist:
@@ -775,7 +795,19 @@ class BankView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['is_superuser'] = self.request.user.is_superuser
+        active_company_id = self.request.session.get('active_company_id')
+        perms = (
+            UserPermission.get_or_create_for_user(
+                self.request.user,
+                Company.objects.get(id=active_company_id)
+            ) if active_company_id and not self.request.user.is_superuser else None
+        )
+        context['is_superuser']       = self.request.user.is_superuser
+        context['can_edit_holiday']   = self.request.user.is_superuser or (perms and perms.can_edit_holiday)
+        context['can_delete_holiday'] = self.request.user.is_superuser or (perms and perms.can_delete_holiday)
+        context['is_approver']  = HolidayBankApprover.objects.filter(
+            user=self.request.user, is_active=True
+        ).exists() or self.request.user.is_superuser
         return context
 
 
@@ -996,3 +1028,396 @@ class HolidayPrintView(LoginRequiredMixin, DetailView):
         booking = self.object
         context['balance_in_words'] = number_to_words(booking.balance_amount or 0)
         return context
+
+
+# =============================================
+# REPAIR & MAINTENANCE APIs
+# =============================================
+
+class RepairListAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'repairs': []})
+
+        repairs = RepairMaintenance.objects.filter(
+            company_id=active_company_id
+        ).prefetch_related('items').select_related('vehicle').order_by('-created_at')
+
+        data = []
+        for r in repairs:
+            data.append({
+                'id': r.id,
+                'repair_number': r.repair_number,
+                'vehicle': str(r.vehicle) if r.vehicle else '—',
+                'status': r.status,
+                'total_amount': str(r.total_amount),
+                'created_at': r.created_at.strftime('%d %b %Y'),
+                'items_count': r.items.count(),
+            })
+        return Response({'repairs': data})
+
+
+class RepairCreateAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'error': 'No active company'}, status=400)
+
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Invalid company'}, status=400)
+
+        data = request.data
+        files = request.FILES
+
+        vehicle = None
+        vehicle_id = data.get('vehicle_id')
+        if vehicle_id:
+            try:
+                vehicle = Vehicle.objects.get(id=vehicle_id, company=company)
+            except Vehicle.DoesNotExist:
+                pass
+
+        # Collect items
+        items = []
+        idx = 0
+        while True:
+            name = data.get(f'item_name_{idx}')
+            if not name:
+                break
+            amount_raw = data.get(f'item_amount_{idx}', '0') or '0'
+            try:
+                amount = Decimal(str(amount_raw))
+            except Exception:
+                amount = Decimal('0')
+            items.append({
+                'name': name,
+                'description': data.get(f'item_description_{idx}', ''),
+                'amount': amount,
+                'file': files.get(f'item_attachment_{idx}'),
+            })
+            idx += 1
+
+        if not items:
+            return Response({'error': 'At least one repair item is required'}, status=400)
+
+        total_amount = sum(item['amount'] for item in items)
+
+        try:
+            repair = RepairMaintenance.objects.create(
+                company=company,
+                vehicle=vehicle,
+                notes=data.get('notes', ''),
+                total_amount=total_amount,
+                created_by=request.user,
+            )
+
+            for item in items:
+                ri = RepairItem(
+                    repair=repair,
+                    name=item['name'],
+                    description=item['description'],
+                    amount=item['amount'],
+                )
+                if item['file']:
+                    ri.attachment = item['file']
+                ri.save()
+
+            return Response({
+                'success': True,
+                'repair_number': repair.repair_number,
+                'id': repair.id,
+            }, status=201)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=500)
+
+
+class RepairDetailAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=active_company_id)
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found'}, status=404)
+
+        items = []
+        for item in repair.items.all():
+            items.append({
+                'id': item.id,
+                'name': item.name,
+                'description': item.description,
+                'amount': str(item.amount),
+                'attachment_url': request.build_absolute_uri(item.attachment.url) if item.attachment else None,
+            })
+
+        return Response({
+            'repair': {
+                'id': repair.id,
+                'repair_number': repair.repair_number,
+                'vehicle': str(repair.vehicle) if repair.vehicle else '—',
+                'vehicle_id': repair.vehicle_id,
+                'status': repair.status,
+                'total_amount': str(repair.total_amount),
+                'notes': repair.notes,
+                'created_at': repair.created_at.strftime('%d %b %Y'),
+                'items': items,
+            }
+        })
+
+
+class RepairBankSubmitAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=active_company_id)
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found'}, status=404)
+
+        doc = request.FILES.get('bank_document')
+
+        try:
+            bank = repair.bank
+            if doc:
+                bank.bank_document = doc
+            bank.status = RepairBankSettlement.STATUS_PENDING
+            bank.save()
+        except RepairBankSettlement.DoesNotExist:
+            bank = RepairBankSettlement.objects.create(
+                repair=repair,
+                bank_document=doc,
+                status=RepairBankSettlement.STATUS_PENDING,
+                submitted_by=request.user,
+            )
+
+        repair.status = RepairMaintenance.STATUS_SUBMITTED
+        repair.save(update_fields=['status', 'updated_at'])
+
+        return Response({'success': True})
+
+
+class RepairBankApproveAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        is_approver = HolidayBankApprover.objects.filter(
+            company_id=active_company_id, user=request.user, is_active=True
+        ).exists()
+        if not request.user.is_superuser and not is_approver:
+            return Response({'error': 'You do not have approval permission'}, status=403)
+
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=active_company_id)
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found'}, status=404)
+
+        try:
+            bank = repair.bank
+        except RepairBankSettlement.DoesNotExist:
+            return Response({'error': 'No bank settlement found for this repair'}, status=404)
+
+        from django.utils import timezone
+        bank.status = RepairBankSettlement.STATUS_APPROVED
+        bank.approved_by = request.user
+        bank.approved_at = timezone.now()
+        bank.save(update_fields=['status', 'approved_by', 'approved_at', 'updated_at'])
+
+        repair.status = RepairMaintenance.STATUS_APPROVED
+        repair.save(update_fields=['status', 'updated_at'])
+
+        return Response({'success': True})
+
+
+class RepairBankDocumentUploadAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=active_company_id)
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found'}, status=404)
+
+        doc = request.FILES.get('bank_document')
+        if not doc:
+            return Response({'error': 'No document uploaded'}, status=400)
+
+        try:
+            bank = repair.bank
+            bank.bank_document = doc
+            bank.status = RepairBankSettlement.STATUS_PENDING
+            bank.save(update_fields=['bank_document', 'status', 'updated_at'])
+        except RepairBankSettlement.DoesNotExist:
+            bank = RepairBankSettlement.objects.create(
+                repair=repair,
+                bank_document=doc,
+                status=RepairBankSettlement.STATUS_PENDING,
+                submitted_by=request.user,
+            )
+
+        repair.status = RepairMaintenance.STATUS_SUBMITTED
+        repair.save(update_fields=['status', 'updated_at'])
+
+        return Response({'success': True, 'message': 'Document uploaded. Pending approval.'})
+
+
+class RepairListForBankAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'pending': [], 'pending_approval': [], 'approved': []})
+
+        repairs = RepairMaintenance.objects.filter(
+            company_id=active_company_id
+        ).select_related('vehicle', 'created_by').prefetch_related('items').order_by('-created_at')
+
+        pending = []
+        pending_approval = []
+        approved = []
+
+        for r in repairs:
+            try:
+                bank = r.bank
+                bank_id = bank.id
+                bank_status = bank.status
+                bank_doc_url = request.build_absolute_uri(bank.bank_document.url) if bank.bank_document else None
+                approved_by = bank.approved_by.get_full_name() or bank.approved_by.username if bank.approved_by else None
+                approved_at = bank.approved_at.strftime('%d %b %Y, %H:%M') if bank.approved_at else None
+            except RepairBankSettlement.DoesNotExist:
+                bank_id = None
+                bank_status = None
+                bank_doc_url = None
+                approved_by = None
+                approved_at = None
+
+            entry = {
+                'id': r.id,
+                'repair_number': r.repair_number,
+                'vehicle': str(r.vehicle) if r.vehicle else '—',
+                'total_amount': str(r.total_amount),
+                'status': r.status,
+                'bank_id': bank_id,
+                'bank_status': bank_status,
+                'bank_document_url': bank_doc_url,
+                'approved_by': approved_by,
+                'approved_at': approved_at,
+                'items_count': r.items.count(),
+                'created_at': r.created_at.strftime('%d %b %Y'),
+            }
+
+            if r.status == RepairMaintenance.STATUS_APPROVED:
+                approved.append(entry)
+            elif r.status == RepairMaintenance.STATUS_SUBMITTED:
+                pending_approval.append(entry)
+            else:
+                # DRAFT — only include if no bank settlement yet
+                pending.append(entry)
+
+        return Response({
+            'pending': pending,
+            'pending_approval': pending_approval,
+            'approved': approved,
+        })
+
+
+class RepairDeleteAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_delete_holiday', active_company_id)
+        if not has_perm:
+            return Response({'error': error}, status=403)
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=active_company_id)
+            if repair.status == RepairMaintenance.STATUS_APPROVED:
+                return Response({'error': 'Cannot delete an approved repair.'}, status=400)
+            repair.delete()
+            return Response({'success': True, 'message': 'Repair deleted.'})
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found.'}, status=404)
+
+
+class RepairUpdateAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_edit_holiday', active_company_id)
+        if not has_perm:
+            return Response({'error': error}, status=403)
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=active_company_id)
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found.'}, status=404)
+
+        if repair.status == RepairMaintenance.STATUS_APPROVED:
+            return Response({'error': 'Approved repairs cannot be edited.'}, status=400)
+
+        # If already submitted to bank, clear the bank submission so it goes back to draft
+        if repair.status == RepairMaintenance.STATUS_SUBMITTED:
+            try:
+                repair.bank.delete()
+            except RepairBankSettlement.DoesNotExist:
+                pass
+
+        data  = request.data
+        files = request.FILES
+
+        vehicle_id = data.get('vehicle_id')
+        if vehicle_id:
+            try:
+                repair.vehicle = Vehicle.objects.get(id=vehicle_id, company_id=active_company_id)
+            except Vehicle.DoesNotExist:
+                pass
+        repair.notes = data.get('notes', repair.notes)
+
+        # Rebuild items
+        items = []
+        idx = 0
+        while True:
+            name = data.get(f'item_name_{idx}')
+            if not name:
+                break
+            try:
+                amount = Decimal(str(data.get(f'item_amount_{idx}', '0') or '0'))
+            except Exception:
+                amount = Decimal('0')
+            items.append({
+                'name': name,
+                'description': data.get(f'item_description_{idx}', ''),
+                'amount': amount,
+                'file': files.get(f'item_attachment_{idx}'),
+            })
+            idx += 1
+
+        if not items:
+            return Response({'error': 'At least one repair item is required.'}, status=400)
+
+        repair.total_amount = sum(i['amount'] for i in items)
+        repair.status = RepairMaintenance.STATUS_DRAFT
+        repair.save()
+
+        repair.items.all().delete()
+        for item in items:
+            ri = RepairItem(repair=repair, name=item['name'],
+                            description=item['description'], amount=item['amount'])
+            if item['file']:
+                ri.attachment = item['file']
+            ri.save()
+
+        return Response({'success': True, 'message': 'Repair updated.'})

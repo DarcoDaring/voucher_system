@@ -52,7 +52,10 @@ class Company(models.Model):
         help_text="Company logo (PNG/JPG, max 2MB)"
     )
     is_active = models.BooleanField(default=True, help_text="Active companies appear in selection")
-    
+    enable_vouchers = models.BooleanField(default=True, help_text="Enable Vouchers module for this company")
+    enable_functions = models.BooleanField(default=True, help_text="Enable Functions module for this company")
+    enable_holidays = models.BooleanField(default=True, help_text="Enable Holidays module for this company")
+
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -852,6 +855,74 @@ class BankSettlement(models.Model):
 
     def __str__(self):
         return f"Bank – {self.settlement.booking.booking_number}"
+
+
+# =============================================
+# REPAIR & MAINTENANCE
+# =============================================
+
+class RepairMaintenance(models.Model):
+    STATUS_DRAFT     = 'DRAFT'
+    STATUS_SUBMITTED = 'SUBMITTED'
+    STATUS_APPROVED  = 'APPROVED'
+    STATUS_CHOICES   = [
+        ('DRAFT', 'Draft'),
+        ('SUBMITTED', 'Submitted to Bank'),
+        ('APPROVED', 'Approved'),
+    ]
+    company       = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='repairs')
+    vehicle       = models.ForeignKey('Vehicle', on_delete=models.SET_NULL, null=True, blank=True, related_name='repairs')
+    repair_number = models.CharField(max_length=20, blank=True)
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    total_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    notes         = models.TextField(blank=True)
+    created_by    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='repairs_created')
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.repair_number:
+            last = RepairMaintenance.objects.filter(company=self.company).order_by('-id').first()
+            if last and last.repair_number.startswith('RM-'):
+                self.repair_number = f'RM-{int(last.repair_number[3:]) + 1}'
+            else:
+                self.repair_number = 'RM-1'
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.repair_number}"
+
+
+class RepairItem(models.Model):
+    repair      = models.ForeignKey(RepairMaintenance, on_delete=models.CASCADE, related_name='items')
+    name        = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    amount      = models.DecimalField(max_digits=10, decimal_places=2)
+    attachment  = models.FileField(upload_to='repair/attachments/', null=True, blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name}: {self.amount}"
+
+
+class RepairBankSettlement(models.Model):
+    STATUS_PENDING  = 'PENDING_APPROVAL'
+    STATUS_APPROVED = 'APPROVED'
+    STATUS_CHOICES  = [
+        ('PENDING_APPROVAL', 'Pending Approval'),
+        ('APPROVED', 'Approved'),
+    ]
+    repair        = models.OneToOneField(RepairMaintenance, on_delete=models.CASCADE, related_name='bank')
+    bank_document = models.FileField(upload_to='repair/bank/', null=True, blank=True)
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING_APPROVAL')
+    approved_by   = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='repair_bank_approvals')
+    approved_at   = models.DateTimeField(null=True, blank=True)
+    submitted_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='repair_bank_submissions')
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Bank – {self.repair.repair_number}"
 
 
 # =============================================

@@ -212,7 +212,7 @@
 {% endif %}
    
    
-    <div class="container mt-4">{% block content %}{% endblock %}</div>
+    <div class="{% block content_wrapper_class %}container mt-4{% endblock %}">{% block content %}{% endblock %}</div>
     <!-- LOGOUT MODAL -->
     {% if user.is_authenticated %}
     <div class="modal fade" id="logoutModal" tabindex="-1">
@@ -952,11 +952,13 @@ function escapeHtml(text) {
     
     <!-- CREATE VOUCHER MODAL -->
     {% if user.is_authenticated %}
-        {% with user_group=user.groups.all.0.name %}
-            {% if user_group == 'Accountants' or user_group == 'Admin Staff' or user.is_superuser %}
-                {% include 'modals/voucher_creation.html' %}
-            {% endif %}
-        {% endwith %}
+        {% if not active_company or active_company.enable_vouchers %}
+            {% with user_group=user.groups.all.0.name %}
+                {% if user_group == 'Accountants' or user_group == 'Admin Staff' or user.is_superuser %}
+                    {% include 'modals/voucher_creation.html' %}
+                {% endif %}
+            {% endwith %}
+        {% endif %}
     {% endif %}
 
     
@@ -1392,7 +1394,7 @@ if (editUserModalEl) {
                                     <th>Company Name</th>
                                     <th>GST No</th>
                                     <th>Members</th>
-                                    <th>Data</th>
+                                    <th>Modules</th>
                                     <th>Status</th>
                                     <th>Created</th>
                                     <th style="width: 150px;">Actions</th>
@@ -1456,6 +1458,29 @@ if (editUserModalEl) {
                             <input type="file" class="form-control" name="logo" accept="image/png,image/jpeg">
                             <div class="form-text">Recommended: Square logo, transparent background</div>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Enabled Modules</label>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="enable_vouchers" id="create_enable_vouchers" checked>
+                                    <label class="form-check-label" for="create_enable_vouchers">
+                                        <i class="bi bi-receipt-cutoff me-1 text-primary"></i>Vouchers
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="enable_functions" id="create_enable_functions" checked>
+                                    <label class="form-check-label" for="create_enable_functions">
+                                        <i class="bi bi-calendar-event-fill me-1 text-info"></i>Functions
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="enable_holidays" id="create_enable_holidays" checked>
+                                    <label class="form-check-label" for="create_enable_holidays">
+                                        <i class="bi bi-bus-front-fill me-1 text-success"></i>Holidays
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1513,6 +1538,29 @@ if (editUserModalEl) {
                                 <img id="edit_company_logo_img" src="" alt="Current Logo" style="max-height: 80px; border: 1px solid #dee2e6; border-radius: 4px; padding: 5px;">
                             </div>
                             <div class="form-text">Leave blank to keep current logo</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Enabled Modules</label>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_enable_vouchers">
+                                    <label class="form-check-label" for="edit_enable_vouchers">
+                                        <i class="bi bi-receipt-cutoff me-1 text-primary"></i>Vouchers
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_enable_functions">
+                                    <label class="form-check-label" for="edit_enable_functions">
+                                        <i class="bi bi-calendar-event-fill me-1 text-info"></i>Functions
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_enable_holidays">
+                                    <label class="form-check-label" for="edit_enable_holidays">
+                                        <i class="bi bi-bus-front-fill me-1 text-success"></i>Holidays
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1755,6 +1803,9 @@ document.addEventListener('DOMContentLoaded', function() {
         createForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
+            formData.set('enable_vouchers', document.getElementById('create_enable_vouchers').checked ? 'true' : 'false');
+            formData.set('enable_functions', document.getElementById('create_enable_functions').checked ? 'true' : 'false');
+            formData.set('enable_holidays', document.getElementById('create_enable_holidays').checked ? 'true' : 'false');
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalHTML = submitBtn.innerHTML;
             submitBtn.disabled = true;
@@ -1794,6 +1845,9 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const companyId = document.getElementById('edit_company_id').value;
             const formData = new FormData(this);
+            formData.set('enable_vouchers', document.getElementById('edit_enable_vouchers').checked ? 'true' : 'false');
+            formData.set('enable_functions', document.getElementById('edit_enable_functions').checked ? 'true' : 'false');
+            formData.set('enable_holidays', document.getElementById('edit_enable_holidays').checked ? 'true' : 'false');
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
 
@@ -1988,7 +2042,11 @@ function loadCompanies() {
                         <td><strong>${escapeHtml(company.name)}</strong></td>
                         <td><small class="text-muted">${company.gst_no || '—'}</small></td>
                         <td><span class="badge bg-info">${company.member_count}</span></td>
-                        <td><small class="text-muted">${company.voucher_count}V / ${company.function_count}F</small></td>
+                        <td>
+                            ${company.enable_vouchers ? '<span class="badge bg-primary me-1">V</span>' : '<span class="badge bg-light text-muted me-1">V</span>'}
+                            ${company.enable_functions ? '<span class="badge bg-info me-1">F</span>' : '<span class="badge bg-light text-muted me-1">F</span>'}
+                            ${company.enable_holidays ? '<span class="badge bg-success">H</span>' : '<span class="badge bg-light text-muted">H</span>'}
+                        </td>
                         <td>
                             <span class="badge bg-${company.is_active ? 'success' : 'secondary'}">
                                 ${company.is_active ? 'Active' : 'Inactive'}
@@ -2044,6 +2102,10 @@ function editCompany(id) {
             document.getElementById('edit_company_email').value = company.email;
             document.getElementById('edit_company_phone').value = company.phone;
             document.getElementById('edit_company_address').value = company.address;
+
+            document.getElementById('edit_enable_vouchers').checked = company.enable_vouchers !== false;
+            document.getElementById('edit_enable_functions').checked = company.enable_functions !== false;
+            document.getElementById('edit_enable_holidays').checked = company.enable_holidays !== false;
 
             const logoPreview = document.getElementById('edit_company_logo_preview');
             const logoImg = document.getElementById('edit_company_logo_img');

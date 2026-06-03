@@ -26,6 +26,14 @@ class FunctionDetailsView(LoginRequiredMixin, TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         active_company_id = request.session.get('active_company_id')
+        if active_company_id:
+            try:
+                co = Company.objects.get(id=active_company_id)
+                if not co.enable_functions:
+                    messages.error(request, 'Functions module is not enabled for this company.')
+                    return redirect('home')
+            except Company.DoesNotExist:
+                pass
         has_perm, error = check_user_permission(request.user, 'can_view_function_list', active_company_id)
         if not has_perm:
             messages.error(request, error)

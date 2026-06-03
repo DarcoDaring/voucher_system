@@ -462,6 +462,14 @@ class VoucherListView(LoginRequiredMixin, ListView):
 
     def dispatch(self, request, *args, **kwargs):
         active_company_id = request.session.get('active_company_id')
+        if active_company_id:
+            try:
+                co = Company.objects.get(id=active_company_id)
+                if not co.enable_vouchers:
+                    messages.error(request, 'Vouchers module is not enabled for this company.')
+                    return redirect('home')
+            except Company.DoesNotExist:
+                pass
         has_perm, error = check_user_permission(request.user, 'can_view_voucher_list', active_company_id)
         if not has_perm:
             messages.error(request, error)
@@ -2002,6 +2010,9 @@ class CompanyListAPI(APIView):
             'phone': c.phone or '',
             'logo': c.logo.url if c.logo else None,
             'is_active': c.is_active,
+            'enable_vouchers': c.enable_vouchers,
+            'enable_functions': c.enable_functions,
+            'enable_holidays': c.enable_holidays,
             'member_count': c.memberships.filter(is_active=True).count(),
             'voucher_count': c.vouchers.count(),
             'function_count': c.functions.count(),
@@ -2032,6 +2043,10 @@ class CompanyCreateAPI(APIView):
         if Company.objects.filter(name=name).exists():
             return Response({'error': 'Company with this name already exists'}, status=400)
 
+        enable_vouchers = request.POST.get('enable_vouchers', 'true').lower() not in ('false', '0', '')
+        enable_functions = request.POST.get('enable_functions', 'true').lower() not in ('false', '0', '')
+        enable_holidays = request.POST.get('enable_holidays', 'true').lower() not in ('false', '0', '')
+
         try:
             company = Company.objects.create(
                 name=name,
@@ -2042,6 +2057,9 @@ class CompanyCreateAPI(APIView):
                 phone=phone or None,
                 logo=logo,
                 is_active=True,
+                enable_vouchers=enable_vouchers,
+                enable_functions=enable_functions,
+                enable_holidays=enable_holidays,
                 created_by=request.user
             )
 
@@ -2096,6 +2114,13 @@ class CompanyUpdateAPI(APIView):
 
         if 'logo' in request.FILES:
             company.logo = request.FILES['logo']
+
+        if 'enable_vouchers' in request.POST:
+            company.enable_vouchers = request.POST.get('enable_vouchers') == 'true'
+        if 'enable_functions' in request.POST:
+            company.enable_functions = request.POST.get('enable_functions') == 'true'
+        if 'enable_holidays' in request.POST:
+            company.enable_holidays = request.POST.get('enable_holidays') == 'true'
 
         company.save()
 

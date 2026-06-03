@@ -40,7 +40,17 @@
 
                 <div id="bankAlert" class="alert d-none mb-3"></div>
 
-                <!-- Tabs -->
+                <!-- Type toggle: Order Form | Repair & Maintenance -->
+                <div class="btn-group mb-3" role="group">
+                    <button type="button" class="btn btn-info active" id="btype-order" onclick="showBankType('order')">
+                        <i class="bi bi-receipt-cutoff me-1"></i>Order Form
+                    </button>
+                    <button type="button" class="btn btn-outline-info" id="btype-repair" onclick="showBankType('repair')">
+                        <i class="bi bi-tools me-1"></i>Repair &amp; Maintenance
+                    </button>
+                </div>
+
+                <!-- Status tabs (same for both types) -->
                 <ul class="nav nav-pills mb-3">
                     <li class="nav-item me-2">
                         <button class="nav-link active" id="btab-pending" onclick="showBankTab('pending')">
@@ -127,14 +137,39 @@ function showBankAlert(msg, type) {
 
 // ── data + tab state ───────────────────────────────────────────
 let allEntries = [];
-let currentBankTab = 'pending';
+let repairEntries = { pending: [], pending_approval: [], approved: [] };
+let currentBankTab  = 'pending';
+let currentBankType = 'order';   // 'order' | 'repair'
+
+function showBankType(type) {
+    currentBankType = type;
+    // Update toggle buttons
+    document.getElementById('btype-order').className  = type === 'order'  ? 'btn btn-info active'           : 'btn btn-outline-info';
+    document.getElementById('btype-repair').className = type === 'repair' ? 'btn btn-info active'        : 'btn btn-outline-info';
+    // Reset to first tab and reload
+    currentBankTab = 'pending';
+    ['pending','approval','approved'].forEach(t => {
+        const el = document.getElementById(`btab-${t}`);
+        if (el) el.classList.toggle('active', t === 'pending');
+    });
+    if (type === 'repair') {
+        loadRepairBankList();
+    } else {
+        loadBankList();
+    }
+}
 
 function showBankTab(tab) {
     currentBankTab = tab;
     ['pending','approval','approved'].forEach(t => {
-        document.getElementById(`btab-${t}`).classList.toggle('active', t === tab);
+        const el = document.getElementById(`btab-${t}`);
+        if (el) el.classList.toggle('active', t === tab);
     });
-    renderBankTab();
+    if (currentBankType === 'repair') {
+        renderRepairBankTab();
+    } else {
+        renderBankTab();
+    }
 }
 
 // ── load all entries ───────────────────────────────────────────
@@ -157,7 +192,124 @@ function loadBankList() {
     });
 }
 
+// ── load repair bank entries ───────────────────────────────────
+function loadRepairBankList() {
+    const wrap = document.getElementById('bankTableWrap');
+    wrap.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-info"></div><p class="text-muted mt-2">Loading repairs…</p></div>';
+    fetch('/api/repairs/for-bank/', { headers: { 'X-CSRFToken': getCsrfB() } })
+    .then(r => r.json())
+    .then(data => {
+        repairEntries = {
+            pending: data.pending || [],
+            pending_approval: data.pending_approval || [],
+            approved: data.approved || [],
+        };
+        document.getElementById('bBadgePending').textContent  = repairEntries.pending.length;
+        document.getElementById('bBadgeApproval').textContent = repairEntries.pending_approval.length;
+        document.getElementById('bBadgeApproved').textContent = repairEntries.approved.length;
+        renderRepairBankTab();
+    })
+    .catch(err => {
+        wrap.innerHTML = `<div class="alert alert-danger">Error loading repairs: ${err.message}</div>`;
+    });
+}
+
+function renderRepairBankTab() {
+    const wrap = document.getElementById('bankTableWrap');
+    const tabMap = { pending: repairEntries.pending, approval: repairEntries.pending_approval, approved: repairEntries.approved };
+    const repairs = tabMap[currentBankTab] || [];
+
+    if (repairs.length === 0) {
+        wrap.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-tools fs-1 mb-3 d-block"></i>No repair records found.</div>';
+        return;
+    }
+
+    let html = `<div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 border rounded-3 overflow-hidden">
+            <thead class="table-light"><tr>
+                <th>#</th><th>Repair No.</th><th>Vehicle</th><th>Items</th>
+                <th>Total (&#8377;)</th><th>Status</th><th class="text-center">Actions</th>
+            </tr></thead><tbody>`;
+
+    let sl = 1;
+    repairs.forEach(r => {
+        const statusColor = r.status === 'APPROVED' ? 'success' : r.status === 'SUBMITTED' ? 'warning' : 'secondary';
+        let actions = '';
+
+        if (r.status === 'DRAFT' || !r.bank_id) {
+            // No bank settlement yet — show upload button
+            actions = `<div class="d-flex align-items-center justify-content-center gap-2">
+                <input type="file" class="form-control form-control-sm" id="rbankfile-${r.id}" accept="image/*,.pdf" style="max-width:160px;">
+                <button class="btn btn-info btn-sm fw-semibold text-dark" onclick="uploadRepairBankDoc(${r.id})">
+                    <i class="bi bi-upload me-1"></i>Upload
+                </button>
+            </div>`;
+        } else if (r.bank_status === 'PENDING_APPROVAL') {
+            actions = `<div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+                ${r.bank_document_url ? `<a href="${escapeHtmlB(r.bank_document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark me-1"></i>View Doc</a>` : ''}
+                {% if is_approver %}<button class="btn btn-success btn-sm fw-semibold" onclick="approveRepairBank(${r.id})"><i class="bi bi-check-circle me-1"></i>Approve</button>{% endif %}
+            </div>`;
+        } else {
+            // APPROVED
+            const approvedInfo = r.approved_by
+                ? `${escapeHtmlB(r.approved_by)}<br><small class="text-muted">${escapeHtmlB(r.approved_at)}</small>`
+                : '—';
+            actions = `<div class="d-flex align-items-center justify-content-center gap-2">
+                ${r.bank_document_url ? `<a href="${escapeHtmlB(r.bank_document_url)}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark me-1"></i>Doc</a>` : ''}
+                <span class="small">${approvedInfo}</span>
+            </div>`;
+        }
+
+        html += `<tr>
+            <td class="text-muted small">${sl++}</td>
+            <td><span class="badge bg-info text-dark">${escapeHtmlB(r.repair_number)}</span></td>
+            <td>${escapeHtmlB(r.vehicle)}</td>
+            <td class="text-center">${r.items_count}</td>
+            <td class="fw-bold text-success">&#8377;${escapeHtmlB(r.total_amount)}</td>
+            <td><span class="badge bg-${statusColor}">${escapeHtmlB(r.status)}</span></td>
+            <td class="text-center">${actions}</td>
+        </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+}
+
+function uploadRepairBankDoc(repairId) {
+    const fileInput = document.getElementById(`rbankfile-${repairId}`);
+    if (!fileInput?.files[0]) { showBankAlert('Please select a file first.', 'warning'); return; }
+    const fd = new FormData();
+    fd.append('bank_document', fileInput.files[0]);
+    fetch(`/api/repairs/${repairId}/bank/upload/`, {
+        method: 'POST', headers: { 'X-CSRFToken': getCsrfB() }, body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showBankAlert(data.message, 'success');
+            loadRepairBankList();
+        } else { showBankAlert(data.error || 'Upload failed.', 'danger'); }
+    })
+    .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
+}
+
+function approveRepairBank(repairId) {
+    if (!confirm('Approve this repair bank settlement?')) return;
+    fetch(`/api/repairs/${repairId}/bank/approve/`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfB() },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showBankAlert('Repair approved successfully.', 'success');
+            loadRepairBankList();
+        } else { showBankAlert(data.error || 'Approval failed.', 'danger'); }
+    })
+    .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
+}
+
 function renderBankTab() {
+    if (currentBankType === 'repair') { renderRepairBankTab(); return; }
     const wrap = document.getElementById('bankTableWrap');
     let list;
     if (currentBankTab === 'pending')  list = allEntries.filter(e => !e.bank);

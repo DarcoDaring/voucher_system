@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block content_wrapper_class %}{% endblock %}
 {% block content %}
 
 <!-- Mobile Sidebar Overlay -->
 <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
-<div class="container-fluid p-0" style="height: calc(100vh - 80px); overflow: hidden;">
+<div class="container-fluid p-0" style="height: calc(100vh - 60px); overflow: hidden;">
     <div class="row g-0 h-100">
         <!-- LEFT SIDEBAR NAVIGATION -->
 <div class="col-md-3 col-lg-2 bg-light border-end" style="height: 100%; overflow-y: auto;">
@@ -597,14 +598,13 @@
         grid-template-columns: repeat(7, 1fr);
         gap: 8px;
         flex-grow: 1;
-        align-content: start;
-        grid-auto-rows: 1fr;
-
+        align-content: stretch;
+        grid-auto-rows: minmax(100px, 1fr);
     }
 
     /* UPDATED: Calendar day to show function names */
     .calendar-day {
-        aspect-ratio: 1;
+        min-height: 100px;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -869,7 +869,7 @@
 @media (max-width: 992px) {
     /* Container adjustments */
     .container-fluid.p-0 {
-        height: calc(100vh - 80px);
+        height: calc(100vh - 60px);
         overflow: hidden;
     }
 

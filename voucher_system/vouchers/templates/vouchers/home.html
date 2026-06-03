@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block content_wrapper_class %}{% endblock %}
 {% block content %}
    {% if not user.is_authenticated %}
     <script>
@@ -8,121 +9,123 @@
         window.location.href = "{% url 'login' %}";
     </script>
 {% else %}
-        <div class="dashboard-wrapper">
-            <div class="container mt-5">
-                <div class="text-center mb-5">
-                    <h1 class="dashboard-title mb-4">Dashboard</h1>
-                   
+        <div class="pv-page">
+            <!-- Hero Header -->
+            <div class="pv-hero">
+                <div class="container-xl px-4">
+                    <p class="pv-hero-eyebrow">Dashboard</p>
+                    <h1 class="pv-hero-title">Welcome back, <span class="pv-hero-name">{{ request.user.get_full_name|default:request.user.username }}</span></h1>
+                </div>
+            </div>
 
-                    <!-- MAIN BUTTONS -->
-                    <div class="d-flex justify-content-center gap-3 flex-wrap mb-5">
-                        <a href="{% url 'voucher_list' %}" class="btn btn-primary btn-lg px-5 py-3 shadow-lg rounded-pill main-btn">
-                            <i class="bi bi-receipt me-2"></i>Vouchers
-                        </a>
-                        <a href="{% url 'function' %}" class="btn btn-secondary btn-lg px-5 py-3 shadow-lg rounded-pill main-btn">
-                            <i class="bi bi-calendar-event me-2"></i>Functions
-                        </a>
-                        <a href="{% url 'holiday' %}" class="btn btn-info btn-lg px-5 py-3 shadow-lg rounded-pill main-btn">
-                            <i class="bi bi-bus-front me-2"></i>Holidays
+            <div class="container-xl px-4 py-5">
+                <!-- Main Feature Cards -->
+                <p class="pv-section-label">Quick Access</p>
+                <div class="row g-4 mb-5">
+                    {% if not active_company or active_company.enable_vouchers %}
+                    <div class="col-12 col-md-4">
+                        <a href="{% url 'voucher_list' %}" class="pv-main-card pv-card-v text-decoration-none d-flex flex-column h-100">
+                            <div class="pv-main-icon"><i class="bi bi-receipt-cutoff"></i></div>
+                            <h4 class="pv-main-title">Vouchers</h4>
+                            <p class="pv-main-sub">Manage payment vouchers &amp; approvals</p>
+                            <span class="pv-main-cta mt-auto">Open <i class="bi bi-arrow-right ms-1"></i></span>
                         </a>
                     </div>
+                    {% endif %}
+                    {% if not active_company or active_company.enable_functions %}
+                    <div class="col-12 col-md-4">
+                        <a href="{% url 'function' %}" class="pv-main-card pv-card-f text-decoration-none d-flex flex-column h-100">
+                            <div class="pv-main-icon"><i class="bi bi-calendar-event-fill"></i></div>
+                            <h4 class="pv-main-title">Functions</h4>
+                            <p class="pv-main-sub">Event booking &amp; scheduling</p>
+                            <span class="pv-main-cta mt-auto">Open <i class="bi bi-arrow-right ms-1"></i></span>
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if not active_company or active_company.enable_holidays %}
+                    <div class="col-12 col-md-4">
+                        <a href="{% url 'holiday' %}" class="pv-main-card pv-card-h text-decoration-none d-flex flex-column h-100">
+                            <div class="pv-main-icon"><i class="bi bi-bus-front-fill"></i></div>
+                            <h4 class="pv-main-title">Holidays</h4>
+                            <p class="pv-main-sub">Trip booking &amp; vehicle management</p>
+                            <span class="pv-main-cta mt-auto">Open <i class="bi bi-arrow-right ms-1"></i></span>
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- SUPERUSER-ONLY CONTROL PANEL -->
                 {% if user.is_superuser %}
-                    <div class="text-center mb-4">
-                        <h2 class="section-title">Administrative Controls</h2>
-                        
-                    </div>
+                    <p class="pv-section-label">Administration</p>
+                    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-6 g-3 mb-5">
 
-                    <!-- 4 BOXES GRID -->
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 justify-content-center">
-
-                        <!-- Box 1 - User Master -->
+                        <!-- User Master -->
                         <div class="col">
                             <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#userMasterModal">
-                                <div class="dashboard-card user-master-card">
-                                    <div class="card-icon-wrapper">
-                                        <i class="bi bi-people-fill card-icon"></i>
-                                    </div>
-                                    <h5 class="card-title">User Master</h5>
-                                    <p class="card-description">Manage users and roles</p>
-                                    <div class="card-overlay">
-                                        <i class="bi bi-arrow-right"></i>
-                                    </div>
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon pv-ic-purple"><i class="bi bi-people-fill"></i></div>
+                                    <span class="pv-admin-label">User Master</span>
                                 </div>
                             </a>
                         </div>
 
-                        <!-- Box 2 - Voucher Master -->
+                        <!-- Voucher Master -->
                         <div class="col">
                             <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#voucherMasterModal">
-                                <div class="dashboard-card voucher-master-card">
-                                    <div class="card-icon-wrapper">
-                                        <i class="bi bi-file-earmark-text-fill card-icon"></i>
-                                    </div>
-                                    <h5 class="card-title">Voucher Master</h5>
-                                    <p class="card-description">Configure voucher settings</p>
-                                    <div class="card-overlay">
-                                        <i class="bi bi-arrow-right"></i>
-                                    </div>
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon pv-ic-pink"><i class="bi bi-file-earmark-text-fill"></i></div>
+                                    <span class="pv-admin-label">Voucher Master</span>
                                 </div>
                             </a>
                         </div>
 
-                        <!-- Box 3 - Approval Control -->
+                        <!-- Permissions -->
                         <div class="col">
                             <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#approvalControlModalBox">
-                                <div class="dashboard-card approval-control-card">
-                                    <div class="card-icon-wrapper">
-                                        <i class="bi bi-shield-check card-icon"></i>
-                                    </div>
-                                    <h5 class="card-title">Permissions</h5>
-                                    <p class="card-description">Set approval workflows</p>
-                                    <div class="card-overlay">
-                                        <i class="bi bi-arrow-right"></i>
-                                    </div>
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon pv-ic-blue"><i class="bi bi-shield-check"></i></div>
+                                    <span class="pv-admin-label">Permissions</span>
                                 </div>
                             </a>
                         </div>
 
-                        <!-- Box 4 - Company Master -->
+                        <!-- Company Master -->
                         <div class="col">
                             <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#companyMasterModal">
-                                <div class="dashboard-card company-master-card">
-                                    <div class="card-icon-wrapper">
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon pv-ic-green">
                                         {% if company_logo_url %}
-                                            <img src="{{ company_logo_url }}" alt="Company Logo" class="card-icon-logo">
+                                            <img src="{{ company_logo_url }}" alt="Logo" style="width:26px;height:26px;object-fit:contain;border-radius:4px;">
                                         {% else %}
-                                            <i class="bi bi-building card-icon"></i>
+                                            <i class="bi bi-building"></i>
                                         {% endif %}
                                     </div>
-                                    <h5 class="card-title">Company Master</h5>
-                                    <p class="card-description">Update company details</p>
-                                    <div class="card-overlay">
-                                        <i class="bi bi-arrow-right"></i>
-                                    </div>
+                                    <span class="pv-admin-label">Company Master</span>
                                 </div>
                             </a>
                         </div>
 
-                        <!-- Box 5 - Holiday Master -->
+                        <!-- Holiday Master -->
                         <div class="col">
                             <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#holidayMasterModal">
-                                <div class="dashboard-card" style="background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%); color: #fff; border-radius: 16px; padding: 24px; position: relative; overflow: hidden; min-height: 140px; transition: all 0.3s;">
-                                    <div class="card-icon-wrapper">
-                                        <i class="bi bi-bus-front card-icon"></i>
-                                    </div>
-                                    <h5 class="card-title">Holiday Master</h5>
-                                    <p class="card-description" style="color: rgba(255,255,255,0.8);">Manage vehicles &amp; settings</p>
-                                    <div class="card-overlay">
-                                        <i class="bi bi-arrow-right"></i>
-                                    </div>
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon pv-ic-cyan"><i class="bi bi-bus-front-fill"></i></div>
+                                    <span class="pv-admin-label">Holiday Master</span>
                                 </div>
                             </a>
                         </div>
 
-                    </div> <!-- end of row -->
+                        <!-- Backup -->
+                        <div class="col">
+                            <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#backupModal">
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon pv-ic-amber"><i class="bi bi-database-fill-down"></i></div>
+                                    <span class="pv-admin-label">Backup</span>
+                                </div>
+                            </a>
+                        </div>
+
+                    </div>
 
                     <!-- ENHANCED MODALS WITH BETTER STYLING -->
 
@@ -251,6 +254,36 @@
                                                 data-bs-toggle="modal" data-bs-target="#approvalMasterModal" data-bs-dismiss="modal">
                                             <i class="bi bi-person-check me-2"></i>Approval Master
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backup Modal -->
+                    <div class="modal fade" id="backupModal" tabindex="-1" aria-labelledby="backupModalLabel">
+                        <div class="modal-dialog modal-dialog-centered modal-sm">
+                            <div class="modal-content border-0 rounded-4 shadow-lg">
+                                <div class="modal-header text-white rounded-top-4" style="background: linear-gradient(135deg, #f7971e, #ffd200);">
+                                    <i class="bi bi-database-fill-down me-2"></i>
+                                    <h5 class="modal-title fw-bold mb-0" id="backupModalLabel">Backup</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body py-4">
+                                    <div id="backupAlert" class="alert d-none mb-3"></div>
+                                    <div class="d-grid gap-3">
+                                        <!-- Download -->
+                                        <a href="{% url 'backup_download' %}" class="btn btn-outline-warning fw-semibold py-3 rounded-pill modal-btn">
+                                            <i class="bi bi-download me-2"></i>Download Backup
+                                        </a>
+                                        <!-- Upload / Restore -->
+                                        <div>
+                                            <label class="form-label small fw-semibold mb-1">Restore from Backup</label>
+                                            <input type="file" class="form-control form-control-sm mb-2" id="backupFileInput" accept=".zip">
+                                            <button class="btn btn-outline-danger fw-semibold py-2 rounded-pill modal-btn w-100" onclick="uploadBackup()">
+                                                <i class="bi bi-upload me-2"></i>Upload &amp; Restore
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -398,200 +431,168 @@
 
                 </div>
 
-                <!-- ENHANCED CSS -->
-                <style>
-                    .dashboard-wrapper {
-                        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                        min-height: 100vh;
-                        padding: 2rem 0;
-                    }
-
-                    .dashboard-title {
-                        font-size: 3rem;
-                        font-weight: 700;
-                        background: linear-gradient(135deg, #5b3cc4, #3f2ba8);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        background-clip: text;
-                    }
-
-                    .section-title {
-                        font-size: 2rem;
-                        font-weight: 600;
-                        color: #333;
-                        margin-bottom: 0.5rem;
-                    }
-
-                    .main-btn {
-                        font-size: 1.1rem;
-                        font-weight: 600;
-                        transition: all 0.3s ease;
-                        border: none;
-                    }
-
-                    .main-btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
-                    }
-
-                    .dashboard-card {
-                        position: relative;
-                        border: none;
-                        border-radius: 20px;
-                        padding: 2rem 1.5rem;
-                        text-align: center;
-                        color: white;
-                        min-height: 180px;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: center;
-                        align-items: center;
-                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-                        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                        overflow: hidden;
-                        text-decoration: none;
-                    }
-
-                    .dashboard-card::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-                        opacity: 0;
-                        transition: opacity 0.4s ease;
-                        z-index: 1;
-                    }
-
-                    .dashboard-card:hover {
-                        transform: translateY(-10px) scale(1.02);
-                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-                        text-decoration: none;
-                        color: white;
-                    }
-
-                    .dashboard-card:hover::before {
-                        opacity: 1;
-                    }
-
-                    .card-icon-wrapper {
-                        width: 80px;
-                        height: 80px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin-bottom: 1rem;
-                        background: rgba(255,255,255,0.2);
-                        backdrop-filter: blur(10px);
-                        transition: all 0.3s ease;
-                    }
-
-                    .dashboard-card:hover .card-icon-wrapper {
-                        transform: scale(1.1);
-                        background: rgba(255,255,255,0.3);
-                    }
-
-                    .card-icon {
-                        font-size: 2.5rem;
-                        opacity: 0.9;
-                    }
-
-                    .card-icon-logo {
-                        width: 60px;
-                        height: 60px;
-                        object-fit: contain;
-                        border-radius: 50%;
-                        background: rgba(255,255,255,0.2);
-                        padding: 0.5rem;
-                    }
-
-                    .card-title {
-                        font-weight: 700;
-                        font-size: 1.25rem;
-                        margin-bottom: 0.5rem;
-                        z-index: 2;
-                        position: relative;
-                    }
-
-                    .card-description {
-                        font-size: 0.9rem;
-                        opacity: 0.9;
-                        margin: 0;
-                        z-index: 2;
-                        position: relative;
-                    }
-
-                    .card-overlay {
-                        position: absolute;
-                        bottom: 1rem;
-                        right: 1rem;
-                        background: rgba(255,255,255,0.2);
-                        width: 40px;
-                        height: 40px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 1rem;
-                        opacity: 0;
-                        transition: opacity 0.3s ease;
-                        z-index: 2;
-                    }
-
-                    .dashboard-card:hover .card-overlay {
-                        opacity: 1;
-                        transform: scale(1.1);
-                    }
-
-                    /* Card Colors */
-                    .user-master-card {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    }
-
-                    .voucher-master-card {
-                        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    }
-
-                    .approval-control-card {
-                        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                    }
-
-                    .company-master-card {
-                        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-                    }
-
-                    /* Modal Enhancements */
-                    .bg-gradient-primary { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%) !important; }
-                    .bg-gradient-blue { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
-                    .bg-gradient-green { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
-                    .bg-gradient-red { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) }
-
-                    .modal-btn {
-                        transition: all 0.3s ease;
-                        border: 2px solid;
-                    }
-
-                    .modal-btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                    }
-
-                    /* Responsive */
-                    @media (max-width: 768px) {
-                        .dashboard-title { font-size: 2.5rem; }
-                        .section-title { font-size: 1.5rem; }
-                        .dashboard-card { min-height: 160px; padding: 1.5rem 1rem; }
-                        .card-icon-wrapper { width: 60px; height: 60px; }
-                        .card-icon { font-size: 2rem; }
-                    }
-                </style>
 
                 {% endif %} {# end superuser #}
             </div>
         </div>
+
+        <style>
+            /* ── Page Shell ───────────────────────────────── */
+            .pv-page {
+                background: #f1f5f9;
+                min-height: 100vh;
+            }
+
+            /* ── Hero ─────────────────────────────────────── */
+            .pv-hero {
+                background: linear-gradient(135deg, #1e1b4b 0%, #312e81 55%, #4338ca 100%);
+                padding: 3.5rem 0 3rem;
+                position: relative;
+                overflow: hidden;
+            }
+            .pv-hero::after {
+                content: '';
+                position: absolute;
+                top: -80px; right: -80px;
+                width: 400px; height: 400px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(165,180,252,0.12) 0%, transparent 70%);
+                pointer-events: none;
+            }
+            .pv-hero-eyebrow {
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: rgba(199,210,254,0.75);
+                margin-bottom: 0.4rem;
+            }
+            .pv-hero-title {
+                font-size: 2rem;
+                font-weight: 700;
+                color: #fff;
+                margin: 0;
+                line-height: 1.25;
+            }
+            .pv-hero-name { color: #a5b4fc; }
+
+            /* ── Section labels ───────────────────────────── */
+            .pv-section-label {
+                font-size: 0.7rem;
+                font-weight: 800;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: #94a3b8;
+                margin-bottom: 1rem;
+            }
+
+            /* ── Main Feature Cards ───────────────────────── */
+            .pv-main-card {
+                background: #fff;
+                border-radius: 16px;
+                padding: 2rem 1.75rem;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.06);
+                transition: transform 0.22s ease, box-shadow 0.22s ease;
+                border-top: 4px solid transparent;
+                color: #1e293b;
+            }
+            .pv-main-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 30px rgba(0,0,0,0.11);
+                color: #1e293b;
+            }
+            .pv-card-v { border-top-color: #6366f1; }
+            .pv-card-f { border-top-color: #3b82f6; }
+            .pv-card-h { border-top-color: #10b981; }
+
+            .pv-main-icon {
+                width: 52px; height: 52px;
+                border-radius: 13px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 1.5rem;
+                margin-bottom: 1.25rem;
+            }
+            .pv-card-v .pv-main-icon { background: #eef2ff; color: #6366f1; }
+            .pv-card-f .pv-main-icon { background: #eff6ff; color: #3b82f6; }
+            .pv-card-h .pv-main-icon { background: #ecfdf5; color: #10b981; }
+
+            .pv-main-title {
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #0f172a;
+                margin-bottom: 0.35rem;
+            }
+            .pv-main-sub {
+                font-size: 0.875rem;
+                color: #64748b;
+                margin-bottom: 1.5rem;
+                line-height: 1.5;
+            }
+            .pv-main-cta {
+                font-size: 0.85rem;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+            }
+            .pv-card-v .pv-main-cta { color: #6366f1; }
+            .pv-card-f .pv-main-cta { color: #3b82f6; }
+            .pv-card-h .pv-main-cta { color: #10b981; }
+
+            /* ── Admin Cards ──────────────────────────────── */
+            .pv-admin-card {
+                background: #fff;
+                border-radius: 12px;
+                padding: 1.25rem 0.75rem;
+                text-align: center;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                transition: transform 0.18s ease, box-shadow 0.18s ease;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.6rem;
+                cursor: pointer;
+                border: 1px solid #f1f5f9;
+            }
+            .pv-admin-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.09);
+                border-color: #e2e8f0;
+            }
+            .pv-admin-icon {
+                width: 42px; height: 42px;
+                border-radius: 10px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 1.15rem;
+            }
+            .pv-admin-label {
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: #475569;
+                line-height: 1.3;
+            }
+
+            /* Icon colour variants */
+            .pv-ic-purple { background: #eef2ff; color: #6366f1; }
+            .pv-ic-pink   { background: #fdf2f8; color: #ec4899; }
+            .pv-ic-blue   { background: #eff6ff; color: #3b82f6; }
+            .pv-ic-green  { background: #ecfdf5; color: #10b981; }
+            .pv-ic-cyan   { background: #ecfeff; color: #06b6d4; }
+            .pv-ic-amber  { background: #fffbeb; color: #f59e0b; }
+
+            /* ── Modal tweaks ─────────────────────────────── */
+            .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+            .bg-gradient-blue    { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
+            .bg-gradient-green   { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
+            .bg-gradient-red     { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important; }
+            .modal-btn { transition: all 0.25s ease; border: 2px solid; }
+            .modal-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+            /* ── Responsive ───────────────────────────────── */
+            @media (max-width: 768px) {
+                .pv-hero { padding: 2rem 0 2rem; }
+                .pv-hero-title { font-size: 1.5rem; }
+                .pv-main-card { padding: 1.5rem 1.25rem; }
+            }
+        </style>
     {% endif %}
 
 <script>
@@ -964,6 +965,53 @@ function addPaymentType() {
         }
     })
     .catch(() => showPaymentTypeAlert('Network error.', 'danger'));
+}
+
+// ── Backup ────────────────────────────────────────────────────
+function showBackupAlert(msg, type) {
+    const el = document.getElementById('backupAlert');
+    if (!el) return;
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('d-none');
+    if (type !== 'warning' && type !== 'success') {
+        setTimeout(() => el.classList.add('d-none'), 5000);
+    }
+}
+
+function uploadBackup() {
+    const fileInput = document.getElementById('backupFileInput');
+    const file = fileInput?.files[0];
+    if (!file) { showBackupAlert('Please select a .zip backup file first.', 'warning'); return; }
+    if (!file.name.endsWith('.zip')) { showBackupAlert('Only .zip backup files are accepted.', 'warning'); return; }
+
+    const confirmed = confirm(
+        'This will REPLACE your current database and media files with the backup.\n\n' +
+        'The current data will be saved as a safety copy on the server.\n\n' +
+        'After restore, the server must be restarted to apply changes.\n\nProceed?'
+    );
+    if (!confirmed) return;
+
+    const formData = new FormData();
+    formData.append('backup_file', file);
+
+    showBackupAlert('Uploading and restoring... please wait.', 'info');
+
+    fetch('/backup/restore/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfHome() },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showBackupAlert(data.message, 'success');
+            fileInput.value = '';
+        } else {
+            showBackupAlert(data.error || 'Restore failed.', 'danger');
+        }
+    })
+    .catch(() => showBackupAlert('Network error during restore.', 'danger'));
 }
 
 </script>
