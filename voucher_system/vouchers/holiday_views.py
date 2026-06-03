@@ -10,6 +10,48 @@ from .views import check_user_permission
 from decimal import Decimal
 
 
+def auto_complete_bookings(company_id):
+    """Flip CONFIRMED → COMPLETED for any booking whose return date+time has passed."""
+    from django.utils import timezone
+    import datetime
+    now = timezone.localtime(timezone.now())
+    candidates = HolidayBooking.objects.filter(
+        company_id=company_id,
+        status='CONFIRMED',
+        return_date__isnull=False,
+        return_time__isnull=False,
+    )
+    done = [
+        b.id for b in candidates
+        if now >= timezone.make_aware(
+            datetime.datetime.combine(b.return_date, b.return_time)
+        )
+    ]
+    if done:
+        HolidayBooking.objects.filter(id__in=done).update(status='COMPLETED')
+
+
+def auto_delete_expired_pending(company_id):
+    """Delete PENDING (unconfirmed) bookings whose return date+time has passed.
+    Falls back to trip_date end-of-day when no return date/time is set."""
+    from django.utils import timezone
+    import datetime
+    now = timezone.localtime(timezone.now())
+    candidates = HolidayBooking.objects.filter(company_id=company_id, status='PENDING')
+    to_delete = []
+    for b in candidates:
+        if b.return_date and b.return_time:
+            deadline = timezone.make_aware(datetime.datetime.combine(b.return_date, b.return_time))
+        else:
+            deadline = timezone.make_aware(
+                datetime.datetime.combine(b.trip_date, datetime.time(23, 59, 59))
+            )
+        if now >= deadline:
+            to_delete.append(b.id)
+    if to_delete:
+        HolidayBooking.objects.filter(id__in=to_delete).delete()
+
+
 def number_to_words(n):
     try:
         n = int(Decimal(str(n)))
@@ -120,6 +162,14 @@ class HolidayDetailView(LoginRequiredMixin, DetailView):
             )
             context['can_edit']   = bool(perms and perms.can_edit_holiday)
             context['can_delete'] = bool(perms and perms.can_delete_holiday)
+        context['is_pending']   = self.object.status == 'PENDING'
+        context['is_completed'] = self.object.status == 'COMPLETED'
+        is_bank_settled = False
+        try:
+            is_bank_settled = self.object.settlement.bank.status == BankSettlement.STATUS_APPROVED
+        except (TripSettlement.DoesNotExist, BankSettlement.DoesNotExist, AttributeError):
+            pass
+        context['is_bank_settled'] = is_bank_settled
         return context
 
 
@@ -138,6 +188,14 @@ class HolidayCreateAPI(APIView):
             return Response({'error': 'Invalid company'}, status=400)
 
         data = request.data
+        import re as _re
+        contact_number = data.get('contact_number', '')
+        if not _re.match(r'^\d{10}$', str(contact_number)):
+            return Response({'error': 'Contact number must be exactly 10 digits.'}, status=400)
+        second_contact = data.get('second_contact_number')
+        if second_contact and not _re.match(r'^\d{10}$', str(second_contact)):
+            return Response({'error': 'Contact 2 must be exactly 10 digits.'}, status=400)
+
         try:
             booked_vehicle = None
             vehicle_id = data.get('booked_vehicle')
@@ -169,6 +227,7 @@ class HolidayCreateAPI(APIView):
                 max_km=int(data['max_km']) if data.get('max_km') else None,
                 extra_km_charge=Decimal(data['extra_km_charge']) if data.get('extra_km_charge') else None,
                 special_instructions=data.get('special_instructions', ''),
+                status='PENDING',
                 created_by=request.user,
             )
             return Response({
@@ -193,20 +252,27 @@ class HolidayBookedDatesAPI(APIView):
         if not active_company_id:
             return Response({'error': 'No active company'}, status=400)
 
+        auto_complete_bookings(active_company_id)
+        auto_delete_expired_pending(active_company_id)
+
         bookings = HolidayBooking.objects.filter(
             company_id=active_company_id,
-            status__in=['PENDING', 'CONFIRMED']
-        ).values('trip_date', 'booking_number', 'destination', 'status', 'id')
+            status__in=['PENDING', 'CONFIRMED', 'COMPLETED']
+        ).values('trip_date', 'return_date', 'return_time', 'booking_number', 'destination',
+                 'status', 'id', 'departure_time', 'booked_vehicle__name')
 
         events = []
         for b in bookings:
-            color = '#0d6efd' if b['status'] == 'CONFIRMED' else '#ffc107'
+            vehicle    = b['booked_vehicle__name'] or ''
+            time_label = b['departure_time'].strftime('%I:%M %p') if b['departure_time'] else ''
+            label      = f"{vehicle}  {time_label}".strip() if vehicle else time_label
             events.append({
-                'id': b['id'],
-                'title': f"{b['booking_number']} – {b['destination']}",
-                'start': b['trip_date'].isoformat(),
-                'color': color,
-                'url': f"/holidays/{b['id']}/",
+                'id':     b['id'],
+                'title':  f"{b['booking_number']} – {b['destination']}",
+                'label':  label,
+                'status': b['status'],
+                'start':  b['trip_date'].isoformat(),
+                'end':    b['return_date'].isoformat() if b['return_date'] else None,
             })
         return Response({'events': events})
 
@@ -285,7 +351,23 @@ class HolidayUpdateAPI(APIView):
         except HolidayBooking.DoesNotExist:
             return Response({'error': 'Booking not found'}, status=404)
 
+        if booking.status == 'COMPLETED':
+            return Response({'error': 'Completed trips cannot be edited.'}, status=400)
+        try:
+            if booking.settlement.bank.status == BankSettlement.STATUS_APPROVED:
+                return Response({'error': 'Bank-settled trips cannot be edited.'}, status=400)
+        except (TripSettlement.DoesNotExist, BankSettlement.DoesNotExist, AttributeError):
+            pass
+
         data = request.data
+        import re as _re
+        contact_number = data.get('contact_number', '')
+        if not _re.match(r'^\d{10}$', str(contact_number)):
+            return Response({'error': 'Contact number must be exactly 10 digits.'}, status=400)
+        second_contact = data.get('second_contact_number')
+        if second_contact and not _re.match(r'^\d{10}$', str(second_contact)):
+            return Response({'error': 'Contact 2 must be exactly 10 digits.'}, status=400)
+
         try:
             booked_vehicle = None
             vehicle_id = data.get('booked_vehicle')
@@ -324,6 +406,48 @@ class HolidayUpdateAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': str(e)}, status=500)
+
+
+class HolidayConfirmAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_edit_holiday', active_company_id)
+        if not has_perm:
+            return Response({'error': error}, status=403)
+        try:
+            booking = HolidayBooking.objects.get(pk=pk, company_id=active_company_id)
+        except HolidayBooking.DoesNotExist:
+            return Response({'error': 'Booking not found'}, status=404)
+        if booking.status != 'PENDING':
+            return Response({'error': 'Only pending enquiries can be confirmed.'}, status=400)
+
+        # Vehicle conflict check: reject if the same vehicle is already confirmed for an overlapping date range
+        if booking.booked_vehicle_id:
+            b_start = booking.trip_date
+            b_end   = booking.return_date or booking.trip_date
+            conflicts = HolidayBooking.objects.filter(
+                company_id=active_company_id,
+                booked_vehicle_id=booking.booked_vehicle_id,
+                status='CONFIRMED',
+            ).exclude(pk=booking.pk)
+            for existing in conflicts:
+                e_start = existing.trip_date
+                e_end   = existing.return_date or existing.trip_date
+                if b_start <= e_end and b_end >= e_start:
+                    return Response({
+                        'error': (
+                            f'{booking.booked_vehicle.name} is already booked for '
+                            f'{existing.booking_number} '
+                            f'({e_start.strftime("%d %b %Y")} – {e_end.strftime("%d %b %Y")}). '
+                            f'Change the vehicle or adjust the dates before confirming.'
+                        )
+                    }, status=400)
+
+        booking.status = 'CONFIRMED'
+        booking.save(update_fields=['status'])
+        return Response({'success': True, 'message': f'Booking {booking.booking_number} confirmed!'})
 
 
 # =============================================
@@ -558,18 +682,13 @@ class HolidayCompletedListAPI(APIView):
         if not active_company_id:
             return Response({'bookings': []})
 
-        from django.utils import timezone
-        import datetime
-
-        now = timezone.localtime(timezone.now())
+        auto_complete_bookings(active_company_id)
 
         bookings = HolidayBooking.objects.filter(
             company_id=active_company_id,
-            return_date__isnull=False,
-            return_time__isnull=False,
+            status='COMPLETED',
         ).select_related('booked_vehicle', 'created_by').order_by('-return_date', '-return_time')
 
-        # build settlement lookup once
         settlement_map = {
             s.booking_id: s.id
             for s in TripSettlement.objects.filter(booking__company_id=active_company_id)
@@ -577,10 +696,6 @@ class HolidayCompletedListAPI(APIView):
 
         completed = []
         for b in bookings:
-            return_dt = timezone.make_aware(
-                datetime.datetime.combine(b.return_date, b.return_time)
-            )
-            if now >= return_dt:
                 s_id = settlement_map.get(b.id)
                 completed.append({
                     'id': b.id,
@@ -625,19 +740,11 @@ class HolidayCompletedCountAPI(APIView):
         if not active_company_id:
             return Response({'count': 0})
 
-        from django.utils import timezone
-        import datetime
-
-        now = timezone.localtime(timezone.now())
-        bookings = HolidayBooking.objects.filter(
+        auto_complete_bookings(active_company_id)
+        count = HolidayBooking.objects.filter(
             company_id=active_company_id,
-            return_date__isnull=False,
-            return_time__isnull=False,
-        )
-        count = sum(
-            1 for b in bookings
-            if now >= timezone.make_aware(datetime.datetime.combine(b.return_date, b.return_time))
-        )
+            status='COMPLETED',
+        ).count()
         return Response({'count': count})
 
 
@@ -1421,3 +1528,273 @@ class RepairUpdateAPI(APIView):
             ri.save()
 
         return Response({'success': True, 'message': 'Repair updated.'})
+
+
+# =============================================
+# SETTLEMENT DELETE APIs
+# =============================================
+
+class TripSettlementDeleteAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_delete_holiday', active_company_id)
+        if not has_perm:
+            return Response({'error': error}, status=403)
+        try:
+            booking = HolidayBooking.objects.get(pk=pk, company_id=active_company_id)
+        except HolidayBooking.DoesNotExist:
+            return Response({'error': 'Booking not found'}, status=404)
+        try:
+            settlement = booking.settlement
+        except TripSettlement.DoesNotExist:
+            return Response({'error': 'No settlement found for this booking'}, status=404)
+        settlement.delete()
+        return Response({'success': True, 'message': f'Settlement for {booking.booking_number} deleted.'})
+
+
+class BankSettlementDeleteAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        has_perm, error = check_user_permission(request.user, 'can_delete_holiday', active_company_id)
+        if not has_perm:
+            return Response({'error': error}, status=403)
+        try:
+            bank = BankSettlement.objects.get(
+                pk=pk, settlement__booking__company_id=active_company_id
+            )
+        except BankSettlement.DoesNotExist:
+            return Response({'error': 'Bank settlement not found'}, status=404)
+        bank.delete()
+        return Response({'success': True, 'message': 'Bank settlement deleted.'})
+
+
+# =============================================
+# REPORT SUMMARY API  (totals from all time, no date filter)
+# =============================================
+
+class HolidayReportSummaryAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'bank_total': '0.00', 'repair_total': '0.00', 'nav_settlement_pending': 0, 'nav_bank_pending': 0})
+
+        from django.db.models import Sum
+
+        auto_complete_bookings(active_company_id)
+
+        bank_total = BankSettlement.objects.filter(
+            settlement__booking__company_id=active_company_id,
+            status=BankSettlement.STATUS_APPROVED,
+        ).aggregate(t=Sum('settlement__net_balance'))['t'] or 0
+
+        repair_total = RepairMaintenance.objects.filter(
+            company_id=active_company_id,
+            bank__status=RepairBankSettlement.STATUS_APPROVED,
+        ).aggregate(t=Sum('total_amount'))['t'] or 0
+
+        # Completed trips that have no settlement yet
+        completed_ids = set(HolidayBooking.objects.filter(
+            company_id=active_company_id, status='COMPLETED',
+        ).values_list('id', flat=True))
+        settled_ids = set(TripSettlement.objects.filter(
+            booking_id__in=completed_ids
+        ).values_list('booking_id', flat=True))
+        nav_settlement_pending = len(completed_ids - settled_ids)
+
+        from django.db.models import Q
+
+        # Order form settlements: no bank doc yet OR pending approval
+        order_bank_pending = TripSettlement.objects.filter(
+            booking__company_id=active_company_id,
+        ).filter(
+            Q(bank__isnull=True) | Q(bank__status=BankSettlement.STATUS_PENDING)
+        ).count()
+
+        # Repair entries: no bank submission yet OR pending approval
+        repair_bank_pending = RepairMaintenance.objects.filter(
+            company_id=active_company_id,
+        ).filter(
+            Q(bank__isnull=True) | Q(bank__status=RepairBankSettlement.STATUS_PENDING)
+        ).count()
+
+        return Response({
+            'bank_total':               str(Decimal(str(bank_total)).quantize(Decimal('0.01'))),
+            'repair_total':             str(Decimal(str(repair_total)).quantize(Decimal('0.01'))),
+            'nav_settlement_pending':   nav_settlement_pending,
+            'nav_bank_pending':         order_bank_pending + repair_bank_pending,
+            'nav_bank_order_pending':   order_bank_pending,
+            'nav_bank_repair_pending':  repair_bank_pending,
+        })
+
+
+# =============================================
+# QUICK STAT LIST API
+# =============================================
+
+class HolidayQuickListAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'bookings': []})
+
+        from django.utils import timezone
+        import datetime
+
+        stat_type = request.GET.get('type', '')
+        now       = timezone.localtime(timezone.now())
+        today     = now.date()
+
+        qs = HolidayBooking.objects.filter(
+            company_id=active_company_id,
+        ).select_related('booked_vehicle').order_by('trip_date')
+
+        if stat_type == 'enquiry':
+            qs = qs.filter(status='PENDING')
+
+        elif stat_type == 'upcoming':
+            from django.db.models import Q
+            qs = qs.filter(
+                trip_date__gte=today,
+                status='CONFIRMED',
+            ).filter(
+                Q(return_date__isnull=True) | Q(return_date__gte=today)
+            )
+
+        elif stat_type == 'completed':
+            auto_complete_bookings(active_company_id)
+            qs = qs.filter(status='COMPLETED')
+
+        elif stat_type == 'this-month':
+            try:
+                month = int(request.GET.get('month', today.month))
+                year  = int(request.GET.get('year',  today.year))
+            except (ValueError, TypeError):
+                month, year = today.month, today.year
+            qs = qs.filter(
+                trip_date__month=month,
+                trip_date__year=year,
+                status__in=['PENDING', 'CONFIRMED'],
+            )
+
+        else:
+            qs = qs.none()
+
+        bookings = [{
+            'id':             b.id,
+            'booking_number': b.booking_number,
+            'trip_date':      b.trip_date.strftime('%d %b %Y'),
+            'return_date':    b.return_date.strftime('%d %b %Y') if b.return_date else '—',
+            'destination':    b.destination,
+            'booked_by':      b.booked_by,
+            'vehicle':        str(b.booked_vehicle) if b.booked_vehicle else '—',
+            'status':         b.status,
+        } for b in qs]
+
+        return Response({'bookings': bookings})
+
+
+# =============================================
+# REPORT APIs
+# =============================================
+
+class HolidayBankReportAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'entries': []})
+
+        from_date = request.GET.get('from_date')
+        to_date   = request.GET.get('to_date')
+
+        qs = BankSettlement.objects.filter(
+            settlement__booking__company_id=active_company_id,
+            status=BankSettlement.STATUS_APPROVED,
+        ).select_related(
+            'settlement__booking',
+            'settlement__booking__booked_vehicle',
+            'approved_by',
+        )
+        if from_date:
+            qs = qs.filter(approved_at__date__gte=from_date)
+        if to_date:
+            qs = qs.filter(approved_at__date__lte=to_date)
+        qs = qs.order_by('approved_at')
+
+        entries = []
+        for i, bank in enumerate(qs, 1):
+            s = bank.settlement
+            b = s.booking
+            entries.append({
+                'sl':            i,
+                'booking_number': b.booking_number,
+                'booked_by':     b.booked_by,
+                'contact_number': b.contact_number,
+                'trip_date':     b.trip_date.strftime('%Y-%m-%d'),
+                'return_date':   b.return_date.strftime('%Y-%m-%d') if b.return_date else '—',
+                'destination':   b.destination,
+                'vehicle':       str(b.booked_vehicle) if b.booked_vehicle else '—',
+                'total_amount':  str(b.total_amount),
+                'net_balance':   str(s.net_balance),
+                'approved_by':   (bank.approved_by.get_full_name() or bank.approved_by.username) if bank.approved_by else '—',
+                'approved_at':   bank.approved_at.strftime('%d %b %Y') if bank.approved_at else '—',
+            })
+        return Response({'entries': entries})
+
+
+class RepairReportAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        if not active_company_id:
+            return Response({'entries': []})
+
+        from_date = request.GET.get('from_date')
+        to_date   = request.GET.get('to_date')
+
+        qs = RepairMaintenance.objects.filter(
+            company_id=active_company_id,
+            bank__status=RepairBankSettlement.STATUS_APPROVED,
+        ).select_related('vehicle', 'created_by', 'bank', 'bank__approved_by').prefetch_related('items')
+        if from_date:
+            qs = qs.filter(bank__approved_at__date__gte=from_date)
+        if to_date:
+            qs = qs.filter(bank__approved_at__date__lte=to_date)
+        qs = qs.order_by('bank__approved_at')
+
+        entries = []
+        for i, r in enumerate(qs, 1):
+            try:
+                bank = r.bank
+                bank_status      = bank.status
+                bank_approved_by = (bank.approved_by.get_full_name() or bank.approved_by.username) if bank.approved_by else '—'
+                bank_approved_at = bank.approved_at.strftime('%d %b %Y') if bank.approved_at else '—'
+            except RepairBankSettlement.DoesNotExist:
+                bank_status = '—'
+                bank_approved_by = '—'
+                bank_approved_at = '—'
+
+            entries.append({
+                'sl':              i,
+                'repair_number':   r.repair_number,
+                'vehicle':         str(r.vehicle) if r.vehicle else '—',
+                'created_at':      r.created_at.strftime('%d %b %Y'),
+                'items':           [{'name': it.name, 'amount': str(it.amount)} for it in r.items.all()],
+                'total_amount':    str(r.total_amount),
+                'status':          r.status,
+                'bank_status':     bank_status,
+                'bank_approved_by': bank_approved_by,
+                'bank_approved_at': bank_approved_at,
+                'notes':           r.notes or '',
+            })
+        return Response({'entries': entries})

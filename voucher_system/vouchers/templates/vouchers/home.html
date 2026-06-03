@@ -272,18 +272,35 @@
                                 <div class="modal-body py-4">
                                     <div id="backupAlert" class="alert d-none mb-3"></div>
                                     <div class="d-grid gap-3">
+
                                         <!-- Download -->
-                                        <a href="{% url 'backup_download' %}" class="btn btn-outline-warning fw-semibold py-3 rounded-pill modal-btn">
+                                        <button id="downloadBackupBtn" type="button" class="btn btn-outline-warning fw-semibold py-3 rounded-pill modal-btn" onclick="downloadBackup()">
                                             <i class="bi bi-download me-2"></i>Download Backup
-                                        </a>
+                                        </button>
+                                        <div id="backupDownloadProgress" class="d-none px-1">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <small class="fw-semibold text-muted" id="backupDownloadLabel">Preparing…</small>
+                                                <small id="backupDownloadPct" class="fw-bold text-warning">—</small>
+                                            </div>
+                                            <progress id="backupDownloadBar" class="backup-progress backup-progress-warning" max="100"></progress>
+                                        </div>
+
                                         <!-- Upload / Restore -->
                                         <div>
-                                            <label class="form-label small fw-semibold mb-1">Restore from Backup</label>
+                                            <label for="backupFileInput" class="form-label small fw-semibold mb-1">Restore from Backup</label>
                                             <input type="file" class="form-control form-control-sm mb-2" id="backupFileInput" accept=".zip">
-                                            <button class="btn btn-outline-danger fw-semibold py-2 rounded-pill modal-btn w-100" onclick="uploadBackup()">
+                                            <button id="restoreBackupBtn" type="button" class="btn btn-outline-danger fw-semibold py-2 rounded-pill modal-btn w-100" onclick="uploadBackup()">
                                                 <i class="bi bi-upload me-2"></i>Upload &amp; Restore
                                             </button>
                                         </div>
+                                        <div id="backupUploadProgress" class="d-none px-1">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <small class="fw-semibold text-muted" id="backupUploadLabel">Uploading…</small>
+                                                <small id="backupUploadPct" class="fw-bold text-danger">0%</small>
+                                            </div>
+                                            <progress id="backupUploadBar" class="backup-progress backup-progress-danger" max="100" value="0"></progress>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -585,6 +602,18 @@
             .bg-gradient-red     { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important; }
             .modal-btn { transition: all 0.25s ease; border: 2px solid; }
             .modal-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+            /* ── Backup progress bars (native <progress>) ─── */
+            .backup-progress { display:block; width:100%; height:10px; border:none; border-radius:5px; overflow:hidden; }
+            .backup-progress::-webkit-progress-bar  { background:#e9ecef; border-radius:5px; }
+            .backup-progress::-moz-progress-bar     { border-radius:5px; transition:width .3s ease; }
+            .backup-progress-warning::-webkit-progress-value { background:#ffc107; border-radius:5px; transition:width .3s ease; }
+            .backup-progress-warning::-moz-progress-bar      { background:#ffc107; }
+            .backup-progress-danger::-webkit-progress-value  { background:#dc3545; border-radius:5px; transition:width .3s ease; }
+            .backup-progress-danger::-moz-progress-bar       { background:#dc3545; }
+            /* indeterminate shimmer (no value attribute) */
+            .backup-progress:not([value])::-webkit-progress-bar { background:linear-gradient(90deg,#e9ecef 25%,#ffc107 50%,#e9ecef 75%); background-size:200%; animation:backup-shimmer 1.4s infinite; }
+            @keyframes backup-shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
 
             /* ── Responsive ───────────────────────────────── */
             @media (max-width: 768px) {
@@ -979,39 +1008,158 @@ function showBackupAlert(msg, type) {
     }
 }
 
+async function downloadBackup() {
+    const btn      = document.getElementById('downloadBackupBtn');
+    const wrap     = document.getElementById('backupDownloadProgress');
+    const bar      = document.getElementById('backupDownloadBar');
+    const pct      = document.getElementById('backupDownloadPct');
+    const lbl      = document.getElementById('backupDownloadLabel');
+
+    btn.disabled = true;
+    wrap.classList.remove('d-none');
+    // Indeterminate phase — no value attribute = shimmer animation
+    bar.removeAttribute('value');
+    pct.textContent = '—';
+    lbl.textContent = 'Preparing backup…';
+
+    try {
+        const response = await fetch('/backup/download/', {
+            headers: { 'X-CSRFToken': getCsrfHome() }
+        });
+        if (!response.ok) throw new Error(`Server error ${response.status}`);
+
+        const contentLength = Number.parseInt(response.headers.get('Content-Length') || '0', 10);
+        const reader  = response.body.getReader();
+        const chunks  = [];
+        let received  = 0;
+
+        lbl.textContent = 'Downloading…';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            if (contentLength > 0) {
+                const p = Math.min(Math.round((received / contentLength) * 100), 99);
+                bar.value        = p;
+                pct.textContent  = p + '%';
+            } else {
+                bar.removeAttribute('value'); // keep indeterminate
+                pct.textContent = (received / 1048576).toFixed(1) + ' MB';
+            }
+        }
+
+        // Trigger file save
+        const blob = new Blob(chunks, { type: 'application/zip' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        const ts   = new Date().toISOString().slice(0, 16).replace('T', '_');
+        a.href     = url;
+        a.download = `backup_${ts}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        bar.value = 100;
+        pct.textContent  = '100%';
+        lbl.textContent  = 'Download complete ✓';
+        setTimeout(() => {
+            wrap.classList.add('d-none');
+            btn.disabled = false;
+        }, 2500);
+
+    } catch (err) {
+        showBackupAlert('Download failed: ' + err.message, 'danger');
+        wrap.classList.add('d-none');
+        btn.disabled = false;
+    }
+}
+
 function uploadBackup() {
     const fileInput = document.getElementById('backupFileInput');
-    const file = fileInput?.files[0];
+    const file      = fileInput?.files[0];
     if (!file) { showBackupAlert('Please select a .zip backup file first.', 'warning'); return; }
     if (!file.name.endsWith('.zip')) { showBackupAlert('Only .zip backup files are accepted.', 'warning'); return; }
 
-    const confirmed = confirm(
-        'This will REPLACE your current database and media files with the backup.\n\n' +
-        'The current data will be saved as a safety copy on the server.\n\n' +
-        'After restore, the server must be restarted to apply changes.\n\nProceed?'
-    );
-    if (!confirmed) return;
+    if (!confirm(
+        '⚠️ WARNING: This will DELETE ALL current data and replace it with the backup.\n\n' +
+        'Every record (vouchers, holidays, functions, users) will be wiped first.\n' +
+        'If the restore fails the data is rolled back automatically.\n\n' +
+        'You will be logged out and must sign in again after restore.\n\n' +
+        'Are you sure you want to continue?'
+    )) return;
 
-    const formData = new FormData();
-    formData.append('backup_file', file);
+    const confirmWord = prompt('Type  DELETE  (all caps) to confirm the full wipe and restore:');
+    if (confirmWord !== 'DELETE') {
+        showBackupAlert('Restore cancelled — confirmation word did not match.', 'secondary');
+        return;
+    }
 
-    showBackupAlert('Uploading and restoring... please wait.', 'info');
+    const wrap    = document.getElementById('backupUploadProgress');
+    const bar     = document.getElementById('backupUploadBar');
+    const pct     = document.getElementById('backupUploadPct');
+    const lbl     = document.getElementById('backupUploadLabel');
+    const restBtn = document.getElementById('restoreBackupBtn');
 
-    fetch('/backup/restore/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCsrfHome() },
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showBackupAlert(data.message, 'success');
-            fileInput.value = '';
-        } else {
-            showBackupAlert(data.error || 'Restore failed.', 'danger');
+    wrap.classList.remove('d-none');
+    restBtn.disabled = true;
+    bar.value = 0;
+    pct.textContent = '0%';
+    lbl.textContent = 'Uploading…';
+
+    const fd = new FormData();
+    fd.append('backup_file', file);
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const p = Math.round((e.loaded / e.total) * 100);
+            bar.value       = p;
+            pct.textContent = p + '%';
+            if (p === 100) {
+                lbl.textContent = 'Restoring data…';
+                bar.removeAttribute('value'); // switch to indeterminate while server processes
+                pct.textContent = '…';
+            }
         }
-    })
-    .catch(() => showBackupAlert('Network error during restore.', 'danger'));
+    };
+
+    xhr.onload = function() {
+        restBtn.disabled = false;
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.success) {
+                bar.value = 100;
+                pct.textContent = '100%';
+                lbl.textContent = 'Restore complete ✓';
+                showBackupAlert(
+                    'Restore complete. All data replaced. Redirecting to login…',
+                    'success'
+                );
+                fileInput.value = '';
+                setTimeout(() => { globalThis.location.href = '/login/'; }, 2500);
+            } else {
+                showBackupAlert(data.error || 'Restore failed.', 'danger');
+                wrap.classList.add('d-none');
+            }
+        } catch (parseErr) {
+            showBackupAlert(`Restore failed — unexpected server response: ${parseErr.message}`, 'danger');
+            wrap.classList.add('d-none');
+        }
+    };
+
+    xhr.onerror = function() {
+        restBtn.disabled = false;
+        showBackupAlert('Network error during restore.', 'danger');
+        wrap.classList.add('d-none');
+    };
+
+    xhr.open('POST', '/backup/restore/');
+    xhr.setRequestHeader('X-CSRFToken', getCsrfHome());
+    xhr.send(fd);
 }
 
 </script>

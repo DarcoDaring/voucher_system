@@ -162,6 +162,7 @@ class MobileLoginAPI(APIView):
                     'logo_url': request.build_absolute_uri(c.logo.url) if c.logo else None,
                     'role': 'Admin Staff',
                     'designation': None,
+                    'enable_holidays': c.enable_holidays,
                 }
                 for c in companies
             ]
@@ -185,6 +186,7 @@ class MobileLoginAPI(APIView):
                     else None,
                     'role': m.group,
                     'designation': m.designation.name if m.designation else None,
+                    'enable_holidays': m.company.enable_holidays,
                 }
                 for m in memberships
             ]

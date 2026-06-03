@@ -86,6 +86,7 @@ class BackupDownloadView(LoginRequiredMixin, View):
 
         # 3) Stream the zip in chunks (FileResponse) so nginx doesn't time out,
         #    and delete the temp file once streaming completes.
+        zip_size = os.path.getsize(zip_path)
         f = open(zip_path, 'rb')
         _original_close = f.close
 
@@ -100,6 +101,7 @@ class BackupDownloadView(LoginRequiredMixin, View):
 
         response = FileResponse(f, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="{download_name}"'
+        response['Content-Length'] = str(zip_size)
         return response
 
 
@@ -143,9 +145,12 @@ class BackupRestoreView(LoginRequiredMixin, View):
 
             json_path = os.path.join(tmp_dir, DATA_FILENAME)
 
-            # 1) Import data (loaddata upserts by primary key). Wrapped in a
-            #    transaction so a failure rolls back cleanly.
+            # 1) Wipe all existing data, then load the backup — true replace restore.
+            #    flush clears every table; loaddata then inserts everything from the
+            #    backup file. Both run inside a transaction so a loaddata failure
+            #    rolls the flush back and leaves the database intact.
             with transaction.atomic():
+                call_command('flush', '--no-input')
                 call_command('loaddata', json_path)
 
             # 2) On PostgreSQL, loading explicit PKs leaves sequences behind;
@@ -176,10 +181,18 @@ class BackupRestoreView(LoginRequiredMixin, View):
                         os.makedirs(os.path.dirname(dest), exist_ok=True)
                         shutil.copy2(abs_src, dest)
 
+            # The flush command wiped the session table, so the current
+            # session row no longer exists. Calling flush() here marks
+            # the session as new (key = None) so Django's session
+            # middleware does an INSERT instead of failing to UPDATE.
+            try:
+                request.session.flush()
+            except Exception:
+                pass
+
             return JsonResponse({
                 'success': True,
-                'message': 'Backup restored successfully. Data and media have been imported. '
-                           'You may need to refresh the page.'
+                'message': 'Backup restored successfully. All data replaced.'
             })
 
         except Exception as e:

@@ -31,6 +31,7 @@
                 <li class="nav-item mb-1">
                     <button class="hol-nav-btn" data-sec="trip-settlement" onclick="showSection('trip-settlement')">
                         <i class="bi bi-check2-circle me-2"></i>Trip Settlement
+                        <span class="nav-badge d-none" id="navBadgeSettlement"></span>
                     </button>
                 </li>
                 <li class="nav-item mb-1">
@@ -41,6 +42,12 @@
                 <li class="nav-item mb-1">
                     <button class="hol-nav-btn" data-sec="bank" onclick="showSection('bank')">
                         <i class="bi bi-bank me-2"></i>Bank
+                        <span class="nav-badge d-none" id="navBadgeBank"></span>
+                    </button>
+                </li>
+                <li class="nav-item mb-1">
+                    <button class="hol-nav-btn" data-sec="reports" onclick="showSection('reports')">
+                        <i class="bi bi-file-earmark-bar-graph me-2"></i>Reports
                     </button>
                 </li>
             </ul>
@@ -48,18 +55,22 @@
             <hr class="my-3">
             <p class="small text-muted fw-semibold mb-2">Quick Stats</p>
 
-            <div class="stat-card mb-2">
+            <button type="button" class="stat-card stat-card-btn mb-2 w-100" onclick="showStatList('enquiry')" title="View enquiries">
+                <span class="stat-label">Enquiries</span>
+                <span class="stat-val text-warning" id="enquiryCountDisplay">0</span>
+            </button>
+            <button type="button" class="stat-card stat-card-btn mb-2 w-100" onclick="showStatList('upcoming')" title="View upcoming">
                 <span class="stat-label">Upcoming</span>
                 <span class="stat-val text-success" id="upcomingCountDisplay">0</span>
-            </div>
-            <div class="stat-card mb-2">
+            </button>
+            <button type="button" class="stat-card stat-card-btn mb-2 w-100" onclick="showStatList('completed')" title="View completed">
                 <span class="stat-label">Completed</span>
                 <span class="stat-val text-info" id="completedCountDisplay">0</span>
-            </div>
-            <div class="stat-card mb-2">
+            </button>
+            <button type="button" class="stat-card stat-card-btn mb-2 w-100" onclick="showStatList('this-month')" title="View this month">
                 <span class="stat-label">This Month</span>
                 <span class="stat-val text-primary" id="totalCountDisplay">0</span>
-            </div>
+            </button>
         </div>
     </aside>
 
@@ -83,134 +94,190 @@
             <div id="ofError"   class="alert alert-danger  d-none"></div>
             <div id="ofSuccess" class="alert alert-success d-none"></div>
 
-            <form id="createHolidayForm" class="row g-3" style="max-width:960px;">
+            <form id="createHolidayForm" style="max-width:960px;">
 
-                <div class="col-md-6">
-                    <label for="h_trip_date" class="form-label fw-semibold">Date of Journey <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control" id="h_trip_date" required>
-                </div>
-                <div class="col-md-6">
-                    <label for="h_purpose_of_booking" class="form-label fw-semibold">Purpose of Booking</label>
-                    <input type="text" class="form-control" id="h_purpose_of_booking" maxlength="300"
-                           placeholder="e.g. FAMILY TRIP, PILGRIMAGE..." oninput="this.value=this.value.toUpperCase();">
-                </div>
-
-                <div class="col-md-6">
-                    <label for="h_booked_by" class="form-label fw-semibold">Name (Booked By) <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="h_booked_by" required maxlength="200"
-                           oninput="this.value=this.value.toUpperCase();">
-                </div>
-                <div class="col-md-6">
-                    <label for="h_contact_number" class="form-label fw-semibold">Contact Number 1 <span class="text-danger">*</span></label>
-                    <input type="tel" class="form-control" id="h_contact_number" required maxlength="15">
-                </div>
-
-                <div class="col-md-6">
-                    <label for="h_second_contact_number" class="form-label fw-semibold">Contact Number 2 <span class="text-muted small">(Optional)</span></label>
-                    <input type="tel" class="form-control" id="h_second_contact_number" maxlength="15">
-                </div>
-                <div class="col-md-6">
-                    <label for="h_payment_type_label" class="form-label fw-semibold">Payment Type</label>
-                    <select class="form-select" id="h_payment_type_label">
-                        <option value="">-- Select Payment Type --</option>
-                    </select>
-                </div>
-
-                <div class="col-md-6">
-                    <label for="h_departure_time" class="form-label fw-semibold">Time of Journey <span class="text-danger">*</span></label>
-                    <input type="time" class="form-control" id="h_departure_time" required>
-                </div>
-                <div class="col-md-6">
-                    <label for="h_return_date" class="form-label fw-semibold">Date of Return <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control" id="h_return_date" required>
-                </div>
-
-                <div class="col-md-6">
-                    <label for="h_return_time" class="form-label fw-semibold">Time of Return <span class="text-danger">*</span></label>
-                    <input type="time" class="form-control" id="h_return_time" required>
-                </div>
-                <div class="col-md-6">
-                    <label for="h_no_of_passengers" class="form-label fw-semibold">No. of Passengers <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="h_no_of_passengers" required min="1" max="500">
-                </div>
-
-                <div class="col-12">
-                    <label for="h_departure_location" class="form-label fw-semibold">Place of Starting Point <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="h_departure_location" required maxlength="200"
-                           placeholder="STARTING POINT..." oninput="this.value=this.value.toUpperCase();">
-                </div>
-
-                <div class="col-12">
-                    <label for="h_destination" class="form-label fw-semibold">Places to Visit During Journey <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="h_destination" required rows="2"
-                              placeholder="e.g. MUNNAR, THEKKADY..." oninput="this.value=this.value.toUpperCase();"></textarea>
-                </div>
-
-                <div class="col-md-7">
-                    <label for="h_booked_vehicle" class="form-label fw-semibold">Booked Vehicle <span class="text-danger">*</span></label>
-                    <select class="form-select" id="h_booked_vehicle" required>
-                        <option value="">-- Select Vehicle --</option>
-                    </select>
-                </div>
-                <div class="col-md-5">
-                    <label for="h_ac_type_ac" class="form-label fw-semibold">Type of Vehicle <span class="text-danger">*</span></label>
-                    <div class="d-flex gap-4 mt-1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="h_ac_type" id="h_ac_type_ac" value="AC">
-                            <label class="form-check-label fw-semibold" for="h_ac_type_ac"><i class="bi bi-snow me-1 text-info"></i>AC</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="h_ac_type" id="h_ac_type_nonac" value="NON_AC" checked>
-                            <label class="form-check-label fw-semibold" for="h_ac_type_nonac"><i class="bi bi-fan me-1 text-secondary"></i>Non-AC</label>
+                <!-- ── 1. JOURNEY ──────────────────────────── -->
+                <div class="of-card of-journey">
+                    <div class="of-card-head"><i class="bi bi-map"></i> Journey</div>
+                    <div class="of-card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label for="h_trip_date" class="form-label fw-semibold small text-muted mb-1">Date of Journey <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="h_trip_date" required>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_return_date" class="form-label fw-semibold small text-muted mb-1">Date of Return <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="h_return_date" required>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_dep_hour" class="form-label fw-semibold small text-muted mb-1">Departure Time <span class="text-danger">*</span></label>
+                                <input type="hidden" id="h_departure_time">
+                                <div class="hol-time-picker">
+                                    <select class="form-select" id="h_dep_hour" required onchange="syncTime('dep')">
+                                        <option value="">HH</option>
+                                        <option>1</option><option>2</option><option>3</option><option>4</option>
+                                        <option>5</option><option>6</option><option>7</option><option>8</option>
+                                        <option>9</option><option>10</option><option>11</option><option>12</option>
+                                    </select>
+                                    <span class="hol-time-sep">:</span>
+                                    <select class="form-select" id="h_dep_min" required onchange="syncTime('dep')">
+                                        <option value="">MM</option>
+                                        <option>00</option><option>05</option><option>10</option><option>15</option>
+                                        <option>20</option><option>25</option><option>30</option><option>35</option>
+                                        <option>40</option><option>45</option><option>50</option><option>55</option>
+                                    </select>
+                                    <select class="form-select hol-ampm-sel" id="h_dep_ampm" required onchange="syncTime('dep')">
+                                        <option value="">—</option><option>AM</option><option>PM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_ret_hour" class="form-label fw-semibold small text-muted mb-1">Return Time <span class="text-danger">*</span></label>
+                                <input type="hidden" id="h_return_time">
+                                <div class="hol-time-picker">
+                                    <select class="form-select" id="h_ret_hour" required onchange="syncTime('ret')">
+                                        <option value="">HH</option>
+                                        <option>1</option><option>2</option><option>3</option><option>4</option>
+                                        <option>5</option><option>6</option><option>7</option><option>8</option>
+                                        <option>9</option><option>10</option><option>11</option><option>12</option>
+                                    </select>
+                                    <span class="hol-time-sep">:</span>
+                                    <select class="form-select" id="h_ret_min" required onchange="syncTime('ret')">
+                                        <option value="">MM</option>
+                                        <option>00</option><option>05</option><option>10</option><option>15</option>
+                                        <option>20</option><option>25</option><option>30</option><option>35</option>
+                                        <option>40</option><option>45</option><option>50</option><option>55</option>
+                                    </select>
+                                    <select class="form-select hol-ampm-sel" id="h_ret_ampm" required onchange="syncTime('ret')">
+                                        <option value="">—</option><option>AM</option><option>PM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label for="h_departure_location" class="form-label fw-semibold small text-muted mb-1">Starting Point <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="h_departure_location" required maxlength="200"
+                                       placeholder="CITY / PLACE OF DEPARTURE" oninput="this.value=this.value.toUpperCase();">
+                            </div>
+                            <div class="col-12">
+                                <label for="h_destination" class="form-label fw-semibold small text-muted mb-1">Places to Visit <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="h_destination" required rows="2"
+                                          placeholder="e.g. MUNNAR, THEKKADY, VAGAMON..." oninput="this.value=this.value.toUpperCase();"></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-12">
-                    <label for="h_special_instructions" class="form-label fw-semibold">Special Instructions <span class="text-muted small">(Optional)</span></label>
-                    <textarea class="form-control" id="h_special_instructions" rows="2"
-                              placeholder="Enter any special notes..." oninput="this.value=this.value.toUpperCase();"></textarea>
+                <!-- ── 2. CUSTOMER ─────────────────────────── -->
+                <div class="of-card of-customer">
+                    <div class="of-card-head"><i class="bi bi-person-fill"></i> Customer</div>
+                    <div class="of-card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label for="h_booked_by" class="form-label fw-semibold small text-muted mb-1">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="h_booked_by" required maxlength="200"
+                                       placeholder="FULL NAME" oninput="this.value=this.value.toUpperCase();">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_contact_number" class="form-label fw-semibold small text-muted mb-1">Contact Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="h_contact_number" required maxlength="10" placeholder="10-digit number"
+                                       oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_second_contact_number" class="form-label fw-semibold small text-muted mb-1">Contact 2 <span class="text-muted">(Optional)</span></label>
+                                <input type="tel" class="form-control" id="h_second_contact_number" maxlength="10" placeholder="10-digit number"
+                                       oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_purpose_of_booking" class="form-label fw-semibold small text-muted mb-1">Purpose</label>
+                                <input type="text" class="form-control" id="h_purpose_of_booking" maxlength="300"
+                                       placeholder="FAMILY TRIP, PILGRIMAGE..." oninput="this.value=this.value.toUpperCase();">
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="h_no_of_passengers" class="form-label fw-semibold small text-muted mb-1">Passengers <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="h_no_of_passengers" required min="1" max="500" placeholder="0">
+                            </div>
+                            <div class="col-sm-8">
+                                <label for="h_payment_type_label" class="form-label fw-semibold small text-muted mb-1">Payment Type</label>
+                                <select class="form-select" id="h_payment_type_label">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-12"><hr class="my-1">
-                    <h6 class="fw-bold text-info mb-3"><i class="bi bi-signpost-2 me-1"></i>Journey Details</h6>
-                </div>
-                <div class="col-md-6">
-                    <label for="h_max_km" class="form-label fw-semibold">Max KM (Contract) <span class="text-muted small">(Optional)</span></label>
-                    <input type="number" class="form-control" id="h_max_km" min="0">
-                </div>
-                <div class="col-md-6">
-                    <label for="h_extra_km_charge" class="form-label fw-semibold">Extra KM Charge (₹/km) <span class="text-muted small">(Optional)</span></label>
-                    <input type="number" class="form-control" id="h_extra_km_charge" min="0" step="0.01">
+                <!-- ── 3. VEHICLE ──────────────────────────── -->
+                <div class="of-card of-vehicle">
+                    <div class="of-card-head"><i class="bi bi-bus-front-fill"></i> Vehicle</div>
+                    <div class="of-card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-8">
+                                <label for="h_booked_vehicle" class="form-label fw-semibold small text-muted mb-1">Booked Vehicle <span class="text-danger">*</span></label>
+                                <select class="form-select" id="h_booked_vehicle" required>
+                                    <option value="">-- Select Vehicle --</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="h_ac_type_nonac" class="form-label fw-semibold small text-muted mb-1 d-block">Type <span class="text-danger">*</span></label>
+                                <div class="btn-group w-100">
+                                    <input type="radio" class="btn-check" name="h_ac_type" id="h_ac_type_nonac" value="NON_AC" checked>
+                                    <label class="btn btn-outline-secondary" for="h_ac_type_nonac"><i class="bi bi-fan me-1"></i>Non-AC</label>
+                                    <input type="radio" class="btn-check" name="h_ac_type" id="h_ac_type_ac" value="AC">
+                                    <label class="btn btn-outline-info" for="h_ac_type_ac"><i class="bi bi-snow me-1"></i>AC</label>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_max_km" class="form-label fw-semibold small text-muted mb-1">Max KM <span class="text-muted">(Optional)</span></label>
+                                <input type="number" class="form-control" id="h_max_km" min="0" placeholder="Contract KM">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_extra_km_charge" class="form-label fw-semibold small text-muted mb-1">Extra KM Charge ₹/km <span class="text-muted">(Optional)</span></label>
+                                <input type="number" class="form-control" id="h_extra_km_charge" min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="col-12">
+                                <label for="h_special_instructions" class="form-label fw-semibold small text-muted mb-1">Special Instructions <span class="text-muted">(Optional)</span></label>
+                                <textarea class="form-control" id="h_special_instructions" rows="2"
+                                          placeholder="Any special requirements..." oninput="this.value=this.value.toUpperCase();"></textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-12"><hr class="my-1">
-                    <h6 class="fw-bold text-info mb-3"><i class="bi bi-currency-rupee me-1"></i>Payment Details</h6>
-                </div>
-                <div class="col-md-4">
-                    <label for="h_total_rent" class="form-label fw-semibold">Total Rent (₹) <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="h_total_rent" required min="0" step="0.01" value="0" oninput="calcHolidayTotal()">
-                </div>
-                <div class="col-md-4">
-                    <label for="h_service_charge" class="form-label fw-semibold">Service Charge (₹) <span class="text-muted small">(Optional)</span></label>
-                    <input type="number" class="form-control" id="h_service_charge" min="0" step="0.01" value="0" oninput="calcHolidayTotal()">
-                </div>
-                <div class="col-md-4">
-                    <label for="h_total_amount_display" class="form-label fw-semibold">Total Amount (₹)</label>
-                    <input type="text" class="form-control bg-light fw-bold text-success" id="h_total_amount_display" readonly value="0.00">
-                </div>
-                <div class="col-md-6">
-                    <label for="h_advance_amount" class="form-label fw-semibold">Advance Amount (₹) <span class="text-muted small">(Optional)</span></label>
-                    <input type="number" class="form-control" id="h_advance_amount" min="0" step="0.01" value="0" oninput="calcHolidayTotal()">
-                </div>
-                <div class="col-md-6">
-                    <label for="h_balance_amount_display" class="form-label fw-semibold">Balance Amount (₹)</label>
-                    <input type="text" class="form-control bg-light fw-bold text-danger" id="h_balance_amount_display" readonly value="0.00">
+                <!-- ── 4. PAYMENT ──────────────────────────── -->
+                <div class="of-card of-payment">
+                    <div class="of-card-head"><i class="bi bi-currency-rupee"></i> Payment</div>
+                    <div class="of-card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label for="h_total_rent" class="form-label fw-semibold small text-muted mb-1">Total Rent (₹) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="h_total_rent" required min="0" step="0.01" value="0" oninput="calcHolidayTotal()">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_service_charge" class="form-label fw-semibold small text-muted mb-1">Service Charge (₹) <span class="text-muted">(Optional)</span></label>
+                                <input type="number" class="form-control" id="h_service_charge" min="0" step="0.01" value="0" oninput="calcHolidayTotal()">
+                            </div>
+                            <div class="col-12">
+                                <div class="of-total-banner">
+                                    <span class="fw-bold text-success">Total Amount</span>
+                                    <span class="fw-bold fs-4 text-success">₹ <span id="h_total_amount_display">0.00</span></span>
+                                    <input type="hidden" id="h_total_amount_hidden">
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_advance_amount" class="form-label fw-semibold small text-muted mb-1">Advance (₹) <span class="text-muted">(Optional)</span></label>
+                                <input type="number" class="form-control" id="h_advance_amount" min="0" step="0.01" value="0" oninput="calcHolidayTotal()">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="h_balance_amount_display" class="form-label fw-semibold small text-muted mb-1">Balance (₹)</label>
+                                <input type="text" class="form-control of-readonly text-danger fw-bold" id="h_balance_amount_display" readonly value="0.00">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-12 pb-4">
-                    <button type="submit" class="btn btn-info fw-bold px-5" id="createHolidayBtn">
-                        <i class="bi bi-check-lg me-2"></i>Create Booking
+                <div class="pb-4">
+                    <button type="submit" class="btn btn-info fw-bold px-5 py-2" id="createHolidayBtn" style="border-radius:10px;">
+                        <i class="bi bi-check-circle me-2"></i>Create Booking
                     </button>
                 </div>
             </form>
@@ -262,19 +329,19 @@
                   <div id="repairAlert" class="alert d-none mb-3"></div>
 
                   <div class="mb-3">
-                    <label class="form-label fw-semibold">Vehicle <span class="text-danger">*</span></label>
+                    <label for="repair_vehicle_id" class="form-label fw-semibold">Vehicle <span class="text-danger">*</span></label>
                     <select class="form-select" id="repair_vehicle_id" required>
                       <option value="">-- Select Vehicle --</option>
                     </select>
                   </div>
 
                   <div class="mb-3">
-                    <label class="form-label fw-semibold">Notes</label>
+                    <label for="repair_notes" class="form-label fw-semibold">Notes</label>
                     <textarea class="form-control form-control-sm" id="repair_notes" rows="2" placeholder="Optional notes"></textarea>
                   </div>
 
                   <div class="mb-2">
-                    <label class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
+                    <label for="repairItemsContainer" class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
                     <div id="repairItemsContainer"></div>
                     <button type="button" class="btn btn-outline-info btn-sm mt-2" onclick="addRepairItem()">
                       <i class="bi bi-plus-lg me-1"></i>Add Item
@@ -318,11 +385,13 @@
             <!-- Type toggle -->
             <div class="mb-3">
                 <div class="btn-group">
-                    <button class="btn btn-info active" id="hbtype-order" onclick="hSwitchBankType('order')">
+                    <button class="btn btn-info active position-relative" id="hbtype-order" onclick="hSwitchBankType('order')">
                         <i class="bi bi-receipt-cutoff me-1"></i>Order Form
+                        <span class="bank-type-badge d-none" id="bankOrderBadge"></span>
                     </button>
-                    <button class="btn btn-outline-info" id="hbtype-repair" onclick="hSwitchBankType('repair')">
+                    <button class="btn btn-outline-info position-relative" id="hbtype-repair" onclick="hSwitchBankType('repair')">
                         <i class="bi bi-tools me-1"></i>Repair &amp; Maintenance
+                        <span class="bank-type-badge d-none" id="bankRepairBadge"></span>
                     </button>
                 </div>
             </div>
@@ -351,13 +420,111 @@
             </div>
         </div>
 
+        <!-- ▸ REPORTS ─────────────────────────────────────── -->
+        <div id="section-reports" class="hol-section p-4">
+            <h4 class="fw-bold mb-3"><i class="bi bi-file-earmark-bar-graph me-2 text-info"></i>Reports</h4>
+
+            <!-- Type toggle -->
+            <div class="mb-3">
+                <div class="btn-group">
+                    <button class="btn btn-info active" id="rtype-bank" onclick="rSwitchType('bank')">
+                        <i class="bi bi-receipt-cutoff me-1"></i>Order Form Report
+                    </button>
+                    <button class="btn btn-outline-info" id="rtype-repair" onclick="rSwitchType('repair')">
+                        <i class="bi bi-tools me-1"></i>Repair &amp; Maintenance
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary totals (all-time, auto-loaded) -->
+            <div class="row g-3 mb-3" id="reportSummaryCards">
+                <div class="col-sm-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3 py-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-success bg-opacity-10" style="width:48px;height:48px;flex-shrink:0;">
+                                <i class="bi bi-bank fs-4 text-success"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-0">Total Bank Amount (All Time)</p>
+                                <h4 class="fw-bold mb-0 text-success" id="summaryBankTotal">—</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3 py-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning bg-opacity-10" style="width:48px;height:48px;flex-shrink:0;">
+                                <i class="bi bi-tools fs-4 text-warning"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-0">Total Repair Amount (All Time)</p>
+                                <h4 class="fw-bold mb-0 text-warning" id="summaryRepairTotal">—</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date filter bar -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="r_from_date" class="form-label mb-0 fw-semibold small text-muted">Approval Date From</label>
+                            <input type="date" class="form-control form-control-sm" id="r_from_date" style="width:155px;">
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="r_to_date" class="form-label mb-0 fw-semibold small text-muted">To</label>
+                            <input type="date" class="form-control form-control-sm" id="r_to_date" style="width:155px;">
+                        </div>
+                        <button class="btn btn-info btn-sm fw-semibold" onclick="loadReport()">
+                            <i class="bi bi-search me-1"></i>Generate
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm d-none" id="rPrintBtn" onclick="printReport()">
+                            <i class="bi bi-printer me-1"></i>Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reportAlert" class="alert d-none mb-2"></div>
+            <div id="reportTableWrap">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-file-earmark-bar-graph fs-1 d-block mb-2 opacity-25"></i>
+                    Select a date range and click Generate.
+                </div>
+            </div>
+        </div>
+
     </div><!-- /hol-content -->
 </div><!-- /hol-wrapper -->
+
+<!-- Hidden print area -->
+<div id="reportPrintArea" style="display:none;"></div>
 
 
 <!-- ═══════════════════════════════════════════════════════════
      MODALS (always present, triggered by JS)
      ═══════════════════════════════════════════════════════════ -->
+
+<!-- Quick Stat List Modal -->
+<div class="modal fade" id="statListModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" id="statListModalHeader">
+                <h5 class="modal-title fw-bold" id="statListModalTitle" aria-live="polite">Bookings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" id="statListModalBody">
+                <div class="text-center py-4"><div class="spinner-border text-info"></div></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Repair View Modal -->
 <div class="modal fade" id="hRepairViewModal" tabindex="-1">
@@ -388,15 +555,15 @@
             <div class="modal-body p-3">
                 <input type="hidden" id="hEditRepairId">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Vehicle <span class="text-danger">*</span></label>
+                    <label for="hEditRepairVehicle" class="form-label fw-semibold">Vehicle <span class="text-danger">*</span></label>
                     <select class="form-select" id="hEditRepairVehicle"><option value="">-- Select Vehicle --</option></select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Notes</label>
+                    <label for="hEditRepairNotes" class="form-label fw-semibold">Notes</label>
                     <textarea class="form-control form-control-sm" id="hEditRepairNotes" rows="2"></textarea>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
+                    <label for="hEditRepairItems" class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
                     <div id="hEditRepairItems"></div>
                     <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="hAddEditItem()">
                         <i class="bi bi-plus-lg me-1"></i>Add Item
@@ -568,6 +735,11 @@
                 <a id="sdm_detail_link" href="#" class="btn btn-outline-info" target="_blank">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Full Detail
                 </a>
+                {% if can_delete_holiday %}
+                <button type="button" class="btn btn-outline-danger d-none" id="deleteSettlementBtn" onclick="deleteTripSettlementFromModal()">
+                    <i class="bi bi-trash me-1"></i>Delete Settlement
+                </button>
+                {% endif %}
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-outline-warning d-none" id="cancelEditBtn" onclick="cancelEditMode()">
                     <i class="bi bi-x-lg me-1"></i>Cancel Edit
@@ -622,7 +794,7 @@
                 <input type="hidden" id="repairDetailCurrentId">
                 <input type="hidden" id="repairDetailStatus">
                 <div id="repairSubmitBankBtn" style="display:none; width:100%">
-                    <label class="form-label small fw-semibold">Attach Bank Document (optional)</label>
+                    <label for="repairBankDocInput" class="form-label small fw-semibold">Attach Bank Document (optional)</label>
                     <input type="file" class="form-control form-control-sm mb-2" id="repairBankDocInput" accept="image/*,.pdf">
                     <button class="btn btn-info w-100 fw-semibold text-dark" onclick="submitRepairToBank()">
                         <i class="bi bi-bank me-2"></i>Submit to Bank
@@ -654,7 +826,7 @@
 .hol-content { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
 .hol-section { display:none; }
 .hol-section.active { display:flex; flex-direction:column; flex:1; overflow:auto; }
-#section-calendar.active { overflow:hidden; }
+#section-calendar.active { overflow:auto; }
 
 /* ── sidebar buttons ── */
 .hol-nav-btn {
@@ -664,40 +836,78 @@
 }
 .hol-nav-btn:hover  { background:#e9ecef; }
 .hol-nav-btn.active { background:#0dcaf0; color:#000; font-weight:600; }
+.hol-nav-btn { position:relative; }
+.nav-badge {
+    position:absolute; top:6px; right:10px;
+    background:#dc3545; color:#fff;
+    font-size:.65rem; font-weight:700; line-height:1;
+    min-width:18px; height:18px;
+    border-radius:9px; padding:2px 5px;
+    display:flex; align-items:center; justify-content:center;
+}
+.bank-type-badge {
+    position:absolute; top:-8px; right:-8px;
+    background:#dc3545; color:#fff;
+    font-size:.65rem; font-weight:700; line-height:1;
+    min-width:18px; height:18px;
+    border-radius:9px; padding:2px 5px;
+    display:flex; align-items:center; justify-content:center;
+}
 
 /* ── stat cards ── */
-.stat-card { background:#fff; border-radius:8px; padding:10px 14px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:flex; justify-content:space-between; align-items:center; }
+.stat-card { background:#fff; border-radius:8px; padding:10px 14px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:flex; justify-content:space-between; align-items:center; border:none; text-align:left; }
+.stat-card-btn { cursor:pointer; transition:box-shadow .15s, transform .15s; }
+.stat-card-btn:hover { box-shadow:0 3px 10px rgba(0,0,0,.15); transform:translateY(-1px); }
+.stat-card-btn:focus { outline:2px solid #0dcaf0; outline-offset:2px; }
 .stat-label { font-size:.8rem; color:#6c757d; }
 .stat-val   { font-size:1.5rem; font-weight:700; line-height:1; }
 
 /* ── calendar ── */
-#holidayCalendar { background:#fff; border-radius:0; box-shadow:none; padding:16px 20px; display:flex; flex-direction:column; flex:1; min-height:0; }
+#holidayCalendar { background:#fff; border-radius:0; box-shadow:none; padding:16px 20px; display:flex; flex-direction:column; flex:1; min-height:0; min-width:700px; }
 .hcal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 4px; flex-shrink:0; }
 .hcal-header h2 { font-size:1.5rem; font-weight:bold; color:#333; margin:0; }
 .hcal-nav { display:flex; gap:10px; }
 .hcal-nav button { background:#0dcaf0; color:#000; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:.9rem; font-weight:600; transition:all .3s; }
 .hcal-nav button:hover { background:#0bb5d4; transform:translateY(-2px); }
-.hcal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; padding:6px 0; border-bottom:2px solid #e9ecef; flex-shrink:0; }
+.hcal-weekdays { display:grid; grid-template-columns:repeat(7,minmax(120px,1fr)); gap:6px; margin-bottom:6px; padding:6px 0; border-bottom:2px solid #e9ecef; flex-shrink:0; }
 .hcal-weekdays div { text-align:center; font-weight:bold; color:#0dcaf0; font-size:.85rem; text-transform:uppercase; }
-.hcal-days { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; flex:1; min-height:0; grid-auto-rows:1fr; }
-.hcal-day { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:8px 6px; font-size:.9rem; font-weight:500; border-radius:8px; cursor:pointer; transition:all .2s; background:#f8f9fa; color:#333; border:2px solid transparent; position:relative; overflow:hidden; }
-.hcal-day .day-number { font-weight:600; font-size:1rem; margin-bottom:4px; z-index:2; width:100%; text-align:left; }
-.day-holidays { display:flex; flex-direction:column; gap:3px; width:100%; overflow-y:auto; max-height:calc(100% - 24px); }
-.holiday-badge { font-size:.7rem; padding:3px 6px; border-radius:4px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; cursor:pointer; transition:all .2s; }
-.holiday-badge:hover { transform:translateX(2px); box-shadow:0 2px 4px rgba(0,0,0,.15); }
-.holiday-pending   { background:#fff3cd; color:#856404; border:1px solid #ffc107; }
-.holiday-confirmed { background:#d1e7dd; color:#0f5132; border:1px solid #198754; }
-.hcal-day:hover { background:#e8f8fd; border-color:#0dcaf0; transform:scale(1.02); }
+.hcal-days { display:grid; grid-template-columns:repeat(7,minmax(120px,1fr)); row-gap:6px; column-gap:0; flex:1; min-height:0; grid-auto-rows:minmax(110px,1fr); }
+.hcal-day { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:8px 0 4px; font-size:.9rem; font-weight:500; cursor:pointer; transition:background .2s; background:#f8f9fa; color:#333; border-top:2px solid transparent; border-bottom:2px solid transparent; box-shadow:inset -1px 0 0 #e9ecef; position:relative; overflow:visible; }
+.hcal-day .day-number { font-weight:600; font-size:1rem; margin-bottom:4px; z-index:2; width:100%; text-align:left; padding:0 6px; flex-shrink:0; }
+/* Each booking on its own line, stacked vertically */
+.day-holidays { display:flex; flex-direction:column; gap:3px; width:100%; overflow:visible; }
+.holiday-badge {
+    height:22px; display:flex; align-items:center;
+    border-radius:4px; align-self:stretch; margin:0 3px;
+    cursor:pointer; transition:filter .15s; overflow:hidden;
+    border:none; padding:0; flex-shrink:0;
+}
+.holiday-badge:hover { filter:brightness(.88); }
+/* Spacer holds the row position for lane alignment (no booking in this lane on this day) */
+.hbadge-spacer { height:22px; flex-shrink:0; }
+.hbadge-label { font-size:.7rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 7px; line-height:22px; }
+.holiday-pending   { background:#ffc107; }
+.holiday-pending   .hbadge-label { color:#000; }
+.holiday-confirmed { background:#1a9e4e; }
+.holiday-confirmed .hbadge-label { color:#fff; }
+.holiday-completed { background:#0d6efd; }
+.holiday-completed .hbadge-label { color:#fff; }
+/* multi-day continuous bar — flush to cell edges so adjacent segments connect */
+.hbadge-start { border-radius:4px 0 0 4px; margin-left:3px;  margin-right:0; }
+.hbadge-mid   { border-radius:0;            margin-left:0;    margin-right:0; }
+.hbadge-end   { border-radius:0 4px 4px 0; margin-left:0;    margin-right:3px; }
+.hcal-day:hover { background:#e8f8fd; }
 .hcal-day.other-month { color:#ccc; background:transparent; opacity:.5; }
-.hcal-day.today { background:#0dcaf0; color:#000; font-weight:bold; box-shadow:0 3px 10px rgba(13,202,240,.4); }
+.hcal-day.today { background:#0dcaf0; color:#000; font-weight:bold; }
 .hcal-day.today .day-number { color:#000; font-weight:700; }
-.hcal-day.has-bookings { background:#fff; border-color:#dee2e6; }
-.hcal-day.has-bookings:hover { background:#e8f8fd; border-color:#0dcaf0; }
+.hcal-day.has-bookings { background:#fff; border-top-color:#dee2e6; border-bottom-color:#dee2e6; }
+.hcal-day.has-bookings:hover { background:#e8f8fd; }
 .hcal-legend { display:flex; gap:12px; padding:6px 10px; margin-bottom:8px; background:#f8f9fa; border-radius:6px; align-items:center; font-size:.8rem; flex-shrink:0; }
 .legend-item { display:flex; align-items:center; gap:6px; }
 .legend-color { width:16px; height:16px; border-radius:3px; }
-.legend-pending   { background:#fff3cd; border:1px solid #ffc107; }
-.legend-confirmed { background:#d1e7dd; border:1px solid #198754; }
+.legend-pending   { background:#ffc107; border:none; }
+.legend-confirmed { background:#1a9e4e; border:none; }
+.legend-completed { background:#0d6efd; border:none; }
 .booking-item { padding:15px 20px; border-bottom:1px solid #e9ecef; cursor:pointer; transition:all .3s; background:#fff; }
 .booking-item:last-child { border-bottom:none; }
 .booking-item:hover { background:#e8f8fd; transform:translateX(5px); }
@@ -713,6 +923,30 @@
 /* ── trip rows ── */
 .trip-row { cursor:pointer; transition:all .2s; }
 .trip-row:hover { background:#e8f8fd !important; }
+
+/* ── remove number spinners everywhere in holidays ── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
+
+/* ── time picker ── */
+.hol-time-picker { display:flex; align-items:stretch; border:1px solid #ced4da; border-radius:8px; overflow:hidden; background:#fff; }
+.hol-time-picker .form-select { flex:1; min-width:0; border:none; border-radius:0; box-shadow:none; padding-left:8px; padding-right:20px; }
+.hol-time-picker .form-select:focus { box-shadow:none; }
+.hol-ampm-sel { flex:0 0 68px !important; border-left:1px solid #dee2e6 !important; }
+.hol-time-sep { font-weight:700; font-size:1rem; color:#adb5bd; padding:0 4px; display:flex; align-items:center; background:#f8f9fa; border-left:1px solid #dee2e6; border-right:1px solid #dee2e6; flex-shrink:0; }
+
+/* ── order form section cards ── */
+.of-card { border-radius:12px; border:1px solid #e9ecef; margin-bottom:20px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.05); }
+.of-card-head { padding:10px 16px; font-weight:700; font-size:.88rem; display:flex; align-items:center; gap:8px; letter-spacing:.03em; text-transform:uppercase; }
+.of-card-body { padding:18px 16px; background:#fff; }
+.of-journey  .of-card-head { background:#e0f7fa; color:#006064; }
+.of-customer .of-card-head { background:#f3e5f5; color:#6a1b9a; }
+.of-vehicle  .of-card-head { background:#fff3e0; color:#e65100; }
+.of-payment  .of-card-head { background:#e8f5e9; color:#1b5e20; }
+.of-total-banner { background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border-radius:10px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
+/* readonly amount inputs */
+.of-readonly { background:#f8f9fa !important; font-weight:700; cursor:default; }
 </style>
 
 
@@ -720,10 +954,81 @@
      JAVASCRIPT – all three sections combined
      ═══════════════════════════════════════════════════════════ -->
 <script>
+// Company info for print headers
+const COMPANY_NAME = "{{ company.name|default:''|escapejs }}";
+const COMPANY_LOGO_URL = "{% if company.logo %}{{ company.logo.url }}{% endif %}";
+
 // ─── SHARED UTILS ─────────────────────────────────────────────
 function getCSRF() { return globalThis.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''; }
 function esc(text) { if (!text) { return ''; } return String(text).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 function fmtDate(dateStr) { if (!dateStr) { return '—'; } const d = new Date(dateStr + 'T00:00:00'); return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+// Always use local date components — toISOString() returns UTC and shifts dates in IST
+function localDateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+// ─── LANE ASSIGNMENT ──────────────────────────────────────────
+// Assigns each booking a vertical "lane" (row index) so multi-day bookings
+// appear on the same row across all their days, and no two overlapping
+// bookings share the same lane.
+let hLaneAssignments = {};
+
+function computeLanes() {
+    // Gather the full date range for every unique booking id
+    const ranges = {};
+    Object.entries(hBookingsByDate).forEach(([dateStr, entries]) => {
+        entries.forEach(b => {
+            if (!ranges[b.id]) {
+                ranges[b.id] = { id: b.id, startDate: dateStr, endDate: dateStr };
+            } else {
+                if (dateStr < ranges[b.id].startDate) ranges[b.id].startDate = dateStr;
+                if (dateStr > ranges[b.id].endDate)   ranges[b.id].endDate   = dateStr;
+            }
+        });
+    });
+
+    // Sort by start date (stable tie-break on id)
+    const sorted = Object.values(ranges).sort(
+        (a, b) => a.startDate.localeCompare(b.startDate) || a.id - b.id
+    );
+
+    // Greedy lane assignment: pick the first lane whose last booking has ended
+    const assignments = {};
+    const laneEnd = []; // laneEnd[i] = last occupied date string for lane i
+    sorted.forEach(b => {
+        let lane = 0;
+        while (laneEnd[lane] !== undefined && laneEnd[lane] >= b.startDate) lane++;
+        assignments[b.id] = lane;
+        laneEnd[lane] = b.endDate;
+    });
+    return assignments;
+}
+
+// ─── TIME PICKER ──────────────────────────────────────────────
+function syncTime(which) {
+    const p = which === 'dep' ? 'h_dep' : 'h_ret';
+    const hiddenId = which === 'dep' ? 'h_departure_time' : 'h_return_time';
+    const hour = document.getElementById(p + '_hour').value;
+    const min  = document.getElementById(p + '_min').value;
+    const ampm = document.getElementById(p + '_ampm').value;
+    if (!hour || !min || !ampm) { document.getElementById(hiddenId).value = ''; return; }
+    let h24 = parseInt(hour, 10);
+    if (ampm === 'AM' && h24 === 12) h24 = 0;
+    if (ampm === 'PM' && h24 !== 12) h24 += 12;
+    document.getElementById(hiddenId).value = `${String(h24).padStart(2, '0')}:${min}`;
+}
+// Populate a time picker from a HH:MM (24h) string
+function setTimePicker(which, hhmm) {
+    if (!hhmm) return;
+    const p = which === 'dep' ? 'h_dep' : 'h_ret';
+    const [hStr, mStr] = hhmm.split(':');
+    let h = parseInt(hStr, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    if (h === 0) h = 12;
+    else if (h > 12) h -= 12;
+    document.getElementById(p + '_hour').value = String(h);
+    document.getElementById(p + '_min').value  = mStr;
+    document.getElementById(p + '_ampm').value = ampm;
+    syncTime(which);
+}
 
 // ─── SECTION SWITCHING ────────────────────────────────────────
 let currentSection = 'calendar';
@@ -738,13 +1043,22 @@ function showSection(name) {
     if (btn) btn.classList.add('active');
     currentSection = name;
 
-    if (name === 'calendar') { renderHolidayCalendar(hCurrentDate); }
+    if (name === 'calendar') { loadHolidayBookedDates(); }
     else if (name === 'trip-settlement') { loadCompletedTrips(); }
     else if (name === 'bank') { loadBankList(); }
     else if (name === 'repair') {
         loadRepairVehicles();
         loadRepairSectionList();
         if (document.getElementById('repairItemsContainer').children.length === 0) addRepairItem();
+    }
+    else if (name === 'reports') {
+        if (!document.getElementById('r_from_date').value) {
+            const now = new Date();
+            const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+            document.getElementById('r_from_date').value = `${y}-${m}-01`;
+            document.getElementById('r_to_date').value   = localDateStr(now);
+        }
+        loadReportSummary();
     }
 }
 
@@ -760,8 +1074,8 @@ function calcHolidayTotal() {
     const advance = Number.parseFloat(document.getElementById('h_advance_amount').value) || 0;
     const total   = rent + service;
     const balance = Math.max(0, total - advance);
-    document.getElementById('h_total_amount_display').value  = total.toFixed(2);
-    document.getElementById('h_balance_amount_display').value = balance.toFixed(2);
+    document.getElementById('h_total_amount_display').textContent = total.toFixed(2);
+    document.getElementById('h_balance_amount_display').value     = balance.toFixed(2);
 }
 
 function loadVehicles() {
@@ -810,8 +1124,9 @@ function renderHolidayCalendar(date) {
     let html = `
         <div class="hcal-legend">
             <span class="fw-semibold text-muted me-2">Legend:</span>
-            <div class="legend-item"><div class="legend-color legend-pending"></div><span>Pending</span></div>
+            <div class="legend-item"><div class="legend-color legend-pending"></div><span>Enquiry</span></div>
             <div class="legend-item"><div class="legend-color legend-confirmed"></div><span>Confirmed</span></div>
+            <div class="legend-item"><div class="legend-color legend-completed"></div><span>Completed</span></div>
         </div>
         <div class="hcal-header">
             <h2>${monthNames[month]} ${year}</h2>
@@ -839,11 +1154,34 @@ function renderHolidayCalendar(date) {
         if (hasBooking) classes.push('has-bookings');
         let badgesHTML = '';
         if (hasBooking && hBookingsByDate[dateStr]) {
-            badgesHTML = '<div class="day-holidays">';
-            hBookingsByDate[dateStr].forEach(b => {
-                const cls = b.status === 'CONFIRMED' ? 'holiday-confirmed' : 'holiday-pending';
-                badgesHTML += `<div class="holiday-badge ${cls}" title="${esc(b.destination)}">${esc(b.destination)}</div>`;
+            const dayBookings = hBookingsByDate[dateStr];
+            // Build a lane → booking map for this day
+            const laneMap = {};
+            let maxLane = -1;
+            dayBookings.forEach(b => {
+                const lane = hLaneAssignments[b.id] ?? 0;
+                laneMap[lane] = b;
+                if (lane > maxLane) maxLane = lane;
             });
+            badgesHTML = '<div class="day-holidays">';
+            for (let lane = 0; lane <= maxLane; lane++) {
+                const b = laneMap[lane];
+                if (!b) {
+                    // Spacer keeps this row's height so multi-day bars align across cells
+                    badgesHTML += `<div class="hbadge-spacer"></div>`;
+                } else {
+                    const cls = b.status === 'COMPLETED' ? 'holiday-completed' : b.status === 'CONFIRMED' ? 'holiday-confirmed' : 'holiday-pending';
+                    if (b.multiDay) {
+                        let spanCls = 'hbadge-mid';
+                        if (b.isStart) spanCls = 'hbadge-start';
+                        else if (b.isEnd) spanCls = 'hbadge-end';
+                        const text = b.isStart ? `<span class="hbadge-label">${esc(b.label)}</span>` : '';
+                        badgesHTML += `<div class="holiday-badge ${cls} ${spanCls}" title="${esc(b.destination)}">${text}</div>`;
+                    } else {
+                        badgesHTML += `<div class="holiday-badge ${cls}" title="${esc(b.destination)}"><span class="hbadge-label">${esc(b.label)}</span></div>`;
+                    }
+                }
+            }
             badgesHTML += '</div>';
         }
         html += `<div class="${classes.join(' ')}" onclick="hSelectDate('${dateStr}')">
@@ -857,8 +1195,8 @@ function renderHolidayCalendar(date) {
     document.getElementById('holidayCalendar').innerHTML = html;
 }
 
-globalThis.hPrevMonth = function() { hCurrentDate.setMonth(hCurrentDate.getMonth() - 1); loadHolidayBookedDates(); };
-globalThis.hNextMonth = function() { hCurrentDate.setMonth(hCurrentDate.getMonth() + 1); loadHolidayBookedDates(); };
+globalThis.hPrevMonth = function() { hCurrentDate = new Date(hCurrentDate.getFullYear(), hCurrentDate.getMonth() - 1, 1); loadHolidayBookedDates(); };
+globalThis.hNextMonth = function() { hCurrentDate = new Date(hCurrentDate.getFullYear(), hCurrentDate.getMonth() + 1, 1); loadHolidayBookedDates(); };
 globalThis.hToday     = function() { hCurrentDate = new Date(); loadHolidayBookedDates(); };
 
 globalThis.hSelectDate = function(dateStr) {
@@ -866,7 +1204,7 @@ globalThis.hSelectDate = function(dateStr) {
     if (hBookedDates[dateStr]) {
         showHolidayList(dateStr);
     } else {
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateStr(new Date());
         if (dateStr < today) return;
         document.getElementById('h_trip_date').value = dateStr;
         document.getElementById('h_trip_date').min   = today;
@@ -882,31 +1220,52 @@ function loadHolidayBookedDates() {
         hBookingsByDate = {};
         if (data.events) {
             data.events.forEach(ev => {
-                hBookedDates[ev.start] = true;
-                if (!hBookingsByDate[ev.start]) hBookingsByDate[ev.start] = [];
-                const status = ev.color === '#0d6efd' ? 'CONFIRMED' : 'PENDING';
+                const status = ev.status || 'PENDING';
+                const label  = ev.label || ev.title.split(' – ')[1] || ev.title;
                 const dest   = ev.title.split(' – ')[1] || ev.title;
-                hBookingsByDate[ev.start].push({ id: ev.id, destination: dest, status });
+
+                const startD = new Date(ev.start + 'T00:00:00');
+                const rawEnd = ev.end ? new Date(ev.end + 'T00:00:00') : new Date(startD);
+                // Guard: if return_date < trip_date (bad data), treat as single-day
+                const endD = rawEnd >= startD ? rawEnd : new Date(startD);
+                const cur  = new Date(startD);
+                while (cur <= endD) {
+                    const dateStr = localDateStr(cur);
+                    hBookedDates[dateStr] = true;
+                    if (!hBookingsByDate[dateStr]) { hBookingsByDate[dateStr] = []; }
+                    const isStart  = dateStr === ev.start;
+                    const isEnd    = ev.end ? dateStr === ev.end : true;
+                    const multiDay = !!ev.end && ev.start !== ev.end;
+                    hBookingsByDate[dateStr].push({ id: ev.id, label, destination: dest, status, isStart, isEnd, multiDay });
+                    cur.setDate(cur.getDate() + 1);
+                }
             });
         }
+        hLaneAssignments = computeLanes();
         renderHolidayCalendar(hCurrentDate);
         updateSidebarCounts();
+        loadReportSummary();
     })
     .catch(err => { console.error(err); renderHolidayCalendar(hCurrentDate); });
 }
 
 function updateSidebarCounts() {
     let upcoming = 0, total = 0;
+    const enquiryIds = new Set();
     const now = new Date();
     const y   = hCurrentDate.getFullYear();
     const m   = hCurrentDate.getMonth();
     Object.entries(hBookingsByDate).forEach(([dateStr, bookings]) => {
         const d = new Date(dateStr + 'T00:00:00');
-        bookings.forEach(() => {
-            if (d.getFullYear() === y && d.getMonth() === m) total++;
-            if (d >= now) upcoming++;
+        bookings.forEach(b => {
+            if (b.isStart || !b.multiDay) {
+                if (d.getFullYear() === y && d.getMonth() === m) total++;
+                if (d >= now && b.status === 'CONFIRMED') upcoming++;
+                if (b.status === 'PENDING') enquiryIds.add(b.id);
+            }
         });
     });
+    document.getElementById('enquiryCountDisplay').textContent  = enquiryIds.size;
     document.getElementById('upcomingCountDisplay').textContent = upcoming;
     document.getElementById('totalCountDisplay').textContent    = total;
     fetch('/api/holidays/completed-count/', { headers: { 'X-CSRFToken': getCSRF() } })
@@ -923,7 +1282,7 @@ function showHolidayList(dateStr) {
         btn.onclick = function() {
             bootstrap.Modal.getInstance(document.getElementById('holidayListModal'))?.hide();
             setTimeout(() => {
-                const today = new Date().toISOString().split('T')[0];
+                const today = localDateStr(new Date());
                 document.getElementById('h_trip_date').value = dateStr;
                 document.getElementById('h_trip_date').min   = today;
                 showSection('order-form');
@@ -964,9 +1323,20 @@ function showHolidayList(dateStr) {
 
 // ─── ORDER FORM SUBMIT ────────────────────────────────────────
 function initOrderForm() {
-    const today = new Date().toISOString().split('T')[0];
-    const tripDateInput = document.getElementById('h_trip_date');
+    const today = localDateStr(new Date());
+    const tripDateInput   = document.getElementById('h_trip_date');
+    const returnDateInput = document.getElementById('h_return_date');
     if (tripDateInput) { tripDateInput.min = today; tripDateInput.value = today; }
+    // Auto-fill return date with journey date if return date is empty
+    if (tripDateInput && returnDateInput) {
+        function syncReturnDate() {
+            if (tripDateInput.value && !returnDateInput.value) {
+                returnDateInput.value = tripDateInput.value;
+            }
+        }
+        tripDateInput.addEventListener('change', syncReturnDate);
+        syncReturnDate();
+    }
     loadVehicles();
     loadPaymentTypes();
 
@@ -978,19 +1348,47 @@ function initOrderForm() {
         const successDiv = document.getElementById('ofSuccess');
         errorDiv.classList.add('d-none');
         successDiv.classList.add('d-none');
+        if (!document.getElementById('h_departure_time').value) {
+            errorDiv.textContent = 'Please select the Time of Journey.';
+            errorDiv.classList.remove('d-none');
+            document.getElementById('h_dep_hour').focus();
+            return;
+        }
+        if (!document.getElementById('h_return_time').value) {
+            errorDiv.textContent = 'Please select the Time of Return.';
+            errorDiv.classList.remove('d-none');
+            document.getElementById('h_ret_hour').focus();
+            return;
+        }
+        const cNum = document.getElementById('h_contact_number').value;
+        if (!/^\d{10}$/.test(cNum)) {
+            errorDiv.textContent = 'Contact number must be exactly 10 digits.';
+            errorDiv.classList.remove('d-none');
+            document.getElementById('h_contact_number').focus();
+            return;
+        }
+        const c2Num = document.getElementById('h_second_contact_number').value;
+        if (c2Num && !/^\d{10}$/.test(c2Num)) {
+            errorDiv.textContent = 'Contact 2 must be exactly 10 digits.';
+            errorDiv.classList.remove('d-none');
+            document.getElementById('h_second_contact_number').focus();
+            return;
+        }
         const btn = document.getElementById('createHolidayBtn');
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating…';
         const acTypeEl = document.querySelector('input[name="h_ac_type"]:checked');
+        const tripDateVal   = document.getElementById('h_trip_date').value;
+        const returnDateVal = document.getElementById('h_return_date').value || tripDateVal;
         const payload = {
-            trip_date:             document.getElementById('h_trip_date').value,
+            trip_date:             tripDateVal,
             purpose_of_booking:    document.getElementById('h_purpose_of_booking').value,
             booked_by:             document.getElementById('h_booked_by').value,
             contact_number:        document.getElementById('h_contact_number').value,
             second_contact_number: document.getElementById('h_second_contact_number').value || null,
             payment_type_label:    document.getElementById('h_payment_type_label').value,
             departure_time:        document.getElementById('h_departure_time').value,
-            return_date:           document.getElementById('h_return_date').value,
+            return_date:           returnDateVal,
             return_time:           document.getElementById('h_return_time').value,
             departure_location:    document.getElementById('h_departure_location').value,
             destination:           document.getElementById('h_destination').value,
@@ -1017,8 +1415,10 @@ function initOrderForm() {
                 successDiv.textContent = data.message;
                 successDiv.classList.remove('d-none');
                 form.reset();
-                document.getElementById('h_total_amount_display').value   = '0.00';
-                document.getElementById('h_balance_amount_display').value = '0.00';
+                document.getElementById('h_departure_time').value = '';
+                document.getElementById('h_return_time').value    = '';
+                document.getElementById('h_total_amount_display').textContent = '0.00';
+                document.getElementById('h_balance_amount_display').value      = '0.00';
                 loadHolidayBookedDates();
                 setTimeout(() => {
                     if (data.id) { globalThis.location.href = `/holidays/${data.id}/`; }
@@ -1110,6 +1510,11 @@ function renderSettlementTable() {
                 <button class="btn btn-outline-info btn-sm ms-1" onclick="openSettlementModal(${i},true)">
                     <i class="bi bi-calculator me-1"></i>Settlement
                 </button>
+                {% if can_delete_holiday %}
+                <button class="btn btn-outline-danger btn-sm ms-1" onclick="deleteTripSettlement(${b.id},'${esc(b.booking_number)}')">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+                {% endif %}
             </td>
         </tr>`;
     });
@@ -1210,19 +1615,23 @@ function setSettlementMode(mode, data) {
     const editBtn   = document.getElementById('editSettlementBtn');
     const saveBtn   = document.getElementById('saveSettlementBtn');
     const cancelBtn = document.getElementById('cancelEditBtn');
+    const delBtn    = document.getElementById('deleteSettlementBtn');
     const hdr       = document.getElementById('settlementModalHeader');
     if (mode === 'view') {
         fields.forEach(f => { f.disabled = true; });
         editBtn.classList.remove('d-none'); saveBtn.classList.add('d-none'); cancelBtn.classList.add('d-none');
+        if (delBtn) delBtn.classList.remove('d-none');
         hdr.style.background = ''; settlementBackupData = data;
     } else if (mode === 'edit') {
         fields.forEach(f => { f.disabled = false; });
         editBtn.classList.add('d-none'); saveBtn.classList.remove('d-none');
         cancelBtn.classList.toggle('d-none', !data);
+        if (delBtn) delBtn.classList.add('d-none');
         hdr.style.background = '';
-    } else { // locked
+    } else { // locked — bank approved, nothing editable or deletable
         fields.forEach(f => { f.disabled = true; });
         editBtn.classList.add('d-none'); saveBtn.classList.add('d-none'); cancelBtn.classList.add('d-none');
+        if (delBtn) delBtn.classList.add('d-none');
         hdr.style.background = 'linear-gradient(135deg,#198754,#0f5132)';
     }
     calcSettlement();
@@ -1314,6 +1723,31 @@ function addCustomCharge(name='', amount='', fileUrl=null, fileName=null, disabl
     container.appendChild(div);
 }
 function removeCustomCharge(btn) { btn.closest('.custom-charge-row').remove(); calcSettlement(); }
+
+function showSettlementAlert(msg, type) {
+    const el = document.getElementById('settlementAlert');
+    el.className = `alert alert-${type}`; el.textContent = msg; el.classList.remove('d-none');
+    setTimeout(() => el.classList.add('d-none'), 4000);
+}
+
+function deleteTripSettlement(bookingId, bookingNumber) {
+    if (!confirm(`Delete settlement for ${bookingNumber}?\n\nThis will move it back to Pending Settlement.`)) return;
+    fetch(`/api/holidays/${bookingId}/settlement/delete/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showSettlementAlert(d.message, 'success'); loadCompletedTrips(); }
+        else showSettlementAlert(d.error || 'Delete failed.', 'danger');
+    })
+    .catch(err => showSettlementAlert('Network error: ' + err.message, 'danger'));
+}
+
+function deleteTripSettlementFromModal() {
+    if (!activeBookingId) return;
+    const bookingNum = document.getElementById('sdm_booking_number').textContent;
+    bootstrap.Modal.getInstance(document.getElementById('settlementDetailModal'))?.hide();
+    deleteTripSettlement(activeBookingId, bookingNum);
+}
+
 function saveSettlement() {
     if (!activeBookingId) return;
     const alertEl = document.getElementById('settlementSaveAlert');
@@ -1590,8 +2024,11 @@ function hDeleteOrderForm(id, bookingNumber) {
     fetch(`/api/holidays/${id}/delete/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCSRF() } })
     .then(r => r.json())
     .then(d => {
-        if (d.success) { showBankAlert('Order form deleted.', 'success'); loadBankList(); }
-        else showBankAlert(d.error||'Failed.', 'danger');
+        if (d.success) {
+            showBankAlert('Order form deleted.', 'success');
+            loadBankList();
+            loadHolidayBookedDates(); // keep calendar in sync
+        } else showBankAlert(d.error||'Failed.', 'danger');
     }).catch(() => showBankAlert('Network error.', 'danger'));
 }
 
@@ -1616,7 +2053,7 @@ function hApproveRepair(repairId) {
 function loadBankList() {
     const wrap = document.getElementById('bankTableWrap');
     wrap.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-info"></div></div>';
-    fetch('/api/holidays/bank/list/', { headers: { 'X-CSRFToken': getCSRF() } })
+    return fetch('/api/holidays/bank/list/', { headers: { 'X-CSRFToken': getCSRF() } })
     .then(r => r.json())
     .then(data => {
         allEntries = data.entries || [];
@@ -1704,10 +2141,13 @@ function renderBankTable() {
             </div>`;
         }
 
-        // Delete button for non-approved order forms
         {% if can_delete_holiday %}
+        if (bank) {
+            actions += ` <button class="btn btn-outline-warning btn-sm" onclick="deleteBankSettlement(${bank.id},'${esc(e.booking_number)}')" title="Delete bank settlement"><i class="bi bi-file-earmark-x me-1"></i>Del Settlement</button>`;
+        }
+        // Trash (delete whole order form) only for non-approved rows
         if (!bank || bank.status !== 'APPROVED') {
-            actions += ` <button class="btn btn-outline-danger btn-sm" onclick="hDeleteOrderForm(${e.booking_id},'${esc(e.booking_number)}')" title="Delete"><i class="bi bi-trash"></i></button>`;
+            actions += ` <button class="btn btn-outline-danger btn-sm" onclick="hDeleteOrderForm(${e.booking_id},'${esc(e.booking_number)}')" title="Delete order form"><i class="bi bi-trash"></i></button>`;
         }
         {% endif %}
 
@@ -1812,6 +2252,24 @@ function openBankDetail(bookingId, bookingNumber) {
     .catch(err => { document.getElementById('bankDetailBody').innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; });
 }
 
+function deleteBankSettlement(bankId, bookingNumber) {
+    if (!confirm(`Remove the submitted bank document for ${bookingNumber}?\n\nThe order form stays, but it will go back to Pending Settlement.`)) return;
+    fetch(`/api/holidays/bank/settlement/${bankId}/delete/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showBankAlert(d.message, 'success'); loadBankList(); }
+        else showBankAlert(d.error || 'Delete failed.', 'danger');
+    })
+    .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
+}
+
+function switchBankTab(status) {
+    document.querySelectorAll('.filter-b-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.status === status);
+    });
+    applyBankFilter();
+}
+
 function uploadBankDoc(settlementId) {
     const fileInput = document.getElementById(`bankfile-${settlementId}`);
     if (!fileInput?.files[0]) { showBankAlert('Please select a file first.', 'warning'); return; }
@@ -1819,21 +2277,295 @@ function uploadBankDoc(settlementId) {
     fetch(`/api/holidays/bank/${settlementId}/upload/`, { method:'POST', headers:{'X-CSRFToken':getCSRF()}, body:fd })
     .then(r => r.json())
     .then(data => {
-        if (data.success) { showBankAlert(data.message, 'success'); showBankTab('approval'); loadBankList(); }
-        else showBankAlert(data.error || 'Upload failed.', 'danger');
+        if (data.success) {
+            showBankAlert(data.message, 'success');
+            loadBankList().then(() => switchBankTab('approval'));
+        } else showBankAlert(data.error || 'Upload failed.', 'danger');
     })
     .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
 }
 
 function approveBank(bankId) {
     if (!confirm('Approve this bank settlement?')) return;
-    fetch(`/api/holidays/bank/${bankId}/approve/`, { method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCSRF()} })
+    fetch(`/api/holidays/bank/${bankId}/approve/`, { method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCSRF()}, body:'{}' })
     .then(r => r.json())
     .then(data => {
-        if (data.success) { showBankAlert(data.message, 'success'); showBankTab('approved'); loadBankList(); }
-        else showBankAlert(data.error || 'Approval failed.', 'danger');
+        if (data.success) {
+            showBankAlert(data.message, 'success');
+            loadBankList().then(() => switchBankTab('approved'));
+        } else showBankAlert(data.error || 'Approval failed.', 'danger');
     })
     .catch(err => showBankAlert('Network error: ' + err.message, 'danger'));
+}
+
+// ─── QUICK STAT LIST ──────────────────────────────────────────
+const statMeta = {
+    'enquiry':    { label: 'Enquiries',       headerClass: 'bg-warning text-dark' },
+    'upcoming':   { label: 'Upcoming Bookings', headerClass: 'bg-success text-white' },
+    'completed':  { label: 'Completed Trips',  headerClass: 'bg-info text-dark' },
+    'this-month': { label: 'This Month',       headerClass: 'bg-primary text-white' },
+};
+
+function showStatList(type) {
+    const meta = statMeta[type] || { label: type, headerClass: 'bg-secondary text-white' };
+    const hdr  = document.getElementById('statListModalHeader');
+    const title = document.getElementById('statListModalTitle');
+    const body  = document.getElementById('statListModalBody');
+
+    hdr.className   = `modal-header ${meta.headerClass}`;
+    title.textContent = meta.label;
+    body.innerHTML  = '<div class="text-center py-4"><div class="spinner-border text-info"></div></div>';
+    new bootstrap.Modal(document.getElementById('statListModal')).show();
+
+    const y = hCurrentDate.getFullYear(), m = hCurrentDate.getMonth() + 1;
+    const url = `/api/holidays/quick-list/?type=${type}&month=${m}&year=${y}`;
+    fetch(url, { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const bookings = data.bookings || [];
+        if (bookings.length === 0) {
+            body.innerHTML = '<p class="text-muted text-center py-5">No bookings found.</p>';
+            return;
+        }
+        let rows = bookings.map((b, i) => {
+            const statusBadge = b.status === 'CONFIRMED'
+                ? '<span class="badge bg-success">Confirmed</span>'
+                : '<span class="badge bg-warning text-dark">Enquiry</span>';
+            return `<tr>
+                <td class="text-muted small">${i + 1}</td>
+                <td><a href="/holidays/${b.id}/" class="fw-bold text-decoration-none">${esc(b.booking_number)}</a></td>
+                <td>${esc(b.trip_date)}</td>
+                <td>${esc(b.return_date)}</td>
+                <td class="text-break">${esc(b.destination)}</td>
+                <td>${esc(b.booked_by)}</td>
+                <td>${esc(b.vehicle)}</td>
+                <td>${statusBadge}</td>
+            </tr>`;
+        }).join('');
+        body.innerHTML = `<div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th>#</th><th>Booking No.</th><th>Trip Date</th><th>Return</th>
+                        <th>Destination</th><th>Booked By</th><th>Vehicle</th><th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table></div>`;
+    })
+    .catch(err => { body.innerHTML = `<p class="text-danger text-center py-4">Error: ${err.message}</p>`; });
+}
+
+// ─── REPORTS ──────────────────────────────────────────────────
+let rCurrentType = 'bank';
+
+function updateBankTypeBadge(id, count) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (count > 0) {
+        el.textContent = count > 99 ? '99+' : count;
+        el.classList.remove('d-none');
+    } else {
+        el.classList.add('d-none');
+    }
+}
+
+function updateNavBadge(which, count) {
+    const el = document.getElementById(which === 'settlement' ? 'navBadgeSettlement' : 'navBadgeBank');
+    if (!el) return;
+    if (count > 0) {
+        el.textContent = count > 99 ? '99+' : count;
+        el.classList.remove('d-none');
+    } else {
+        el.classList.add('d-none');
+    }
+}
+
+function loadReportSummary() {
+    fetch('/api/holidays/report/summary/', { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const fmt = v => '₹' + parseFloat(v).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        document.getElementById('summaryBankTotal').textContent   = fmt(data.bank_total   || 0);
+        document.getElementById('summaryRepairTotal').textContent = fmt(data.repair_total || 0);
+        updateNavBadge('settlement', data.nav_settlement_pending  || 0);
+        updateNavBadge('bank',       data.nav_bank_pending        || 0);
+        // per-type badges on the Bank section toggle buttons
+        updateBankTypeBadge('bankOrderBadge',  data.nav_bank_order_pending  || 0);
+        updateBankTypeBadge('bankRepairBadge', data.nav_bank_repair_pending || 0);
+    })
+    .catch(() => {});
+}
+
+function rSwitchType(type) {
+    rCurrentType = type;
+    document.getElementById('rtype-bank').className   = type === 'bank'   ? 'btn btn-info active'     : 'btn btn-outline-info';
+    document.getElementById('rtype-repair').className = type === 'repair' ? 'btn btn-info active'  : 'btn btn-outline-info';
+    document.getElementById('reportTableWrap').innerHTML =
+        '<div class="text-center py-5 text-muted"><i class="bi bi-file-earmark-bar-graph fs-1 d-block mb-2 opacity-25"></i>Select a date range and click Generate.</div>';
+    document.getElementById('rPrintBtn').classList.add('d-none');
+}
+
+function loadReport() {
+    const from = document.getElementById('r_from_date').value;
+    const to   = document.getElementById('r_to_date').value;
+    if (!from || !to) {
+        const a = document.getElementById('reportAlert');
+        a.className = 'alert alert-warning'; a.textContent = 'Please select both From and To dates.'; a.classList.remove('d-none');
+        setTimeout(() => a.classList.add('d-none'), 3000);
+        return;
+    }
+    const wrap = document.getElementById('reportTableWrap');
+    wrap.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-info"></div></div>';
+    document.getElementById('rPrintBtn').classList.add('d-none');
+    const url = rCurrentType === 'bank'
+        ? `/api/holidays/report/bank/?from_date=${from}&to_date=${to}`
+        : `/api/repairs/report/?from_date=${from}&to_date=${to}`;
+    fetch(url, { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        if (rCurrentType === 'bank') renderBankReport(data.entries || [], from, to);
+        else renderRepairReport(data.entries || [], from, to);
+        if ((data.entries || []).length > 0) document.getElementById('rPrintBtn').classList.remove('d-none');
+    })
+    .catch(err => { wrap.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; });
+}
+
+function renderBankReport(entries, from, to) {
+    const wrap = document.getElementById('reportTableWrap');
+    if (entries.length === 0) {
+        wrap.innerHTML = '<div class="text-center py-5 text-muted">No approved order forms found for this period.</div>';
+        return;
+    }
+    let totalAmt = 0, totalBank = 0;
+    let rows = '';
+    entries.forEach(e => {
+        totalAmt  += parseFloat(e.total_amount)  || 0;
+        totalBank += parseFloat(e.net_balance)   || 0;
+        rows += `<tr>
+            <td class="text-muted">${e.sl}</td>
+            <td><strong>${esc(e.booking_number)}</strong></td>
+            <td>${esc(e.booked_by)}</td>
+            <td>${esc(e.vehicle)}</td>
+            <td>${esc(e.trip_date)}</td>
+            <td>${esc(e.return_date)}</td>
+            <td class="text-break" style="max-width:160px;">${esc(e.destination)}</td>
+            <td class="text-end">₹${parseFloat(e.total_amount).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+            <td class="text-end fw-bold text-success">₹${parseFloat(e.net_balance).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+            <td>${esc(e.approved_by)}<br><small class="text-muted">${esc(e.approved_at)}</small></td>
+        </tr>`;
+    });
+    wrap.innerHTML = `
+        <p class="text-muted small mb-2">Period: <strong>${fmtDate(from)}</strong> — <strong>${fmtDate(to)}</strong> &nbsp;|&nbsp; ${entries.length} record(s)</p>
+        <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle" id="rBankTable">
+            <thead class="table-info">
+                <tr>
+                    <th>#</th><th>Booking No.</th><th>Booked By</th><th>Vehicle</th>
+                    <th>Trip Date</th><th>Return Date</th><th>Destination</th>
+                    <th class="text-end">Total Amt</th><th class="text-end">Bank Amt</th>
+                    <th>Approved By</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot class="table-light fw-bold">
+                <tr>
+                    <td colspan="7" class="text-end">Total</td>
+                    <td class="text-end">₹${totalAmt.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+                    <td class="text-end text-success">₹${totalBank.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>`;
+}
+
+function renderRepairReport(entries, from, to) {
+    const wrap = document.getElementById('reportTableWrap');
+    if (entries.length === 0) {
+        wrap.innerHTML = '<div class="text-center py-5 text-muted">No repair records found for this period.</div>';
+        return;
+    }
+    let grandTotal = 0;
+    let rows = '';
+    entries.forEach(e => {
+        grandTotal += parseFloat(e.total_amount) || 0;
+        const itemsList = e.items.map(it => `${esc(it.name)} (₹${it.amount})`).join('<br>');
+        const bStatus = e.bank_status === 'APPROVED'
+            ? `<span class="badge bg-success">Approved</span>`
+            : e.bank_status === 'PENDING_APPROVAL'
+            ? `<span class="badge bg-warning text-dark">Pending</span>`
+            : `<span class="badge bg-secondary">${esc(e.bank_status)}</span>`;
+        rows += `<tr>
+            <td class="text-muted">${e.sl}</td>
+            <td><strong>${esc(e.repair_number)}</strong><br><small class="text-muted">${esc(e.created_at)}</small></td>
+            <td>${esc(e.vehicle)}</td>
+            <td class="small">${itemsList}</td>
+            <td class="text-end fw-bold">₹${parseFloat(e.total_amount).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+            <td>${bStatus}</td>
+            <td>${esc(e.bank_approved_by)}<br><small class="text-muted">${esc(e.bank_approved_at)}</small></td>
+        </tr>`;
+    });
+    wrap.innerHTML = `
+        <p class="text-muted small mb-2">Period: <strong>${fmtDate(from)}</strong> — <strong>${fmtDate(to)}</strong> &nbsp;|&nbsp; ${entries.length} record(s)</p>
+        <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle" id="rRepairTable">
+            <thead class="table-warning">
+                <tr>
+                    <th>#</th><th>Repair No. / Date</th><th>Vehicle</th><th>Items</th>
+                    <th class="text-end">Total Amt</th><th>Bank Status</th><th>Approved By</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot class="table-light fw-bold">
+                <tr>
+                    <td colspan="4" class="text-end">Total</td>
+                    <td class="text-end">₹${grandTotal.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>`;
+}
+
+function printReport() {
+    const from  = document.getElementById('r_from_date').value;
+    const to    = document.getElementById('r_to_date').value;
+    const title = rCurrentType === 'bank' ? 'Bank Report' : 'Repair & Maintenance Report';
+    const tableHTML = document.getElementById('reportTableWrap').innerHTML;
+    const logoHTML  = COMPANY_LOGO_URL
+        ? `<img src="${COMPANY_LOGO_URL}" alt="logo" style="height:60px;object-fit:contain;">`
+        : '';
+    const win = window.open('', '_blank', 'width=1100,height=700');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>${title}</title>
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 12px; color: #000; margin: 20px; }
+            .print-header { display:flex; align-items:center; gap:16px; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:14px; }
+            .print-header-text h1 { margin:0; font-size:18px; }
+            .print-header-text p  { margin:2px 0 0; font-size:11px; color:#555; }
+            .period { color:#555; margin-bottom:12px; font-size:11px; }
+            table { width:100%; border-collapse:collapse; }
+            th, td { border:1px solid #ccc; padding:5px 8px; text-align:left; vertical-align:top; }
+            thead th { background:#e8f4fb; font-weight:bold; }
+            tfoot td { background:#f5f5f5; font-weight:bold; }
+            .text-end { text-align:right; }
+            .text-success { color:#198754; }
+            .text-muted { color:#888; }
+            @media print { button { display:none; } }
+        </style></head><body>
+        <div class="print-header">
+            ${logoHTML}
+            <div class="print-header-text">
+                <h1>${COMPANY_NAME || title}</h1>
+                <p>${title}</p>
+            </div>
+        </div>
+        <p class="period">Period: ${fmtDate(from)} &mdash; ${fmtDate(to)}</p>
+        ${tableHTML}
+        <script>window.onload=function(){window.print();}<\/script>
+        </body></html>`);
+    win.document.close();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────

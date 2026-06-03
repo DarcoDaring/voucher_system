@@ -29,7 +29,7 @@ from vouchers.function_views import (
 from vouchers.holiday_views import (
     HolidayView, HolidayDetailView, HolidayCreateAPI,
     HolidayBookedDatesAPI, HolidayListByDateAPI,
-    HolidayDeleteAPI, HolidayUpdateAPI, HolidayPrintView,
+    HolidayDeleteAPI, HolidayUpdateAPI, HolidayConfirmAPI, HolidayPrintView,
     VehicleListAPI, VehicleCreateAPI,
     PaymentTypeListAPI, PaymentTypeCreateAPI, PaymentTypeToggleAPI, PaymentTypeUpdateAPI,
     VehicleToggleAPI, VehicleUpdateAPI,
@@ -40,10 +40,26 @@ from vouchers.holiday_views import (
     RepairListAPI, RepairCreateAPI, RepairDetailAPI,
     RepairBankSubmitAPI, RepairBankApproveAPI, RepairBankDocumentUploadAPI,
     RepairListForBankAPI, RepairDeleteAPI, RepairUpdateAPI,
+    HolidayBankReportAPI, RepairReportAPI,
+    HolidayQuickListAPI,
+    TripSettlementDeleteAPI, BankSettlementDeleteAPI,
+    HolidayReportSummaryAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
     MobileVoucherDetailAPI, MobileVoucherApprovalAPI,
+)
+from vouchers.mobile_holidays_api import (
+    MobileHolidayPermissionsAPI, MobileHolidayStatsAPI,
+    MobileHolidayListAPI, MobileHolidayCreateAPI,
+    MobileHolidayDetailAPI, MobileHolidayConfirmAPI,
+    MobileHolidayUpdateAPI, MobileHolidayDeleteAPI,
+    MobileHolidayCompletedListAPI,
+    MobileSettlementGetAPI, MobileSettlementSaveAPI,
+    MobileBankListAPI, MobileBankUploadAPI, MobileBankApproveAPI,
+    MobileVehicleListAPI, MobilePaymentTypeListAPI,
+    MobileRepairListAPI, MobileRepairCreateAPI, MobileRepairDetailAPI,
+    MobileRepairSubmitBankAPI, MobileRepairBankApproveAPI, MobileRepairDeleteAPI,
 )
 from vouchers.backup_views import BackupDownloadView, BackupRestoreView
 urlpatterns = [
@@ -178,6 +194,7 @@ urlpatterns = [
     path('api/holidays/by-date/', HolidayListByDateAPI.as_view(), name='holiday_list_by_date'),
     path('api/holidays/<int:pk>/delete/', HolidayDeleteAPI.as_view(), name='holiday_delete_api'),
     path('api/holidays/<int:pk>/update/', HolidayUpdateAPI.as_view(), name='holiday_update_api'),
+    path('api/holidays/<int:pk>/confirm/', HolidayConfirmAPI.as_view(), name='holiday_confirm_api'),
 
     # Vehicle Master APIs
     path('api/vehicles/', VehicleListAPI.as_view(), name='vehicle_list_api'),
@@ -219,11 +236,41 @@ urlpatterns = [
     path('api/repairs/<int:pk>/bank/approve/', RepairBankApproveAPI.as_view(), name='repair_bank_approve'),
     path('api/repairs/<int:pk>/delete/', RepairDeleteAPI.as_view(), name='repair_delete'),
     path('api/repairs/<int:pk>/update/', RepairUpdateAPI.as_view(), name='repair_update'),
+    path('api/holidays/report/bank/',    HolidayBankReportAPI.as_view(), name='holiday_bank_report'),
+    path('api/repairs/report/',          RepairReportAPI.as_view(),      name='repair_report'),
+    path('api/holidays/quick-list/',                   HolidayQuickListAPI.as_view(),       name='holiday_quick_list'),
+    path('api/holidays/<int:pk>/settlement/delete/',   TripSettlementDeleteAPI.as_view(),   name='trip_settlement_delete'),
+    path('api/holidays/bank/settlement/<int:pk>/delete/', BankSettlementDeleteAPI.as_view(), name='bank_settlement_delete'),
+    path('api/holidays/report/summary/',                 HolidayReportSummaryAPI.as_view(), name='holiday_report_summary'),
 
     # ── MOBILE APP (token-based) ────────────────────────────────────
-path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),
-path('api/mobile/vouchers/',                 MobileVoucherListAPI.as_view(),     name='mobile_voucher_list'),
-path('api/mobile/vouchers/<int:pk>/',        MobileVoucherDetailAPI.as_view(),   name='mobile_voucher_detail'),
-path('api/mobile/vouchers/<int:pk>/action/', MobileVoucherApprovalAPI.as_view(), name='mobile_voucher_action'),
+    path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),
+    path('api/mobile/vouchers/',                 MobileVoucherListAPI.as_view(),     name='mobile_voucher_list'),
+    path('api/mobile/vouchers/<int:pk>/',        MobileVoucherDetailAPI.as_view(),   name='mobile_voucher_detail'),
+    path('api/mobile/vouchers/<int:pk>/action/', MobileVoucherApprovalAPI.as_view(), name='mobile_voucher_action'),
+
+    # ── MOBILE HOLIDAYS (token-based) ────────────────────────────────
+    path('api/mobile/holidays/permissions/',                        MobileHolidayPermissionsAPI.as_view()),
+    path('api/mobile/holidays/stats/',                              MobileHolidayStatsAPI.as_view()),
+    path('api/mobile/holidays/completed/',                          MobileHolidayCompletedListAPI.as_view()),
+    path('api/mobile/holidays/bank/',                               MobileBankListAPI.as_view()),
+    path('api/mobile/holidays/bank/<int:settlement_pk>/upload/',    MobileBankUploadAPI.as_view()),
+    path('api/mobile/holidays/bank/<int:bank_pk>/approve/',         MobileBankApproveAPI.as_view()),
+    path('api/mobile/holidays/create/',                             MobileHolidayCreateAPI.as_view()),
+    path('api/mobile/holidays/<int:pk>/',                           MobileHolidayDetailAPI.as_view()),
+    path('api/mobile/holidays/<int:pk>/confirm/',                   MobileHolidayConfirmAPI.as_view()),
+    path('api/mobile/holidays/<int:pk>/update/',                    MobileHolidayUpdateAPI.as_view()),
+    path('api/mobile/holidays/<int:pk>/delete/',                    MobileHolidayDeleteAPI.as_view()),
+    path('api/mobile/holidays/<int:pk>/settlement/',                MobileSettlementGetAPI.as_view()),
+    path('api/mobile/holidays/<int:pk>/settlement/save/',           MobileSettlementSaveAPI.as_view()),
+    path('api/mobile/holidays/',                                    MobileHolidayListAPI.as_view()),
+    path('api/mobile/vehicles/',                                    MobileVehicleListAPI.as_view()),
+    path('api/mobile/payment-types/',                               MobilePaymentTypeListAPI.as_view()),
+    path('api/mobile/repairs/create/',                              MobileRepairCreateAPI.as_view()),
+    path('api/mobile/repairs/<int:pk>/submit-to-bank/',             MobileRepairSubmitBankAPI.as_view()),
+    path('api/mobile/repairs/<int:pk>/bank/approve/',               MobileRepairBankApproveAPI.as_view()),
+    path('api/mobile/repairs/<int:pk>/delete/',                     MobileRepairDeleteAPI.as_view()),
+    path('api/mobile/repairs/<int:pk>/',                            MobileRepairDetailAPI.as_view()),
+    path('api/mobile/repairs/',                                     MobileRepairListAPI.as_view()),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

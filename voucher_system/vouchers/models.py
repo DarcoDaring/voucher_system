@@ -730,9 +730,10 @@ class PaymentType(models.Model):
 
 class HolidayBooking(models.Model):
     STATUS_CHOICES = (
-        ('PENDING', 'Pending'),
-        ('CONFIRMED', 'Confirmed'),
-        ('CANCELLED', 'Cancelled'),
+        ('PENDING',   'Pending'),
+        ('CONFIRMED',  'Confirmed'),
+        ('COMPLETED',  'Completed'),
+        ('CANCELLED',  'Cancelled'),
     )
     AC_TYPE_CHOICES = (
         ('AC', 'AC'),
