@@ -332,6 +332,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
         controller: ctrl,
         keyboardType: TextInputType.number,
         decoration: InputDecoration(labelText: label, suffixText: '%'),
+        onTap: () => ctrl.selection = TextSelection(baseOffset: 0, extentOffset: ctrl.text.length),
       )),
       const SizedBox(width: 12),
       Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -357,6 +358,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
         controller: ctrl,
         keyboardType: TextInputType.number,
         decoration: InputDecoration(labelText: label, prefixText: '₹ '),
+        onTap: () => ctrl.selection = TextSelection(baseOffset: 0, extentOffset: ctrl.text.length),
       ),
       if (onPick != null) ...[
         const SizedBox(height: 6),

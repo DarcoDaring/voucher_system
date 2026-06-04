@@ -230,6 +230,8 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
         controller: item.amountCtrl,
         keyboardType: TextInputType.number,
         decoration: const InputDecoration(labelText: 'Amount', isDense: true, prefixText: '₹ '),
+        onTap: () => item.amountCtrl.selection = TextSelection(
+            baseOffset: 0, extentOffset: item.amountCtrl.text.length),
         onChanged: (_) => setState(() {}),
       ),
       const SizedBox(height: 8),

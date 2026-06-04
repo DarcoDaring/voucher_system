@@ -1,6 +1,6 @@
 class ApiConfig {
   // For Android emulator testing. Change to your domain for production.
-  static const String baseUrl = 'https://voucher.thenorthpark.com';
+  static const String baseUrl = 'https://voucher.thenorthpark.com'; 
 
   // Auth
   static const String loginEndpoint = '$baseUrl/api/mobile/login/';

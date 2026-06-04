@@ -263,7 +263,7 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
         const SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(r.statusLabel, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 16)),
-          Text('${r.itemsCount} items · ₹${r.totalAmount}', style: TextStyle(color: statusColor.withOpacity(0.7), fontSize: 13)),
+          Text('${r.items.length} items · ₹${r.totalAmount}', style: TextStyle(color: statusColor.withValues(alpha: 0.7), fontSize: 13)),
         ]),
       ]),
     );
@@ -290,7 +290,11 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
             child: Row(children: [
               const Icon(Icons.attach_file, size: 14, color: _teal),
               const SizedBox(width: 4),
-              Text(item.attachmentName ?? 'View attachment', style: const TextStyle(color: _teal, fontSize: 12, decoration: TextDecoration.underline)),
+              Expanded(child: Text(
+                item.attachmentName ?? 'View attachment',
+                style: const TextStyle(color: _teal, fontSize: 12, decoration: TextDecoration.underline),
+                overflow: TextOverflow.ellipsis,
+              )),
             ]),
           ),
         ],

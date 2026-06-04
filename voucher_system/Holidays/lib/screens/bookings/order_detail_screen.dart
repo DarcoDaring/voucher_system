@@ -35,23 +35,71 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _confirm() async {
-    final confirmed = await showDialog<bool>(
+    final advanceCtrl = TextEditingController(
+      text: _booking!.advanceAmount == '0' ? '' : _booking!.advanceAmount,
+    );
+    final advance = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Confirm Booking'),
-        content: Text('Confirm booking ${_booking!.bookingNumber}? This will move it to Upcoming.'),
+        title: const Row(children: [
+          Icon(Icons.check_circle, color: Color(0xFF4CAF50)),
+          SizedBox(width: 8),
+          Text('Confirm Booking'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_booking!.bookingNumber} — ${_booking!.bookedBy}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Text('Total: ₹${_booking!.totalAmount}',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            const SizedBox(height: 16),
+            const Text('Advance Amount Received (₹)',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: advanceCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                hintText: '0.00',
+                prefixText: '₹ ',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onTap: () => advanceCtrl.selection = TextSelection(
+                baseOffset: 0, extentOffset: advanceCtrl.text.length,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text('Enter 0 if no advance was collected.',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+            onPressed: () => Navigator.pop(ctx, advanceCtrl.text.trim().isEmpty ? '0' : advanceCtrl.text.trim()),
+            child: const Text('Confirm'),
+          ),
         ],
       ),
     );
-    if (confirmed != true) return;
+    advanceCtrl.dispose();
+    if (advance == null) return;
+
+    // Validate
+    final adv = double.tryParse(advance) ?? 0;
+    final total = double.tryParse(_booking!.totalAmount) ?? 0;
+    if (adv < 0) { _showError('Advance cannot be negative.'); return; }
+    if (adv > total) { _showError('Advance cannot exceed total amount (₹${_booking!.totalAmount}).'); return; }
 
     setState(() => _actionLoading = true);
     try {
-      await ApiService.instance.confirmHoliday(widget.bookingId);
+      await ApiService.instance.confirmHoliday(widget.bookingId, advanceAmount: advance);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Booking confirmed!'), backgroundColor: Color(0xFF4CAF50)),

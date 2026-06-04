@@ -21,19 +21,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   DashboardStats? _stats;
   bool _statsLoading = true;
 
-  late final List<Widget> _pages;
+  // Each entry is a counter; incrementing it forces that tab's widget to rebuild
+  final List<int> _tabKeys = [0, 0, 0, 0, 0];
+
+  Widget _buildTab(int index) {
+    final key = ValueKey('tab_${index}_${_tabKeys[index]}');
+    switch (index) {
+      case 0: return _DashboardTab(key: key, stats: _stats, loading: _statsLoading, onStatsTap: _switchTab, onRefresh: _loadStats);
+      case 1: return EnquiryListScreen(key: key);
+      case 2: return UpcomingListScreen(key: key);
+      case 3: return SettlementListScreen(key: key);
+      case 4: return RepairListScreen(key: key);
+      default: return const SizedBox.shrink();
+    }
+  }
+
+  void _switchTab(int index) {
+    setState(() {
+      _tabKeys[index]++;   // force the incoming tab to reload
+      _tab = index;
+    });
+    if (index == 0) _loadStats();   // always refresh dashboard stats
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pages = [
-      _DashboardTab(onStatsTap: _navigateToTab, onRefresh: _loadStats),
-      const EnquiryListScreen(),
-      const UpcomingListScreen(),
-      const SettlementListScreen(),
-      const RepairListScreen(),
-    ];
     _loadStats();
     ApiService.instance.getPermissions().catchError((_) {});
   }
@@ -54,8 +68,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) setState(() => _statsLoading = false);
     }
   }
-
-  void _navigateToTab(int tab) => setState(() => _tab = tab);
 
   void _doLogout() async {
     await ApiService.instance.logout();
@@ -95,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
         actions: [
           if (_tab == 0)
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadStats),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: () => _switchTab(0)),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (v) {
@@ -109,19 +121,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          _DashboardTab(stats: _stats, loading: _statsLoading, onStatsTap: _navigateToTab, onRefresh: _loadStats),
-          const EnquiryListScreen(),
-          const UpcomingListScreen(),
-          const SettlementListScreen(),
-          const RepairListScreen(),
-        ],
-      ),
+      body: _buildTab(_tab),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: _switchTab,
         backgroundColor: Colors.white,
         indicatorColor: _teal.withOpacity(0.15),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -174,6 +177,7 @@ class _DashboardTab extends StatelessWidget {
   final VoidCallback onRefresh;
 
   const _DashboardTab({
+    super.key,
     this.stats,
     this.loading = false,
     required this.onStatsTap,

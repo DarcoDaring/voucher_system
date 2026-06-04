@@ -262,9 +262,10 @@ class ApiService {
     return await _post(ApiConfig.holidayCreateEndpoint, fields.map((k, v) => MapEntry(k, v)));
   }
 
-  Future<Map<String, dynamic>> confirmHoliday(int id) async {
+  Future<Map<String, dynamic>> confirmHoliday(int id, {String? advanceAmount}) async {
     return await _post(ApiConfig.holidayConfirmEndpoint(id), {
       'company_id': _activeCompany!.id,
+      if (advanceAmount != null) 'advance_amount': advanceAmount,
     });
   }
 

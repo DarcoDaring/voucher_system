@@ -398,13 +398,13 @@
 
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div class="btn-group">
-                    <button class="btn btn-outline-secondary filter-b-btn active" data-status="pending">
+                    <button class="btn btn-outline-secondary filter-b-btn active" data-status="pending" onclick="hFilterBankTab('pending')">
                         Pending Settlement <span class="badge bg-secondary ms-1" id="bBadgePending">0</span>
                     </button>
-                    <button class="btn btn-outline-warning filter-b-btn" data-status="approval">
+                    <button class="btn btn-outline-warning filter-b-btn" data-status="approval" onclick="hFilterBankTab('approval')">
                         Pending Approval <span class="badge bg-secondary ms-1" id="bBadgeApproval">0</span>
                     </button>
-                    <button class="btn btn-outline-success filter-b-btn" data-status="approved">
+                    <button class="btn btn-outline-success filter-b-btn" data-status="approved" onclick="hFilterBankTab('approved')">
                         Approved <span class="badge bg-secondary ms-1" id="bBadgeApproved">0</span>
                     </button>
                 </div>
@@ -1807,6 +1807,17 @@ let allEntries = [];
 let hBankRepairEntries = { pending: [], pending_approval: [], approved: [] };
 let hCurrentBankType = 'order';
 
+function hFilterBankTab(status) {
+    document.querySelectorAll('.filter-b-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector(`.filter-b-btn[data-status="${status}"]`);
+    if (btn) btn.classList.add('active');
+    if (hCurrentBankType === 'repair') {
+        renderRepairBankTable(status);
+    } else {
+        applyBankFilter();
+    }
+}
+
 function hSwitchBankType(type) {
     hCurrentBankType = type;
     document.getElementById('hbtype-order').className  = type === 'order'  ? 'btn btn-info active'     : 'btn btn-outline-info';
@@ -2168,19 +2179,6 @@ function renderBankTable() {
     </tr>`;
     html += '</tbody></table>';
     document.getElementById('bankTableWrap').innerHTML = html;
-
-    // wire filter buttons
-    document.querySelectorAll('.filter-b-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-b-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            if (hCurrentBankType === 'repair') {
-                renderRepairBankTable(this.dataset.status);
-            } else {
-                applyBankFilter();
-            }
-        });
-    });
 
     // wire search
     const bSearch = document.getElementById('bankSearch');

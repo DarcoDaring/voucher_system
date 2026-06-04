@@ -364,8 +364,21 @@ class MobileHolidayConfirmAPI(APIView):
                         f'Change the vehicle or adjust dates before confirming.'
                     )}, status=400)
 
+        # Update advance amount if provided (balance_amount auto-recalculates via model save)
+        advance_raw = request.data.get('advance_amount')
+        if advance_raw not in (None, ''):
+            try:
+                advance = Decimal(str(advance_raw))
+                if advance < 0:
+                    return Response({'error': 'Advance amount cannot be negative.'}, status=400)
+                if advance > booking.total_amount:
+                    return Response({'error': 'Advance amount cannot exceed total amount.'}, status=400)
+                booking.advance_amount = advance
+            except Exception:
+                return Response({'error': 'Invalid advance amount.'}, status=400)
+
         booking.status = 'CONFIRMED'
-        booking.save(update_fields=['status'])
+        booking.save()  # full save so balance_amount recalculates
         return Response({'success': True, 'message': f'Booking {booking.booking_number} confirmed!'})
 
 

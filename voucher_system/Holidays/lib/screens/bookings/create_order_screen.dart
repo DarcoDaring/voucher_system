@@ -297,12 +297,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   );
 
   Widget _field(String label, TextEditingController ctrl, {String? hint, TextInputType type = TextInputType.text, int? maxLen, int maxLines = 1, bool required = false}) {
+    final isNumeric = type == TextInputType.number ||
+        type == const TextInputType.numberWithOptions(decimal: true);
     return TextFormField(
       controller: ctrl,
       keyboardType: type,
       maxLength: maxLen,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label, hintText: hint, counterText: ''),
+      onTap: isNumeric
+          ? () => ctrl.selection = TextSelection(baseOffset: 0, extentOffset: ctrl.text.length)
+          : null,
       validator: label.endsWith('*') ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null : null,
     );
   }

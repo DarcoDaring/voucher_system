@@ -290,6 +290,33 @@ input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
 <!-- ============================================================
      EDIT BOOKING MODAL
      ============================================================ -->
+<!-- ── Confirm Booking Modal ─────────────────────────────────── -->
+<div class="modal fade" id="confirmBookingModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header bg-success text-white rounded-top-4">
+        <h5 class="modal-title fw-bold"><i class="bi bi-check-circle me-2"></i>Confirm Booking</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="text-muted mb-3">Booking <strong>{{ booking.booking_number }}</strong> — {{ booking.booked_by }}<br>
+          Total Amount: <strong>₹{{ booking.total_amount }}</strong></p>
+        <label for="confirmAdvanceInput" class="form-label fw-semibold">Advance Amount Received (₹)</label>
+        <input type="number" id="confirmAdvanceInput" class="form-control form-control-lg"
+               min="0" step="0.01" placeholder="0.00">
+        <small class="text-muted">Enter 0 if no advance was collected.</small>
+        <div id="confirmAdvanceError" class="alert alert-danger mt-2 py-2 d-none"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="confirmBookingBtn" class="btn btn-success fw-bold px-4" onclick="doConfirmBooking()">
+          <i class="bi bi-check-circle me-1"></i>Confirm Booking
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="editHolidayModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
@@ -600,18 +627,36 @@ function openEditModal() {
 }
 
 function confirmThisBooking() {
-    if (!confirm('Confirm this booking ({{ booking.booking_number }})?\n\nThis will change the status from Enquiry to Confirmed.')) return;
+    // Pre-fill with existing advance amount then show modal
+    document.getElementById('confirmAdvanceInput').value = '{{ booking.advance_amount|default:"0" }}';
+    document.getElementById('confirmAdvanceError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('confirmBookingModal')).show();
+}
+
+function doConfirmBooking() {
+    const advance = document.getElementById('confirmAdvanceInput').value.trim();
+    const errEl  = document.getElementById('confirmAdvanceError');
+    const total  = parseFloat('{{ booking.total_amount|default:"0" }}');
+    const adv    = parseFloat(advance) || 0;
+    if (adv < 0) { errEl.textContent = 'Advance cannot be negative.'; errEl.classList.remove('d-none'); return; }
+    if (adv > total) { errEl.textContent = `Advance cannot exceed total amount (₹${total}).`; errEl.classList.remove('d-none'); return; }
+    errEl.classList.add('d-none');
+
+    const btn = document.getElementById('confirmBookingBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Confirming…';
+
     fetch('/api/holidays/{{ booking.pk }}/confirm/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': globalThis.csrfToken || '' },
-        body: '{}'
+        body: JSON.stringify({ advance_amount: advance })
     })
     .then(r => r.json())
     .then(d => {
         if (d.success) { location.reload(); }
-        else alert('Error: ' + (d.error || 'Unknown error'));
+        else { errEl.textContent = d.error || 'Unknown error'; errEl.classList.remove('d-none'); btn.disabled = false; btn.innerHTML = 'Confirm Booking'; }
     })
-    .catch(() => alert('Network error. Please try again.'));
+    .catch(() => { errEl.textContent = 'Network error. Please try again.'; errEl.classList.remove('d-none'); btn.disabled = false; btn.innerHTML = 'Confirm Booking'; });
 }
 
 function deleteThisBooking() {
