@@ -226,7 +226,8 @@ class ApiService {
   // PERMISSIONS & STATS
   // ────────────────────────────────────────────────────────────────
 
-  Future<HolidayPermissions> getPermissions() async {
+  Future<HolidayPermissions> getPermissions({bool forceRefresh = false}) async {
+    if (_permissions != null && !forceRefresh) return _permissions!;
     final data = await _get(
       '${ApiConfig.holidayPermissionsEndpoint}${_companyParam()}',
     );
@@ -363,6 +364,15 @@ class ApiService {
   ) async {
     fields['company_id'] = _activeCompany!.id.toString();
     return await _multipart('POST', ApiConfig.repairCreateEndpoint, fields, filePaths);
+  }
+
+  Future<Map<String, dynamic>> updateRepair(
+    int id,
+    Map<String, String> fields,
+    Map<String, String> filePaths,
+  ) async {
+    fields['company_id'] = _activeCompany!.id.toString();
+    return await _multipart('POST', ApiConfig.repairUpdateEndpoint(id), fields, filePaths);
   }
 
   Future<Map<String, dynamic>> submitRepairToBank(int id, String? filePath) async {

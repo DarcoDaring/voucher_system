@@ -25,6 +25,9 @@ class _EnquiryListScreenState extends State<EnquiryListScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
+      if (ApiService.instance.permissions == null) {
+        await ApiService.instance.getPermissions();
+      }
       final data = await ApiService.instance.getHolidays(status: 'PENDING');
       if (mounted) setState(() { _bookings = data; _loading = false; });
     } on ApiException catch (e) {

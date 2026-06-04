@@ -5,7 +5,8 @@ import '../../models/models.dart';
 import '../../services/api_service.dart';
 
 class RepairCreateScreen extends StatefulWidget {
-  const RepairCreateScreen({super.key});
+  final RepairRecord? existing;
+  const RepairCreateScreen({super.key, this.existing});
   @override
   State<RepairCreateScreen> createState() => _RepairCreateScreenState();
 }
@@ -22,17 +23,41 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
   // Item rows
   final List<_ItemRow> _items = [];
 
+  bool get _isEdit => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
     _loadVehicles();
-    _addItem();
+    if (_isEdit) {
+      _notesCtrl.text = widget.existing!.notes;
+      for (final it in widget.existing!.items) {
+        _items.add(_ItemRow(
+          itemId: it.id,
+          name: it.name,
+          description: it.description,
+          amount: it.amount,
+          existingAttachmentName: it.attachmentName,
+        ));
+      }
+      if (_items.isEmpty) _addItem();
+    } else {
+      _addItem();
+    }
   }
 
   Future<void> _loadVehicles() async {
     try {
       final v = await ApiService.instance.getVehicles();
-      if (mounted) setState(() { _vehicles = v; _loadingVehicles = false; });
+      if (mounted) {
+        setState(() {
+          _vehicles = v;
+          _loadingVehicles = false;
+          if (_isEdit && widget.existing!.vehicleId != null) {
+            _selectedVehicle = _vehicles.where((x) => x.id == widget.existing!.vehicleId).firstOrNull;
+          }
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingVehicles = false);
     }
@@ -84,6 +109,10 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
       if (_items[i].nameCtrl.text.trim().isEmpty) {
         _showSnack('Item ${i + 1} name is required', isError: true); return;
       }
+      // Attachment mandatory — new file or an existing one (when editing)
+      if (_items[i].filePath == null && _items[i].existingAttachmentName == null) {
+        _showSnack('Item ${i + 1} requires an attachment', isError: true); return;
+      }
     }
     setState(() { _saving = true; _error = null; });
     try {
@@ -93,21 +122,26 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
       };
       final files = <String, String>{};
       for (int i = 0; i < _items.length; i++) {
+        if (_items[i].itemId != null) fields['item_id_$i'] = _items[i].itemId!.toString();
         fields['item_name_$i'] = _items[i].nameCtrl.text.trim();
         fields['item_description_$i'] = _items[i].descCtrl.text.trim();
         fields['item_amount_$i'] = _items[i].amountCtrl.text.trim().isEmpty ? '0' : _items[i].amountCtrl.text.trim();
         if (_items[i].filePath != null) files['item_attachment_$i'] = _items[i].filePath!;
       }
-      await ApiService.instance.createRepair(fields, files);
+      if (_isEdit) {
+        await ApiService.instance.updateRepair(widget.existing!.id, fields, files);
+      } else {
+        await ApiService.instance.createRepair(fields, files);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Repair created!'), backgroundColor: Color(0xFF4CAF50)),
+        SnackBar(content: Text(_isEdit ? 'Repair updated!' : 'Repair created!'), backgroundColor: const Color(0xFF4CAF50)),
       );
     } on ApiException catch (e) {
       setState(() { _error = e.message; _saving = false; });
     } catch (_) {
-      setState(() { _error = 'Failed to create repair'; _saving = false; });
+      setState(() { _error = _isEdit ? 'Failed to update repair' : 'Failed to create repair'; _saving = false; });
     }
   }
 
@@ -128,7 +162,7 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
-      appBar: AppBar(title: const Text('New Repair'), backgroundColor: _teal, foregroundColor: Colors.white),
+      appBar: AppBar(title: Text(_isEdit ? 'Edit Repair' : 'New Repair'), backgroundColor: _teal, foregroundColor: Colors.white),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
@@ -199,7 +233,7 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
         icon: _saving
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.save),
-        label: const Text('Create Repair'),
+        label: Text(_isEdit ? 'Update Repair' : 'Create Repair'),
       ),
     );
   }
@@ -243,9 +277,10 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
           child: Row(children: [
             const Icon(Icons.attach_file, size: 15, color: _teal),
             const SizedBox(width: 6),
-            Expanded(child: Text(item.filePath?.split('/').last ?? 'Attach photo/bill (optional)',
-                style: TextStyle(fontSize: 12, color: item.filePath != null ? _teal : Colors.grey.shade500), overflow: TextOverflow.ellipsis)),
-            if (item.filePath != null) const Icon(Icons.check_circle, size: 14, color: Color(0xFF4CAF50)),
+            Expanded(child: Text(
+                item.filePath?.split('/').last ?? item.existingAttachmentName ?? 'Attach photo/bill *',
+                style: TextStyle(fontSize: 12, color: (item.filePath != null || item.existingAttachmentName != null) ? _teal : Colors.red.shade400), overflow: TextOverflow.ellipsis)),
+            if (item.filePath != null || item.existingAttachmentName != null) const Icon(Icons.check_circle, size: 14, color: Color(0xFF4CAF50)),
           ]),
         ),
       ),
@@ -265,10 +300,18 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
 }
 
 class _ItemRow {
+  final int? itemId;
+  final String? existingAttachmentName;
   final nameCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   final amountCtrl = TextEditingController(text: '0');
   String? filePath;
+
+  _ItemRow({this.itemId, String? name, String? description, String? amount, this.existingAttachmentName}) {
+    if (name != null) nameCtrl.text = name;
+    if (description != null) descCtrl.text = description;
+    if (amount != null) amountCtrl.text = amount;
+  }
 
   void dispose() {
     nameCtrl.dispose();

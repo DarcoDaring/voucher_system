@@ -25,6 +25,9 @@ class _RepairListScreenState extends State<RepairListScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
+      if (ApiService.instance.permissions == null) {
+        await ApiService.instance.getPermissions();
+      }
       final data = await ApiService.instance.getRepairs();
       if (mounted) setState(() { _repairs = data; _loading = false; });
     } on ApiException catch (e) {

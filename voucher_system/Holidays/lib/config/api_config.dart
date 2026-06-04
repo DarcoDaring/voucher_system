@@ -34,4 +34,5 @@ class ApiConfig {
   static String repairSubmitBankEndpoint(int id) => '$baseUrl/api/mobile/repairs/$id/submit-to-bank/';
   static String repairBankApproveEndpoint(int id) => '$baseUrl/api/mobile/repairs/$id/bank/approve/';
   static String repairDeleteEndpoint(int id) => '$baseUrl/api/mobile/repairs/$id/delete/';
+  static String repairUpdateEndpoint(int id) => '$baseUrl/api/mobile/repairs/$id/update/';
 }

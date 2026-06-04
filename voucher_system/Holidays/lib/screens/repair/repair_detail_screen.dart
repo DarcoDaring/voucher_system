@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import 'repair_create_screen.dart';
 
 class RepairDetailScreen extends StatefulWidget {
   final int repairId;
@@ -28,6 +29,9 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
+      if (ApiService.instance.permissions == null) {
+        await ApiService.instance.getPermissions();
+      }
       final r = await ApiService.instance.getRepairDetail(widget.repairId);
       if (mounted) setState(() { _repair = r; _loading = false; });
     } on ApiException catch (e) {
@@ -36,7 +40,8 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
   }
 
   Future<void> _submitToBank() async {
-    final choice = await _showPickerDialog(title: 'Attach Bank Document (optional)');
+    final choice = await _showPickerDialog(title: 'Attach Bank Document (required)');
+    if (choice == null) return;
     String? path;
     if (choice == 'camera') {
       final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 80);
@@ -48,7 +53,12 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
       final result = await FilePicker.platform.pickFiles(type: FileType.any);
       path = result?.files.single.path;
     }
-    // choice == 'skip' means no file but still submit
+
+    // Bank document is mandatory — block submission without it
+    if (path == null) {
+      _showSnack('A bank document is required to submit for approval.', isError: true);
+      return;
+    }
 
     setState(() => _actionLoading = true);
     try {
@@ -135,7 +145,6 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
       ListTile(leading: const Icon(Icons.camera_alt, color: _teal), title: const Text('Camera'), onTap: () => Navigator.pop(context, 'camera')),
       ListTile(leading: const Icon(Icons.photo_library, color: _teal), title: const Text('Gallery'), onTap: () => Navigator.pop(context, 'gallery')),
       ListTile(leading: const Icon(Icons.attach_file, color: _teal), title: const Text('Browse File'), onTap: () => Navigator.pop(context, 'file')),
-      ListTile(leading: const Icon(Icons.skip_next, color: Colors.grey), title: const Text('Skip (no document)'), onTap: () => Navigator.pop(context, 'skip')),
       const SizedBox(height: 16),
     ]),
   );
@@ -156,6 +165,18 @@ class _RepairDetailScreenState extends State<RepairDetailScreen> {
         backgroundColor: _teal,
         foregroundColor: Colors.white,
         actions: [
+          if (_repair != null && _repair!.status != 'APPROVED' && perms?.canEdit == true)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _actionLoading
+                  ? null
+                  : () async {
+                      final changed = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(builder: (_) => RepairCreateScreen(existing: _repair)),
+                      );
+                      if (changed == true) _load();
+                    },
+            ),
           if (_repair != null && _repair!.status != 'APPROVED' && perms?.canDelete == true)
             IconButton(icon: const Icon(Icons.delete_outline), onPressed: _actionLoading ? null : _delete),
         ],

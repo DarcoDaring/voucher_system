@@ -27,6 +27,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
+      // Ensure permissions are loaded so edit/delete/confirm buttons render correctly
+      if (ApiService.instance.permissions == null) {
+        await ApiService.instance.getPermissions();
+      }
       final b = await ApiService.instance.getHolidayDetail(widget.bookingId);
       if (mounted) setState(() { _booking = b; _loading = false; });
     } on ApiException catch (e) {

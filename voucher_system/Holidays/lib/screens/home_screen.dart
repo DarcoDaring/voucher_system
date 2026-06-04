@@ -4,9 +4,9 @@ import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'company_select_screen.dart';
 import 'bookings/enquiry_list_screen.dart';
+import 'bookings/create_order_screen.dart';
 import 'bookings/upcoming_list_screen.dart';
 import 'settlement/settlement_list_screen.dart';
-import 'bank/bank_list_screen.dart';
 import 'repair/repair_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildTab(int index) {
     final key = ValueKey('tab_${index}_${_tabKeys[index]}');
     switch (index) {
-      case 0: return _DashboardTab(key: key, stats: _stats, loading: _statsLoading, onStatsTap: _switchTab, onRefresh: _loadStats);
+      case 0: return _DashboardTab(key: key, stats: _stats, loading: _statsLoading, onStatsTap: _switchTab, onRefresh: _loadStats, onCreateBooking: _createBooking);
       case 1: return EnquiryListScreen(key: key);
       case 2: return UpcomingListScreen(key: key);
       case 3: return SettlementListScreen(key: key);
@@ -44,12 +44,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (index == 0) _loadStats();   // always refresh dashboard stats
   }
 
+  Future<void> _createBooking() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const CreateOrderScreen()),
+    );
+    if (created == true) _loadStats();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadStats();
-    ApiService.instance.getPermissions().catchError((_) {});
+    _loadPermissions();
   }
 
   @override
@@ -57,6 +64,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       if (ApiService.instance.isSessionExpired()) _doLogout();
     }
+  }
+
+  Future<void> _loadPermissions() async {
+    try {
+      await ApiService.instance.getPermissions();
+      if (mounted) setState(() {}); // rebuild so permission-gated buttons appear
+    } catch (_) {}
   }
 
   Future<void> _loadStats() async {
@@ -175,6 +189,7 @@ class _DashboardTab extends StatelessWidget {
   final bool loading;
   final void Function(int tab) onStatsTap;
   final VoidCallback onRefresh;
+  final VoidCallback onCreateBooking;
 
   const _DashboardTab({
     super.key,
@@ -182,6 +197,7 @@ class _DashboardTab extends StatelessWidget {
     this.loading = false,
     required this.onStatsTap,
     required this.onRefresh,
+    required this.onCreateBooking,
   });
 
   static const _teal = Color(0xFF00838F);
@@ -314,7 +330,7 @@ class _DashboardTab extends StatelessWidget {
             if (perms?.canCreate ?? true)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: _CreateBookingCard(onTap: () => onStatsTap(1)),
+                child: _CreateBookingCard(onTap: onCreateBooking),
               ),
 
             const SizedBox(height: 24),

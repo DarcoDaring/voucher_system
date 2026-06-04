@@ -60,6 +60,7 @@ from vouchers.mobile_holidays_api import (
     MobileVehicleListAPI, MobilePaymentTypeListAPI,
     MobileRepairListAPI, MobileRepairCreateAPI, MobileRepairDetailAPI,
     MobileRepairSubmitBankAPI, MobileRepairBankApproveAPI, MobileRepairDeleteAPI,
+    MobileRepairUpdateAPI,
 )
 from vouchers.backup_views import BackupDownloadView, BackupRestoreView
 urlpatterns = [
@@ -270,6 +271,7 @@ urlpatterns = [
     path('api/mobile/repairs/<int:pk>/submit-to-bank/',             MobileRepairSubmitBankAPI.as_view()),
     path('api/mobile/repairs/<int:pk>/bank/approve/',               MobileRepairBankApproveAPI.as_view()),
     path('api/mobile/repairs/<int:pk>/delete/',                     MobileRepairDeleteAPI.as_view()),
+    path('api/mobile/repairs/<int:pk>/update/',                     MobileRepairUpdateAPI.as_view()),
     path('api/mobile/repairs/<int:pk>/',                            MobileRepairDetailAPI.as_view()),
     path('api/mobile/repairs/',                                     MobileRepairListAPI.as_view()),
     

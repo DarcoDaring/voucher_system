@@ -15,7 +15,7 @@ from .models import (
     HolidayBankApprover, RepairMaintenance, RepairItem, RepairBankSettlement,
     CompanyMembership,
 )
-from .holiday_views import auto_complete_bookings
+from .holiday_views import auto_complete_bookings, auto_delete_expired_pending
 from .views import check_user_permission
 
 
@@ -145,6 +145,7 @@ class MobileHolidayListAPI(APIView):
             return Response({'error': 'Access denied'}, status=403)
 
         auto_complete_bookings(company_id)
+        auto_delete_expired_pending(company_id)
 
         qs = HolidayBooking.objects.filter(
             company_id=company_id
@@ -1069,6 +1070,8 @@ class MobileRepairSubmitBankAPI(APIView):
             return Response({'error': 'Repair not found'}, status=404)
 
         doc = request.FILES.get('bank_document')
+        if not doc:
+            return Response({'error': 'A bank document is required to submit for approval.'}, status=400)
 
         try:
             bank = repair.bank
@@ -1155,3 +1158,107 @@ class MobileRepairDeleteAPI(APIView):
             return Response({'success': True, 'message': 'Repair deleted.'})
         except RepairMaintenance.DoesNotExist:
             return Response({'error': 'Repair not found.'}, status=404)
+
+
+# ─────────────────────────────────────────────────────────────────
+# 23. REPAIR — UPDATE (multipart)
+# ─────────────────────────────────────────────────────────────────
+
+class MobileRepairUpdateAPI(APIView):
+    """POST /api/mobile/repairs/<pk>/update/ (multipart/form-data)
+
+    Preserves existing item attachments unless replaced. Each item may send:
+      item_id_<i>          existing RepairItem id (omit for new items)
+      item_name_<i>        required
+      item_description_<i>
+      item_amount_<i>
+      item_attachment_<i>  new file (optional; keeps old if absent)
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        company_id = request.data.get('company_id')
+        if not _has_company_access(request.user, company_id):
+            return Response({'error': 'Access denied'}, status=403)
+
+        has_perm, error = check_user_permission(request.user, 'can_edit_holiday', company_id)
+        if not has_perm:
+            return Response({'error': error}, status=403)
+
+        try:
+            repair = RepairMaintenance.objects.get(pk=pk, company_id=company_id)
+        except RepairMaintenance.DoesNotExist:
+            return Response({'error': 'Repair not found.'}, status=404)
+
+        if repair.status == RepairMaintenance.STATUS_APPROVED:
+            return Response({'error': 'Approved repairs cannot be edited.'}, status=400)
+
+        # If already submitted to bank, clear the bank submission so it goes back to draft
+        if repair.status == RepairMaintenance.STATUS_SUBMITTED:
+            try:
+                repair.bank.delete()
+            except RepairBankSettlement.DoesNotExist:
+                pass
+
+        data = request.data
+        files = request.FILES
+
+        vehicle_id = data.get('vehicle_id')
+        if vehicle_id:
+            try:
+                repair.vehicle = Vehicle.objects.get(id=vehicle_id, company_id=company_id)
+            except Vehicle.DoesNotExist:
+                pass
+        else:
+            repair.vehicle = None
+        repair.notes = data.get('notes', repair.notes or '')
+
+        # Parse submitted items
+        parsed = []
+        idx = 0
+        while True:
+            name = data.get(f'item_name_{idx}')
+            if not name:
+                break
+            try:
+                amount = Decimal(str(data.get(f'item_amount_{idx}', '0') or '0'))
+            except Exception:
+                amount = Decimal('0')
+            parsed.append({
+                'item_id': data.get(f'item_id_{idx}'),
+                'name': name,
+                'description': data.get(f'item_description_{idx}', ''),
+                'amount': amount,
+                'file': files.get(f'item_attachment_{idx}'),
+            })
+            idx += 1
+
+        if not parsed:
+            return Response({'error': 'At least one repair item is required.'}, status=400)
+
+        # Delete items no longer present
+        kept_ids = [int(p['item_id']) for p in parsed if p['item_id']]
+        repair.items.exclude(id__in=kept_ids).delete()
+
+        # Update existing / create new (preserving attachments)
+        for p in parsed:
+            if p['item_id']:
+                try:
+                    ri = repair.items.get(id=p['item_id'])
+                except RepairItem.DoesNotExist:
+                    ri = RepairItem(repair=repair)
+            else:
+                ri = RepairItem(repair=repair)
+            ri.name = p['name']
+            ri.description = p['description']
+            ri.amount = p['amount']
+            if p['file']:
+                ri.attachment = p['file']
+            ri.save()
+
+        repair.total_amount = sum(p['amount'] for p in parsed)
+        repair.status = RepairMaintenance.STATUS_DRAFT
+        repair.save()
+
+        return Response({'success': True, 'message': 'Repair updated.'})

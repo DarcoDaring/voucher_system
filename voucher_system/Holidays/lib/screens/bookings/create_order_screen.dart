@@ -97,10 +97,30 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   Future<void> _pickDate(bool isTrip) async {
+    DateTime? tripDateParsed;
+    if (_tripDate != null) tripDateParsed = DateTime.tryParse(_tripDate!);
+
+    if (!isTrip && tripDateParsed == null) {
+      _showError('Please select the trip date first');
+      return;
+    }
+
+    // Return date cannot be before the trip date
+    final firstDate = isTrip ? DateTime(2020) : tripDateParsed!;
+    DateTime initialDate;
+    if (isTrip) {
+      initialDate = tripDateParsed ?? DateTime.now();
+    } else {
+      final existingReturn = _returnDate != null ? DateTime.tryParse(_returnDate!) : null;
+      initialDate = (existingReturn != null && !existingReturn.isBefore(firstDate))
+          ? existingReturn
+          : firstDate;
+    }
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(2030),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: _teal)),
@@ -109,7 +129,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
     if (picked == null) return;
     final formatted = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-    setState(() { if (isTrip) _tripDate = formatted; else _returnDate = formatted; });
+    setState(() {
+      if (isTrip) {
+        _tripDate = formatted;
+        // If return date is now before the new trip date, clear it
+        if (_returnDate != null) {
+          final r = DateTime.tryParse(_returnDate!);
+          if (r != null && r.isBefore(picked)) _returnDate = null;
+        }
+      } else {
+        _returnDate = formatted;
+      }
+    });
   }
 
   Future<void> _pickTime(bool isDeparture) async {
@@ -248,8 +279,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       _field('Total Rent *', _totalRent, hint: '0.00', type: TextInputType.number),
                       _field('Service Charge', _serviceCharge, hint: '0.00', type: TextInputType.number),
                       _field('Advance Amount', _advance, hint: '0.00', type: TextInputType.number),
-                      _field('Max KM', _maxKm, hint: 'Optional', type: TextInputType.number),
-                      _field('Extra KM Charge', _extraKmCharge, hint: 'Per KM rate', type: TextInputType.number),
+                      _field('Max KM *', _maxKm, hint: 'Maximum kilometers', type: TextInputType.number),
+                      _field('Extra KM Charge *', _extraKmCharge, hint: 'Per KM rate', type: TextInputType.number),
                     ]),
                     _section('Other', [
                       _field('Special Instructions', _instructions, hint: 'Any special notes', maxLines: 3),
