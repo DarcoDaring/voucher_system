@@ -72,8 +72,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
           _customCharges.addAll(s.customCharges);
           _customFilePaths.addAll(List.filled(s.customCharges.length, null));
         } else {
-          // Pre-fill batta from vehicle
-          _battaPct.text = widget.booking.bookedVehicle != null ? '0' : '0';
+          _battaPct.text = widget.booking.bookedVehicleBatta;
           _commPct.text = '0';
           _diesel.text = '0';
           _cleaning.text = '0';

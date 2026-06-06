@@ -13,12 +13,19 @@ class RepairCreateScreen extends StatefulWidget {
 
 class _RepairCreateScreenState extends State<RepairCreateScreen> {
   static const _teal = Color(0xFF00838F);
-  final _notesCtrl = TextEditingController();
+  final _notesCtrl        = TextEditingController();
+  final _startingKmCtrl   = TextEditingController();
+  final _endingKmCtrl     = TextEditingController();
   bool _loadingVehicles = true;
   bool _saving = false;
   String? _error;
   List<Vehicle> _vehicles = [];
   Vehicle? _selectedVehicle;
+
+  String? _startingKmFilePath;
+  String? _endingKmFilePath;
+  String? _existingStartingKmAttachmentName;
+  String? _existingEndingKmAttachmentName;
 
   // Item rows
   final List<_ItemRow> _items = [];
@@ -30,8 +37,13 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
     super.initState();
     _loadVehicles();
     if (_isEdit) {
-      _notesCtrl.text = widget.existing!.notes;
-      for (final it in widget.existing!.items) {
+      final ex = widget.existing!;
+      _notesCtrl.text = ex.notes;
+      if (ex.startingKm != null) _startingKmCtrl.text = ex.startingKm.toString();
+      if (ex.endingKm != null) _endingKmCtrl.text = ex.endingKm.toString();
+      _existingStartingKmAttachmentName = ex.startingKmAttachmentUrl != null ? 'Starting KM photo (existing)' : null;
+      _existingEndingKmAttachmentName   = ex.endingKmAttachmentUrl   != null ? 'Ending KM photo (existing)'   : null;
+      for (final it in ex.items) {
         _items.add(_ItemRow(
           itemId: it.id,
           name: it.name,
@@ -87,6 +99,30 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
     setState(() { _items[index].filePath = path; });
   }
 
+  Future<void> _pickKmFile(String field) async {
+    final choice = await _showPickerDialog();
+    if (choice == null) return;
+    String? path;
+    if (choice == 'camera') {
+      final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 80);
+      path = picked?.path;
+    } else if (choice == 'gallery') {
+      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+      path = picked?.path;
+    } else {
+      final result = await FilePicker.platform.pickFiles(type: FileType.any);
+      path = result?.files.single.path;
+    }
+    if (path == null) return;
+    setState(() {
+      if (field == 'starting') {
+        _startingKmFilePath = path;
+      } else {
+        _endingKmFilePath = path;
+      }
+    });
+  }
+
   Future<String?> _showPickerDialog() => showModalBottomSheet<String>(
     context: context,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -104,12 +140,20 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
   );
 
   Future<void> _save() async {
+    final startingKm = _startingKmCtrl.text.trim();
+    if (startingKm.isEmpty) { _showSnack('Starting KM is required', isError: true); return; }
+    final hasStartingAttachment = _startingKmFilePath != null || _existingStartingKmAttachmentName != null;
+    if (!hasStartingAttachment) { _showSnack('Starting KM attachment is required', isError: true); return; }
+    final endingKm = _endingKmCtrl.text.trim();
+    if (endingKm.isEmpty) { _showSnack('Ending KM is required', isError: true); return; }
+    final hasEndingAttachment = _endingKmFilePath != null || _existingEndingKmAttachmentName != null;
+    if (!hasEndingAttachment) { _showSnack('Ending KM attachment is required', isError: true); return; }
+
     if (_items.isEmpty) { _showSnack('Add at least one repair item', isError: true); return; }
     for (int i = 0; i < _items.length; i++) {
       if (_items[i].nameCtrl.text.trim().isEmpty) {
         _showSnack('Item ${i + 1} name is required', isError: true); return;
       }
-      // Attachment mandatory — new file or an existing one (when editing)
       if (_items[i].filePath == null && _items[i].existingAttachmentName == null) {
         _showSnack('Item ${i + 1} requires an attachment', isError: true); return;
       }
@@ -118,9 +162,13 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
     try {
       final fields = <String, String>{
         'notes': _notesCtrl.text.trim(),
+        'starting_km': startingKm,
+        'ending_km': endingKm,
         if (_selectedVehicle != null) 'vehicle_id': _selectedVehicle!.id.toString(),
       };
       final files = <String, String>{};
+      if (_startingKmFilePath != null) files['starting_km_attachment'] = _startingKmFilePath!;
+      if (_endingKmFilePath != null) files['ending_km_attachment'] = _endingKmFilePath!;
       for (int i = 0; i < _items.length; i++) {
         if (_items[i].itemId != null) fields['item_id_$i'] = _items[i].itemId!.toString();
         fields['item_name_$i'] = _items[i].nameCtrl.text.trim();
@@ -154,7 +202,11 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
   @override
   void dispose() {
     _notesCtrl.dispose();
-    for (final item in _items) item.dispose();
+    _startingKmCtrl.dispose();
+    _endingKmCtrl.dispose();
+    for (final item in _items) {
+      item.dispose();
+    }
     super.dispose();
   }
 
@@ -196,6 +248,40 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
               ]),
             ),
           ),
+          // KM Details
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('KM Details', style: TextStyle(fontWeight: FontWeight.bold, color: _teal, fontSize: 15)),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _startingKmCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Starting KM *', isDense: true),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: _kmAttachButton('starting')),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _endingKmCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Ending KM *', isDense: true),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: _kmAttachButton('ending')),
+                ]),
+              ]),
+            ),
+          ),
           // Total display
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -234,6 +320,35 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.save),
         label: Text(_isEdit ? 'Update Repair' : 'Create Repair'),
+      ),
+    );
+  }
+
+  Widget _kmAttachButton(String field) {
+    final isStarting = field == 'starting';
+    final filePath = isStarting ? _startingKmFilePath : _endingKmFilePath;
+    final existingName = isStarting ? _existingStartingKmAttachmentName : _existingEndingKmAttachmentName;
+    final label = isStarting ? 'Starting KM Photo *' : 'Ending KM Photo *';
+    final hasFile = filePath != null || existingName != null;
+    return GestureDetector(
+      onTap: () => _pickKmFile(field),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: _teal.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: hasFile ? _teal.withValues(alpha: 0.4) : Colors.red.shade300),
+        ),
+        child: Row(children: [
+          Icon(Icons.attach_file, size: 14, color: hasFile ? _teal : Colors.red.shade400),
+          const SizedBox(width: 5),
+          Expanded(child: Text(
+            filePath?.split('/').last ?? existingName ?? label,
+            style: TextStyle(fontSize: 11, color: hasFile ? _teal : Colors.red.shade400),
+            overflow: TextOverflow.ellipsis,
+          )),
+          if (hasFile) const Icon(Icons.check_circle, size: 13, color: Color(0xFF4CAF50)),
+        ]),
       ),
     );
   }

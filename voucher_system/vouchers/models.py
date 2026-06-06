@@ -871,15 +871,19 @@ class RepairMaintenance(models.Model):
         ('SUBMITTED', 'Submitted to Bank'),
         ('APPROVED', 'Approved'),
     ]
-    company       = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='repairs')
-    vehicle       = models.ForeignKey('Vehicle', on_delete=models.SET_NULL, null=True, blank=True, related_name='repairs')
-    repair_number = models.CharField(max_length=20, blank=True)
-    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
-    total_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    notes         = models.TextField(blank=True)
-    created_by    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='repairs_created')
-    created_at    = models.DateTimeField(auto_now_add=True)
-    updated_at    = models.DateTimeField(auto_now=True)
+    company                 = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='repairs')
+    vehicle                 = models.ForeignKey('Vehicle', on_delete=models.SET_NULL, null=True, blank=True, related_name='repairs')
+    repair_number           = models.CharField(max_length=20, blank=True)
+    status                  = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    total_amount            = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    notes                   = models.TextField(blank=True)
+    starting_km             = models.PositiveIntegerField(null=True, blank=True)
+    starting_km_attachment  = models.FileField(upload_to='repair/km_attachments/', null=True, blank=True)
+    ending_km               = models.PositiveIntegerField(null=True, blank=True)
+    ending_km_attachment    = models.FileField(upload_to='repair/km_attachments/', null=True, blank=True)
+    created_by              = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='repairs_created')
+    created_at              = models.DateTimeField(auto_now_add=True)
+    updated_at              = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if not self.repair_number:

@@ -124,6 +124,7 @@ class HolidayBooking {
   final int noOfPassengers;
   final String? bookedVehicle;
   final int? bookedVehicleId;
+  final String bookedVehicleBatta;
   final String acType;
   final String? paymentTypeLabel;
   final String totalRent;
@@ -157,6 +158,7 @@ class HolidayBooking {
     required this.noOfPassengers,
     this.bookedVehicle,
     this.bookedVehicleId,
+    this.bookedVehicleBatta = '0',
     required this.acType,
     this.paymentTypeLabel,
     required this.totalRent,
@@ -191,6 +193,7 @@ class HolidayBooking {
         noOfPassengers: j['no_of_passengers'] ?? 1,
         bookedVehicle: j['booked_vehicle'],
         bookedVehicleId: j['booked_vehicle_id'],
+        bookedVehicleBatta: j['booked_vehicle_batta'] ?? '0',
         acType: j['ac_type'] ?? 'NON_AC',
         paymentTypeLabel: j['payment_type_label'],
         totalRent: j['total_rent'] ?? '0',
@@ -451,6 +454,10 @@ class RepairRecord {
   final String status;
   final String totalAmount;
   final String notes;
+  final int? startingKm;
+  final String? startingKmAttachmentUrl;
+  final int? endingKm;
+  final String? endingKmAttachmentUrl;
   final String createdAt;
   final int itemsCount;
   final String? bankStatus;
@@ -468,6 +475,10 @@ class RepairRecord {
     required this.status,
     required this.totalAmount,
     required this.notes,
+    this.startingKm,
+    this.startingKmAttachmentUrl,
+    this.endingKm,
+    this.endingKmAttachmentUrl,
     required this.createdAt,
     required this.itemsCount,
     this.bankStatus,
@@ -486,6 +497,10 @@ class RepairRecord {
         status: j['status'] ?? 'DRAFT',
         totalAmount: j['total_amount'] ?? '0',
         notes: j['notes'] ?? '',
+        startingKm: j['starting_km'],
+        startingKmAttachmentUrl: j['starting_km_attachment_url'],
+        endingKm: j['ending_km'],
+        endingKmAttachmentUrl: j['ending_km_attachment_url'],
         createdAt: j['created_at'] ?? '',
         itemsCount: j['items_count'] ?? 0,
         bankStatus: j['bank_status'],

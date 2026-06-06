@@ -340,6 +340,28 @@
                     <textarea class="form-control form-control-sm" id="repair_notes" rows="2" placeholder="Optional notes"></textarea>
                   </div>
 
+                  <div class="row g-2 mb-3">
+                    <div class="col-6">
+                      <label for="repair_starting_km" class="form-label fw-semibold">Starting KM <span class="text-danger">*</span></label>
+                      <input type="number" class="form-control form-control-sm" id="repair_starting_km" placeholder="e.g. 12500" min="0">
+                    </div>
+                    <div class="col-6">
+                      <label for="repair_starting_km_attachment" class="form-label fw-semibold">Starting KM Photo <span class="text-danger">*</span></label>
+                      <input type="file" class="form-control form-control-sm" id="repair_starting_km_attachment" accept="image/*,.pdf">
+                    </div>
+                  </div>
+
+                  <div class="row g-2 mb-3">
+                    <div class="col-6">
+                      <label for="repair_ending_km" class="form-label fw-semibold">Ending KM <span class="text-danger">*</span></label>
+                      <input type="number" class="form-control form-control-sm" id="repair_ending_km" placeholder="e.g. 12900" min="0">
+                    </div>
+                    <div class="col-6">
+                      <label for="repair_ending_km_attachment" class="form-label fw-semibold">Ending KM Photo <span class="text-danger">*</span></label>
+                      <input type="file" class="form-control form-control-sm" id="repair_ending_km_attachment" accept="image/*,.pdf">
+                    </div>
+                  </div>
+
                   <div class="mb-2">
                     <label for="repairItemsContainer" class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
                     <div id="repairItemsContainer"></div>
@@ -561,6 +583,28 @@
                 <div class="mb-3">
                     <label for="hEditRepairNotes" class="form-label fw-semibold">Notes</label>
                     <textarea class="form-control form-control-sm" id="hEditRepairNotes" rows="2"></textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label for="hEditStartingKm" class="form-label fw-semibold">Starting KM <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control form-control-sm" id="hEditStartingKm" placeholder="e.g. 12500" min="0">
+                    </div>
+                    <div class="col-6">
+                        <label for="hEditStartingKmFile" class="form-label fw-semibold">Starting KM Photo <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control form-control-sm" id="hEditStartingKmFile" accept="image/*,.pdf">
+                        <small class="text-muted" id="hEditStartingKmExisting"></small>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label for="hEditEndingKm" class="form-label fw-semibold">Ending KM <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control form-control-sm" id="hEditEndingKm" placeholder="e.g. 12900" min="0">
+                    </div>
+                    <div class="col-6">
+                        <label for="hEditEndingKmFile" class="form-label fw-semibold">Ending KM Photo <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control form-control-sm" id="hEditEndingKmFile" accept="image/*,.pdf">
+                        <small class="text-muted" id="hEditEndingKmExisting"></small>
+                    </div>
                 </div>
                 <div class="mb-2">
                     <label for="hEditRepairItems" class="form-label fw-semibold">Repair Items <span class="text-danger">*</span></label>
@@ -1918,12 +1962,30 @@ function hViewRepair(id) {
             <td>₹${it.amount}</td>
             <td>${it.attachment_url ? `<a href="${it.attachment_url}" target="_blank"><i class="bi bi-paperclip"></i></a>` : '—'}</td>
         </tr>`).join('');
+        const kmRow = `
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded border">
+                        <small class="text-muted d-block">Starting KM</small>
+                        <span class="fw-bold">${r.starting_km ?? '—'}</span>
+                        ${r.starting_km_attachment_url ? ` <a href="${r.starting_km_attachment_url}" target="_blank" class="ms-2 small text-info"><i class="bi bi-paperclip"></i> View</a>` : ''}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded border">
+                        <small class="text-muted d-block">Ending KM</small>
+                        <span class="fw-bold">${r.ending_km ?? '—'}</span>
+                        ${r.ending_km_attachment_url ? ` <a href="${r.ending_km_attachment_url}" target="_blank" class="ms-2 small text-info"><i class="bi bi-paperclip"></i> View</a>` : ''}
+                    </div>
+                </div>
+            </div>`;
         document.getElementById('hRepairViewBody').innerHTML = `
             <div class="d-flex justify-content-between mb-3">
                 <div><h6 class="fw-bold mb-0">${esc(r.repair_number)}</h6>
                 <small class="text-muted">${esc(r.vehicle)} &bull; ${esc(r.created_at)}</small></div>
                 <span class="badge bg-${r.status==='APPROVED'?'success':r.status==='SUBMITTED'?'info':'secondary'}">${r.status}</span>
             </div>
+            ${kmRow}
             <table class="table table-sm table-bordered mb-2">
                 <thead class="table-light"><tr><th>Name</th><th>Description</th><th>Amount</th><th>Attach</th></tr></thead>
                 <tbody>${rows}</tbody>
@@ -1954,6 +2016,13 @@ function hEditRepair(id) {
             });
         });
         document.getElementById('hEditRepairNotes').value = r.notes || '';
+        document.getElementById('hEditStartingKm').value = r.starting_km ?? '';
+        document.getElementById('hEditEndingKm').value = r.ending_km ?? '';
+        // Show existing attachment hint
+        const skEx = document.getElementById('hEditStartingKmExisting');
+        const ekEx = document.getElementById('hEditEndingKmExisting');
+        skEx.innerHTML = r.starting_km_attachment_url ? `Existing: <a href="${r.starting_km_attachment_url}" target="_blank">View</a> (upload new to replace)` : '';
+        ekEx.innerHTML = r.ending_km_attachment_url ? `Existing: <a href="${r.ending_km_attachment_url}" target="_blank">View</a> (upload new to replace)` : '';
         // Populate items
         const container = document.getElementById('hEditRepairItems');
         container.innerHTML = '';
@@ -1992,9 +2061,19 @@ function calcEditRepairTotal() {
 }
 function hSaveEditRepair() {
     const id = document.getElementById('hEditRepairId').value;
+    const startingKm = document.getElementById('hEditStartingKm').value.trim();
+    if (!startingKm) { showBankAlert('Starting KM is required.', 'warning'); return; }
+    const endingKm = document.getElementById('hEditEndingKm').value.trim();
+    if (!endingKm) { showBankAlert('Ending KM is required.', 'warning'); return; }
     const fd = new FormData();
     fd.append('vehicle_id', document.getElementById('hEditRepairVehicle').value);
     fd.append('notes', document.getElementById('hEditRepairNotes').value);
+    fd.append('starting_km', startingKm);
+    fd.append('ending_km', endingKm);
+    const skFile = document.getElementById('hEditStartingKmFile').files[0];
+    if (skFile) fd.append('starting_km_attachment', skFile);
+    const ekFile = document.getElementById('hEditEndingKmFile').files[0];
+    if (ekFile) fd.append('ending_km_attachment', ekFile);
     let idx = 0;
     document.querySelectorAll('[id^="heitem_"]').forEach(card => {
         const cid = card.id.split('_')[1];
@@ -2725,12 +2804,25 @@ function submitRepair() {
     const vehicleId = document.getElementById('repair_vehicle_id').value;
     if (!vehicleId) { showRepairAlert('Please select a vehicle.', 'warning'); return; }
 
+    const startingKm = document.getElementById('repair_starting_km').value.trim();
+    if (!startingKm) { showRepairAlert('Starting KM is required.', 'warning'); return; }
+    const startingKmFile = document.getElementById('repair_starting_km_attachment').files[0];
+    if (!startingKmFile) { showRepairAlert('Starting KM photo/attachment is required.', 'warning'); return; }
+    const endingKm = document.getElementById('repair_ending_km').value.trim();
+    if (!endingKm) { showRepairAlert('Ending KM is required.', 'warning'); return; }
+    const endingKmFile = document.getElementById('repair_ending_km_attachment').files[0];
+    if (!endingKmFile) { showRepairAlert('Ending KM photo/attachment is required.', 'warning'); return; }
+
     const itemCards = document.querySelectorAll('.repair-item-card');
     if (itemCards.length === 0) { showRepairAlert('Please add at least one repair item.', 'warning'); return; }
 
     const fd = new FormData();
     fd.append('vehicle_id', vehicleId);
     fd.append('notes', document.getElementById('repair_notes').value);
+    fd.append('starting_km', startingKm);
+    fd.append('starting_km_attachment', startingKmFile);
+    fd.append('ending_km', endingKm);
+    fd.append('ending_km_attachment', endingKmFile);
 
     let valid = true;
     let idx = 0;
@@ -2760,6 +2852,10 @@ function submitRepair() {
         if (data.success) {
             document.getElementById('repair_vehicle_id').value = '';
             document.getElementById('repair_notes').value = '';
+            document.getElementById('repair_starting_km').value = '';
+            document.getElementById('repair_starting_km_attachment').value = '';
+            document.getElementById('repair_ending_km').value = '';
+            document.getElementById('repair_ending_km_attachment').value = '';
             document.getElementById('repairItemsContainer').innerHTML = '';
             repairItemCount = 0;
             calcRepairTotal();
@@ -2796,6 +2892,22 @@ function viewRepairDetail(id) {
                     <small class="text-muted">${esc(r.vehicle)} &bull; ${esc(r.created_at)}</small>
                 </div>
                 <span class="badge bg-${statusColor} align-self-start">${r.status}</span>
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded border">
+                        <small class="text-muted d-block">Starting KM</small>
+                        <span class="fw-bold">${r.starting_km ?? '—'}</span>
+                        ${r.starting_km_attachment_url ? ` <a href="${r.starting_km_attachment_url}" target="_blank" class="ms-2 small text-info"><i class="bi bi-paperclip"></i> View</a>` : ''}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded border">
+                        <small class="text-muted d-block">Ending KM</small>
+                        <span class="fw-bold">${r.ending_km ?? '—'}</span>
+                        ${r.ending_km_attachment_url ? ` <a href="${r.ending_km_attachment_url}" target="_blank" class="ms-2 small text-info"><i class="bi bi-paperclip"></i> View</a>` : ''}
+                    </div>
+                </div>
             </div>
             <table class="table table-sm table-bordered mb-3">
                 <thead class="table-light"><tr><th>Name</th><th>Description</th><th>Amount</th><th>Attachment</th></tr></thead>

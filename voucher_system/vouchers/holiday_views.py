@@ -1205,6 +1205,27 @@ class RepairCreateAPI(APIView):
             except Vehicle.DoesNotExist:
                 pass
 
+        # KM fields — mandatory
+        starting_km_raw = data.get('starting_km', '').strip()
+        ending_km_raw   = data.get('ending_km', '').strip()
+        starting_km_file = files.get('starting_km_attachment')
+        ending_km_file   = files.get('ending_km_attachment')
+
+        if not starting_km_raw:
+            return Response({'error': 'Starting KM is required.'}, status=400)
+        if not starting_km_file:
+            return Response({'error': 'Starting KM attachment is required.'}, status=400)
+        if not ending_km_raw:
+            return Response({'error': 'Ending KM is required.'}, status=400)
+        if not ending_km_file:
+            return Response({'error': 'Ending KM attachment is required.'}, status=400)
+
+        try:
+            starting_km = int(starting_km_raw)
+            ending_km   = int(ending_km_raw)
+        except ValueError:
+            return Response({'error': 'KM values must be whole numbers.'}, status=400)
+
         # Collect items
         items = []
         idx = 0
@@ -1236,6 +1257,10 @@ class RepairCreateAPI(APIView):
                 vehicle=vehicle,
                 notes=data.get('notes', ''),
                 total_amount=total_amount,
+                starting_km=starting_km,
+                starting_km_attachment=starting_km_file,
+                ending_km=ending_km,
+                ending_km_attachment=ending_km_file,
                 created_by=request.user,
             )
 
@@ -1290,6 +1315,10 @@ class RepairDetailAPI(APIView):
                 'status': repair.status,
                 'total_amount': str(repair.total_amount),
                 'notes': repair.notes,
+                'starting_km': repair.starting_km,
+                'starting_km_attachment_url': request.build_absolute_uri(repair.starting_km_attachment.url) if repair.starting_km_attachment else None,
+                'ending_km': repair.ending_km,
+                'ending_km_attachment_url': request.build_absolute_uri(repair.ending_km_attachment.url) if repair.ending_km_attachment else None,
                 'created_at': repair.created_at.strftime('%d %b %Y'),
                 'items': items,
             }
@@ -1506,6 +1535,32 @@ class RepairUpdateAPI(APIView):
             except Vehicle.DoesNotExist:
                 pass
         repair.notes = data.get('notes', repair.notes)
+
+        # KM fields — mandatory on update
+        starting_km_raw  = data.get('starting_km', '').strip()
+        ending_km_raw    = data.get('ending_km', '').strip()
+        starting_km_file = files.get('starting_km_attachment')
+        ending_km_file   = files.get('ending_km_attachment')
+
+        if not starting_km_raw:
+            return Response({'error': 'Starting KM is required.'}, status=400)
+        if not starting_km_file and not repair.starting_km_attachment:
+            return Response({'error': 'Starting KM attachment is required.'}, status=400)
+        if not ending_km_raw:
+            return Response({'error': 'Ending KM is required.'}, status=400)
+        if not ending_km_file and not repair.ending_km_attachment:
+            return Response({'error': 'Ending KM attachment is required.'}, status=400)
+
+        try:
+            repair.starting_km = int(starting_km_raw)
+            repair.ending_km   = int(ending_km_raw)
+        except ValueError:
+            return Response({'error': 'KM values must be whole numbers.'}, status=400)
+
+        if starting_km_file:
+            repair.starting_km_attachment = starting_km_file
+        if ending_km_file:
+            repair.ending_km_attachment = ending_km_file
 
         # Rebuild items
         items = []
