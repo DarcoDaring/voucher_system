@@ -188,3 +188,10 @@ SESSION_COOKIE_AGE = 1800
 SESSION_SAVE_EVERY_REQUEST = True
 SITE_URL = "http://127.0.0.1:8000"
 CORS_ALLOW_ALL_ORIGINS = True
+
+# ===================================================================
+# WhatsApp Meta Cloud API
+# ===================================================================
+WHATSAPP_LIVE_MODE = True
+WHATSAPP_ACCESS_TOKEN = 'EAAXVobHU7G4BRmzT72IiCgxHY5p2Bw6rQpkdJmtZANFZC8JlIyNHaaGecuafdHo5f8XaMlraTqpt8lBpBb2fjuWpy8Cln7RJUAF9izOs4here1Afm5SryiNmcBZCKfiDROfvUT4fhn8Sjat3Fv8IF238gfwTwZBCvgQAVEtuRiTQS4UcTsXnZCPKBRPSFxZADtQCQAGvWPfzaFMYDZCGi4oNtbFWQD3bm9WqmseaDWzFYSNZB4E8rz9RIYUvMO9onUDccFJ2d6i8WfFmZAX2L5qwAwZA0ZD'
+WHATSAPP_PHONE_NUMBER_ID = '1185796111279779'

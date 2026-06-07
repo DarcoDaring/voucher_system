@@ -1,3 +1,4 @@
+import logging
 from django.shortcuts import redirect
 from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,6 +11,8 @@ from .views import check_user_permission
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 def is_function_completed_check(function_date, time_to):
@@ -329,6 +332,14 @@ class FunctionConfirmAPI(APIView):
             function.confirmed_by = request.user
             function.confirmed_at = timezone.now()
             function.save()
+
+            import threading
+            from .whatsapp_notification import send_function_prospect_whatsapp
+            threading.Thread(
+                target=send_function_prospect_whatsapp,
+                args=(function,),
+                daemon=True
+            ).start()
 
             return Response({
                 'success': True,
@@ -718,6 +729,29 @@ class FunctionUpdateDetailsAPI(APIView):
             import traceback
             traceback.print_exc()
             return Response({'error': 'An error occurred while saving details'}, status=500)
+
+
+class FunctionResendWhatsAppAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            function = FunctionBooking.objects.get(pk=pk, company_id=active_company_id)
+        except FunctionBooking.DoesNotExist:
+            return Response({'error': 'Function not found'}, status=404)
+
+        if function.status != 'CONFIRMED':
+            return Response({'error': 'Only confirmed functions can be sent'}, status=400)
+
+        try:
+            from .whatsapp_notification import send_function_prospect_whatsapp
+            result = send_function_prospect_whatsapp(function)
+            if result.get('success'):
+                return Response({'success': True, 'message': 'WhatsApp sent successfully!'})
+            return Response({'error': result.get('error', 'Send failed')}, status=500)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 
 class FunctionTimeConflictCheckAPI(APIView):

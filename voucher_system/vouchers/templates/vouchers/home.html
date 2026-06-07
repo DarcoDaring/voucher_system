@@ -125,6 +125,16 @@
                             </a>
                         </div>
 
+                        <!-- WhatsApp Manager -->
+                        <div class="col">
+                            <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#whatsappManagerModal">
+                                <div class="pv-admin-card">
+                                    <div class="pv-admin-icon" style="background:#e7f8ef;color:#25d366;"><i class="bi bi-whatsapp"></i></div>
+                                    <span class="pv-admin-label">WhatsApp</span>
+                                </div>
+                            </a>
+                        </div>
+
                     </div>
 
                     <!-- ENHANCED MODALS WITH BETTER STYLING -->
@@ -302,6 +312,79 @@
                                         </div>
 
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WhatsApp Manager Modal -->
+                    <div class="modal fade" id="whatsappManagerModal" tabindex="-1" aria-labelledby="whatsappManagerModalLabel">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 rounded-4 shadow-lg">
+                                <div class="modal-header text-white rounded-top-4" style="background: linear-gradient(135deg, #25d366, #128c7e);">
+                                    <i class="bi bi-whatsapp me-2"></i>
+                                    <h5 class="modal-title fw-bold mb-0" id="whatsappManagerModalLabel">WhatsApp Manager</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div id="waConfigAlert" class="alert d-none mb-3"></div>
+                                    <p class="text-muted small mb-4">Enable or disable automatic WhatsApp notifications for each module.</p>
+
+                                    <div class="d-flex flex-column gap-3">
+
+                                        <!-- Vouchers -->
+                                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div style="width:40px;height:40px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;">
+                                                    <i class="bi bi-file-earmark-text-fill" style="color:#7c3aed;font-size:1.1rem;"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold">Vouchers</div>
+                                                    <div class="text-muted small">Notify approvers when a voucher is created</div>
+                                                </div>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input wa-toggle" type="checkbox" id="waVoucherToggle" data-key="voucher_enabled" role="switch" style="width:2.5em;height:1.3em;cursor:pointer;">
+                                            </div>
+                                        </div>
+
+                                        <!-- Functions -->
+                                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div style="width:40px;height:40px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;">
+                                                    <i class="bi bi-calendar-event-fill" style="color:#db2777;font-size:1.1rem;"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold">Functions</div>
+                                                    <div class="text-muted small">Send prospect PDF when a function is confirmed</div>
+                                                </div>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input wa-toggle" type="checkbox" id="waFunctionToggle" data-key="function_enabled" role="switch" style="width:2.5em;height:1.3em;cursor:pointer;">
+                                            </div>
+                                        </div>
+
+                                        <!-- Holidays -->
+                                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div style="width:40px;height:40px;border-radius:10px;background:#d1fae5;display:flex;align-items:center;justify-content:center;">
+                                                    <i class="bi bi-bus-front-fill" style="color:#059669;font-size:1.1rem;"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold">Holidays</div>
+                                                    <div class="text-muted small">Send order form PDF when a trip is confirmed</div>
+                                                </div>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input wa-toggle" type="checkbox" id="waHolidayToggle" data-key="holiday_enabled" role="switch" style="width:2.5em;height:1.3em;cursor:pointer;">
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <small class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Changes take effect immediately</small>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                                 </div>
                             </div>
                         </div>
@@ -1007,6 +1090,61 @@ function showBackupAlert(msg, type) {
         setTimeout(() => el.classList.add('d-none'), 5000);
     }
 }
+
+// ── WhatsApp Manager ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('whatsappManagerModal');
+    if (!modal) return;
+
+    function wacsrf() {
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? m[1] : '';
+    }
+
+    function showWaAlert(type, msg) {
+        const el = document.getElementById('waConfigAlert');
+        el.className = `alert alert-${type} py-2 small`;
+        el.textContent = msg;
+        el.classList.remove('d-none');
+        if (type === 'success') setTimeout(() => el.classList.add('d-none'), 3000);
+    }
+
+    // Load current config when modal opens
+    modal.addEventListener('show.bs.modal', async () => {
+        document.getElementById('waConfigAlert').classList.add('d-none');
+        try {
+            const r = await fetch('/api/whatsapp/config/', { credentials: 'include', headers: { 'X-CSRFToken': wacsrf() } });
+            if (!r.ok) { showWaAlert('danger', 'Failed to load: HTTP ' + r.status); return; }
+            const d = await r.json();
+            document.getElementById('waVoucherToggle').checked  = !!d.voucher_enabled;
+            document.getElementById('waFunctionToggle').checked = !!d.function_enabled;
+            document.getElementById('waHolidayToggle').checked  = !!d.holiday_enabled;
+        } catch (e) {
+            showWaAlert('danger', 'Failed to load: ' + e.message);
+        }
+    });
+
+    // Save on every toggle change
+    modal.addEventListener('change', async (e) => {
+        if (!e.target.classList.contains('wa-toggle')) return;
+        const key   = e.target.dataset.key;
+        const value = e.target.checked;
+        try {
+            const r = await fetch('/api/whatsapp/config/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': wacsrf() },
+                body: JSON.stringify({ [key]: value }),
+            });
+            const d = await r.json();
+            if (!d.success) throw new Error(d.error || 'Save failed');
+            showWaAlert('success', 'Saved successfully.');
+        } catch (err) {
+            e.target.checked = !value;
+            showWaAlert('danger', 'Failed to save: ' + err.message);
+        }
+    });
+});
 
 async function downloadBackup() {
     const btn      = document.getElementById('downloadBackupBtn');

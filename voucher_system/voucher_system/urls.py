@@ -17,6 +17,7 @@ from vouchers.views import (
     UserMembershipListAPI, UserMembershipCreateAPI,
     UserMembershipUpdateAPI, UserMembershipDeleteAPI, DesignationListAPI,
     AccountDetailAllAPI, AccountDetailToggleAPI, UserMembershipToggleAPI, VoucherNextNumberAPI, WhatsAppTestLogAPI,
+    VoucherDeepLinkRedirectView, WhatsAppConfigAPI,
 )
 from vouchers.function_views import (
     FunctionDetailsView, FunctionBookedDatesAPI, FunctionListByDateAPI,
@@ -24,12 +25,12 @@ from vouchers.function_views import (
     FunctionPendingByMonthAPI, FunctionUpcomingCountAPI, FunctionCompletedCountAPI,
     FunctionCompletedAPI, FunctionListByMonthAPI, FunctionUpdateDetailsAPI,
     FunctionTimeConflictCheckAPI, FunctionGenerateNumberAPI, FunctionCreateAPI,
-    FunctionConfirmAPI, FunctionPrintView,
+    FunctionConfirmAPI, FunctionPrintView, FunctionResendWhatsAppAPI,
 )
 from vouchers.holiday_views import (
     HolidayView, HolidayDetailView, HolidayCreateAPI,
     HolidayBookedDatesAPI, HolidayListByDateAPI,
-    HolidayDeleteAPI, HolidayUpdateAPI, HolidayConfirmAPI, HolidayPrintView,
+    HolidayDeleteAPI, HolidayUpdateAPI, HolidayConfirmAPI, HolidayPrintView, HolidayResendWhatsAppAPI,
     VehicleListAPI, VehicleCreateAPI,
     PaymentTypeListAPI, PaymentTypeCreateAPI, PaymentTypeToggleAPI, PaymentTypeUpdateAPI,
     VehicleToggleAPI, VehicleUpdateAPI,
@@ -82,6 +83,7 @@ urlpatterns = [
     path('api/vouchers/<int:pk>/approve/', VoucherApprovalAPI.as_view(), name='voucher_approval_api'),
     path('api/vouchers/<int:pk>/delete/', VoucherDeleteAPI.as_view(), name='voucher_delete_api'),
     path('api/vouchers/next-number/', VoucherNextNumberAPI.as_view(), name='voucher_next_number'),
+    path('open-voucher/<int:pk>/', VoucherDeepLinkRedirectView.as_view(), name='voucher_deep_link'),
 
     # =============================================
     # FUNCTION BOOKING MANAGEMENT
@@ -101,6 +103,7 @@ urlpatterns = [
     path('api/functions/<int:pk>/update/', FunctionUpdateAPI.as_view(), name='function-update'),
     path('api/functions/<int:pk>/delete/', FunctionDeleteAPI.as_view(), name='function_delete_api'),
     path('api/functions/<int:pk>/confirm/', FunctionConfirmAPI.as_view(), name='function_confirm'),
+    path('api/functions/<int:pk>/resend-whatsapp/', FunctionResendWhatsAppAPI.as_view(), name='function_resend_whatsapp'),
     path('api/functions/<int:pk>/update-details/', FunctionUpdateDetailsAPI.as_view(), name='function_update_details'),
     path('api/functions/upcoming/', FunctionUpcomingEventsAPI.as_view(), name='function_upcoming_events'),
     path('api/functions/upcoming-count/', FunctionUpcomingCountAPI.as_view()),
@@ -175,6 +178,7 @@ urlpatterns = [
     path('set-company/', SetCompanyView.as_view(), name='set_company'),
 
     path('api/whatsapp/test-logs/', WhatsAppTestLogAPI.as_view(), name='whatsapp_test_logs'),
+    path('api/whatsapp/config/', WhatsAppConfigAPI.as_view(), name='whatsapp_config'),
 
     # =============================================
     # BACKUP
@@ -196,6 +200,7 @@ urlpatterns = [
     path('api/holidays/<int:pk>/delete/', HolidayDeleteAPI.as_view(), name='holiday_delete_api'),
     path('api/holidays/<int:pk>/update/', HolidayUpdateAPI.as_view(), name='holiday_update_api'),
     path('api/holidays/<int:pk>/confirm/', HolidayConfirmAPI.as_view(), name='holiday_confirm_api'),
+    path('api/holidays/<int:pk>/resend-whatsapp/', HolidayResendWhatsAppAPI.as_view(), name='holiday_resend_whatsapp'),
 
     # Vehicle Master APIs
     path('api/vehicles/', VehicleListAPI.as_view(), name='vehicle_list_api'),

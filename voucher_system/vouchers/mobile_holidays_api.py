@@ -380,6 +380,11 @@ class MobileHolidayConfirmAPI(APIView):
 
         booking.status = 'CONFIRMED'
         booking.save()  # full save so balance_amount recalculates
+
+        import threading
+        from .whatsapp_notification import send_holiday_orderform_whatsapp
+        threading.Thread(target=send_holiday_orderform_whatsapp, args=(booking,), daemon=True).start()
+
         return Response({'success': True, 'message': f'Booking {booking.booking_number} confirmed!'})
 
 

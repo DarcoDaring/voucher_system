@@ -58,11 +58,19 @@ input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
             </button>
             {% endif %}
 
-            <!-- Print Button -->
+            <!-- Print Button — only after confirmed -->
+            {% if booking.status == 'CONFIRMED' or booking.status == 'COMPLETED' %}
             <a href="{% url 'holiday_print' booking.pk %}" target="_blank"
                class="btn btn-outline-info fw-semibold">
                 <i class="bi bi-printer me-1"></i>Print Order Form
             </a>
+            {% endif %}
+
+            {% if booking.status == 'CONFIRMED' or booking.status == 'COMPLETED' %}
+            <button class="btn btn-success fw-semibold" id="resendWhatsappBtn" onclick="resendWhatsapp()">
+                <i class="bi bi-whatsapp me-1"></i>Resend WhatsApp
+            </button>
+            {% endif %}
 
             <!-- Edit Button — hidden for completed or bank-settled trips -->
             {% if can_edit and not is_completed and not is_bank_settled %}
@@ -767,6 +775,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function resendWhatsapp() {
+    const btn = document.getElementById('resendWhatsappBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending…';
+
+    fetch(`/api/holidays/{{ booking.pk }}/resend-whatsapp/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Sent!';
+            btn.classList.replace('btn-success', 'btn-outline-success');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="bi bi-whatsapp me-1"></i>Resend WhatsApp';
+                btn.classList.replace('btn-outline-success', 'btn-success');
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            alert('Failed: ' + (data.error || 'Unknown error'));
+            btn.innerHTML = '<i class="bi bi-whatsapp me-1"></i>Resend WhatsApp';
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        alert('Network error. Please try again.');
+        btn.innerHTML = '<i class="bi bi-whatsapp me-1"></i>Resend WhatsApp';
+        btn.disabled = false;
+    });
+}
 </script>
 
 {% endblock %}

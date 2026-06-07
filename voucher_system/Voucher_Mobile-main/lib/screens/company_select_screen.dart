@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import 'voucher_list_screen.dart';
+import 'voucher_detail_screen.dart';
+import '../main.dart' show pendingVoucherId, navigatorKey;
 
 class CompanySelectScreen extends StatelessWidget {
   final AuthUser user;
@@ -12,10 +14,21 @@ class CompanySelectScreen extends StatelessWidget {
 
   void _select(BuildContext context, Company company) {
     ApiService.instance.setActiveCompany(company);
+    final voucherId = pendingVoucherId;
+    pendingVoucherId = null;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const VoucherListScreen()),
     );
+
+    if (voucherId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.push(MaterialPageRoute(
+          builder: (_) => VoucherDetailScreen(voucherId: voucherId),
+        ));
+      });
+    }
   }
 
   @override

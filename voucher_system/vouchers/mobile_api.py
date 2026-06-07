@@ -574,6 +574,16 @@ class MobileVoucherApprovalAPI(APIView):
                     voucher.refresh_from_db()
                     voucher._update_status_if_all_approved()
 
+                if action == 'APPROVED':
+                    import threading
+                    from .whatsapp_notification import notify_next_level_approvers
+                    _level_order = current_user_level.order
+                    threading.Thread(
+                        target=notify_next_level_approvers,
+                        args=(voucher, _level_order),
+                        daemon=True
+                    ).start()
+
                 return Response(
                     {
                         'success': True,

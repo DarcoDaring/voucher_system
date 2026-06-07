@@ -3,7 +3,7 @@ from django.views.generic import TemplateView, ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import login
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.db.models import Count, Case, When, IntegerField
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -1044,7 +1044,7 @@ class VoucherCreateAPI(APIView):
 
                 if not is_edit:
                     try:
-                        notify_approvers_new_voucher(voucher, request)
+                        notify_approvers_new_voucher(voucher)
                     except Exception as notify_err:
                         import traceback
                         traceback.print_exc()
@@ -1385,6 +1385,17 @@ class VoucherApprovalAPI(AdminStaffRequiredMixin, APIView):
                     'rejection_reason': approval.rejection_reason
                 }
                 response_data['can_approve'] = True
+
+                if status_choice == 'APPROVED':
+                    import threading
+                    from .whatsapp_notification import notify_next_level_approvers
+                    _level_order = current_user_level.order
+                    threading.Thread(
+                        target=notify_next_level_approvers,
+                        args=(voucher, _level_order),
+                        daemon=True
+                    ).start()
+
                 return Response(response_data, status=status.HTTP_200_OK)
 
             except OperationalError as e:
@@ -2410,4 +2421,39 @@ class WhatsAppTestLogAPI(APIView):
             'count': len(logs),
             'logs': logs
         })
+
+
+class WhatsAppConfigAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import WhatsAppConfig
+        cfg = WhatsAppConfig.get_config()
+        return Response({
+            'voucher_enabled':  cfg.voucher_enabled,
+            'function_enabled': cfg.function_enabled,
+            'holiday_enabled':  cfg.holiday_enabled,
+        })
+
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({'error': 'Superuser only'}, status=403)
+        from .models import WhatsAppConfig
+        cfg = WhatsAppConfig.get_config()
+        data = request.data
+        if 'voucher_enabled'  in data: cfg.voucher_enabled  = bool(data['voucher_enabled'])
+        if 'function_enabled' in data: cfg.function_enabled = bool(data['function_enabled'])
+        if 'holiday_enabled'  in data: cfg.holiday_enabled  = bool(data['holiday_enabled'])
+        cfg.save()
+        return Response({'success': True})
+
+
+class VoucherDeepLinkRedirectView(View):
+    """
+    Redirects an HTTP link to the voucher:// deep link scheme so the
+    Flutter app opens. WhatsApp only hyperlinks http/https URLs — this
+    bridge makes the link tappable while still opening the mobile app.
+    """
+    def get(self, request, pk):
+        return HttpResponseRedirect(f"voucher://detail/{pk}")
 

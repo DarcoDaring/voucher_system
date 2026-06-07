@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Order Form – {{ booking.booking_number }}</title>
+<style>
+@page { margin: 0.4in; size: A4; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; font-size: 12px; color: #000; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+td, th { border: 1px solid #000; padding: 7px 10px; vertical-align: middle; font-size: 12px; text-align: left; }
+th { font-weight: bold; white-space: nowrap; }
+.section-header td { text-align: center; font-weight: bold; font-size: 13px; background: #f5f5f5; padding: 8px; letter-spacing: 0.5px; }
+.two-col th { width: 25%; }
+.two-col td { width: 25%; }
+.header-table td { border: none; padding: 2px 4px; }
+.page-title { font-size: 22px; font-weight: bold; text-decoration: underline; text-transform: uppercase; text-align: center; margin: 8px 0 4px; }
+.company-name { font-size: 15px; font-weight: bold; letter-spacing: 1px; text-align: center; }
+.permit-notice { text-align: center; font-weight: bold; font-size: 11px; border: 1px solid #000; padding: 8px; margin-bottom: 14px; text-transform: uppercase; }
+hr { border: none; border-top: 1px solid #000; margin: 8px 0; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<table class="header-table" style="margin-bottom:8px;">
+<tr>
+{% if logo_src %}
+<td style="width:15%; text-align:center; vertical-align:middle;">
+<img src="{{ logo_src }}" style="max-height:70px; max-width:100px;">
+</td>
+{% endif %}
+<td style="text-align:center; vertical-align:middle;">
+{% if company %}
+<div class="company-name">{{ company.name }}</div>
+{% if company.address %}<div style="font-size:10px; color:#333; margin-top:2px;">{{ company.address }}</div>{% endif %}
+{% endif %}
+</td>
+</tr>
+</table>
+
+<div class="page-title">Order Form</div>
+
+<!-- Meta row -->
+<table style="margin-bottom:12px;" class="header-table">
+<tr>
+<td><strong>DATE:</strong> {{ booking.created_at|date:"d/m/Y" }}</td>
+<td style="text-align:right;"><strong>ORDER FORM ID:</strong> {{ booking.booking_number }}</td>
+</tr>
+</table>
+
+<!-- Main details -->
+<table>
+<tbody>
+<tr>
+<th>PURPOSE OF BOOKING:</th>
+<td colspan="3">{{ booking.purpose_of_booking|default:"" }}</td>
+</tr>
+<tr>
+<th>NAME:</th>
+<td colspan="3">{{ booking.booked_by }}</td>
+</tr>
+<tr class="two-col">
+<th>CONTACT NUM:</th>
+<td>{{ booking.contact_number }}</td>
+<th>CONTACT NUM 2:</th>
+<td>{{ booking.second_contact_number|default:"" }}</td>
+</tr>
+<tr class="two-col">
+<th>DATE OF JOURNEY:</th>
+<td>{{ booking.trip_date|date:"d/m/Y" }}</td>
+<th>TIME OF JOURNEY:</th>
+<td>{{ booking.departure_time|time:"g:i A" }}</td>
+</tr>
+<tr class="two-col">
+<th>DATE OF RETURN:</th>
+<td>{% if booking.return_date %}{{ booking.return_date|date:"d/m/Y" }}{% endif %}</td>
+<th>TIME OF RETURN:</th>
+<td>{% if booking.return_time %}{{ booking.return_time|time:"g:i A" }}{% endif %}</td>
+</tr>
+<tr>
+<th>NO. OF PASSENGERS:</th>
+<td colspan="3">{{ booking.no_of_passengers }}</td>
+</tr>
+<tr>
+<th>PLACE OF STARTING POINT:</th>
+<td colspan="3">{{ booking.departure_location }}</td>
+</tr>
+<tr>
+<th>PLACES TO VISIT:</th>
+<td colspan="3">{{ booking.destination }}</td>
+</tr>
+<tr>
+<th>DETAILS OF VEHICLE:</th>
+<td colspan="3">
+{% if booking.booked_vehicle %}{{ booking.booked_vehicle.name }} – {% endif %}{{ booking.get_ac_type_display }}
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Payment details -->
+<table>
+<tbody>
+<tr><td colspan="2" class="section-header">DETAILS OF PAYMENT</td></tr>
+{% if booking.payment_type_label %}
+<tr><th style="width:55%;">PAYMENT TYPE</th><td>{{ booking.payment_type_label }}</td></tr>
+{% endif %}
+<tr><th>TOTAL RENT:</th><td>{{ booking.total_rent|floatformat:0 }}</td></tr>
+<tr><th>SERVICE CHARGE:</th><td>{{ booking.service_charge|floatformat:0|default:"0" }}</td></tr>
+<tr><th>TOTAL AMOUNT:</th><td><strong>{{ booking.total_amount|floatformat:0 }}</strong></td></tr>
+<tr><th>ADVANCE:</th><td>{{ booking.advance_amount|floatformat:0|default:"0" }}</td></tr>
+<tr><th>BALANCE:</th><td><strong>{{ booking.balance_amount|floatformat:0 }}</strong></td></tr>
+<tr><th>BALANCE IN WORDS:</th><td><strong>{{ balance_in_words }}</strong></td></tr>
+</tbody>
+</table>
+
+<!-- Journey details -->
+{% if booking.max_km or booking.extra_km_charge %}
+<table>
+<tbody>
+<tr><td colspan="2" class="section-header">DETAILS OF JOURNEY</td></tr>
+{% if booking.max_km %}
+<tr><th style="width:75%;">MAXIMUM KM THAT CAN BE RUN THIS CONTRACT:</th><td>{{ booking.max_km }}</td></tr>
+{% endif %}
+{% if booking.extra_km_charge %}
+<tr><th>AFTER MAX KM, EACH KM CHARGEABLE AT:</th><td>{{ booking.extra_km_charge|floatformat:0 }}</td></tr>
+{% endif %}
+</tbody>
+</table>
+{% endif %}
+
+<!-- Special instructions -->
+{% if booking.special_instructions %}
+<table>
+<tbody>
+<tr><td class="section-header">SPECIAL INSTRUCTIONS</td></tr>
+<tr><td>{{ booking.special_instructions }}</td></tr>
+</tbody>
+</table>
+{% endif %}
+
+<div class="permit-notice">THE PERMIT AMOUNT SHALL BE PAID BY THE TRAVELLER</div>
+
+<!-- Signature -->
+<table>
+<tr>
+<td style="width:60%;">IN-CHARGE SIGN: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td style="text-align:right;"><strong>I AGREE ALL TERMS AND CONDITIONS</strong></td>
+</tr>
+</table>
+
+</body>
+</html>

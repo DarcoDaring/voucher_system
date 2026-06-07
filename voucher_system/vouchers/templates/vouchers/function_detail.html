@@ -31,6 +31,9 @@
                 <a href="{% url 'function_print' function.id %}" target="_blank" class="btn btn-info me-2">
                     <i class="bi bi-printer me-2"></i>Print
                 </a>
+                <button class="btn btn-success me-2" id="resendWhatsappBtn" onclick="resendWhatsapp()">
+                    <i class="bi bi-whatsapp me-2"></i>Resend WhatsApp
+                </button>
             {% endif %}
         </div>
     </div>
@@ -1134,6 +1137,38 @@ document.getElementById('editFoodTimesForm').addEventListener('submit', function
         submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Save Changes';
     });
 });
+
+function resendWhatsapp() {
+    const btn = document.getElementById('resendWhatsappBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending…';
+
+    fetch(`/api/functions/{{ function.id }}/resend-whatsapp/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Sent!';
+            btn.classList.replace('btn-success', 'btn-outline-success');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i>Resend WhatsApp';
+                btn.classList.replace('btn-outline-success', 'btn-success');
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            alert('Failed: ' + (data.error || 'Unknown error'));
+            btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i>Resend WhatsApp';
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        alert('Network error. Please try again.');
+        btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i>Resend WhatsApp';
+        btn.disabled = false;
+    });
+}
 </script>
 
 {% endblock %}

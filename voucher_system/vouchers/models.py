@@ -947,3 +947,22 @@ class HolidayBankApprover(models.Model):
 
     def __str__(self):
         return f"{self.user.username} – {self.company.name}"
+
+
+class WhatsAppConfig(models.Model):
+    """Singleton model — always use pk=1 via get_config()."""
+    voucher_enabled  = models.BooleanField(default=True)
+    function_enabled = models.BooleanField(default=True)
+    holiday_enabled  = models.BooleanField(default=True)
+    updated_at       = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "WhatsApp Configuration"
+
+    @classmethod
+    def get_config(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "WhatsApp Configuration"

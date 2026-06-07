@@ -273,3 +273,28 @@ A new voucher has been created and requires your appro...
 Hello Director,
 
 A new voucher has been created and requires your app...
+WHATSAPP_LIVE_MODE=True but no API implementation found!
+[WhatsApp] Voucher VCH0006 � 2 level(s)
+WHATSAPP_LIVE_MODE=True but no API implementation found!
+[WhatsApp] Failed to notify Vivek: No API implementation configured
+[WhatsApp] VIPIN: no mobile number, skipping
+[WhatsApp] Total notified: 1
+[WhatsApp] Voucher VCH0007 � 2 level(s)
+WhatsApp text send failed: {'error': {'message': 'Authentication Error', 'code': 190, 'type': 'OAuthException', 'fbtrace_id': 'AQsXcMAyyL7lWTsugmTax4D'}}
+[WhatsApp] Failed to notify Vivek: {'error': {'message': 'Authentication Error', 'code': 190, 'type': 'OAuthException', 'fbtrace_id': 'AQsXcMAyyL7lWTsugmTax4D'}}
+[WhatsApp] VIPIN: no mobile number, skipping
+[WhatsApp] Total notified: 1
+[WhatsApp] Voucher VCH0007 � 2 level(s)
+WhatsApp text send failed: {'error': {'message': 'Authentication Error', 'code': 190, 'type': 'OAuthException', 'fbtrace_id': 'AAzVTZHfRzlrUPdT0M_ZP0V'}}
+[WhatsApp] Failed to notify Vivek: {'error': {'message': 'Authentication Error', 'code': 190, 'type': 'OAuthException', 'fbtrace_id': 'AAzVTZHfRzlrUPdT0M_ZP0V'}}
+[WhatsApp] VIPIN: no mobile number, skipping
+[WhatsApp] Total notified: 1
+[WhatsApp] Voucher VCH0007 � 2 level(s)
+[WhatsApp] Notified Vivek (+919446017520)
+[WhatsApp] VIPIN: no mobile number, skipping
+[WhatsApp] Total notified: 1
+[WhatsApp] Voucher VCH0007 � 2 level(s)
+[WhatsApp] Notified Vivek (+919446017520)
+[WhatsApp] VIPIN: no mobile number, skipping
+[WhatsApp] Total notified: 1
+

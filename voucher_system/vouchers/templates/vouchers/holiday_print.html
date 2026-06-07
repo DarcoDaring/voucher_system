@@ -100,15 +100,14 @@
         .sig-row .sig-left { flex: 1; }
         .sig-row .sig-right { text-align: right; font-weight: bold; }
 
-        /* ── PAGE 2 ── */
-        .page-break { page-break-before: always; padding-top: 30px; }
-        .page2-sig {
+        /* ── TRAVELLER SIGNATURE ── */
+        .traveller-sig {
             display: flex;
             justify-content: space-between;
             border: 1px solid #000;
+            border-top: none;
             padding: 10px 16px;
             font-size: 12px;
-            margin-top: 40px;
         }
 
         /* ── PRINT BUTTON (screen only) ── */
@@ -129,7 +128,10 @@
 
         @media print {
             .print-btn-bar { display: none; }
-            body { padding: 15px 20px; }
+            body { padding: 10px 18px; }
+            table { margin-bottom: 10px; }
+            td, th { padding: 5px 8px; }
+            .sig-row { padding: 7px 14px; margin-bottom: 0; }
         }
     </style>
 </head>
@@ -279,13 +281,9 @@
     <div class="sig-left">IN-CHARGE SIGN: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
     <div class="sig-right">I AGREE ALL TERMS AND CONDITION</div>
 </div>
-
-<!-- ── PAGE 2 ── -->
-<div class="page-break">
-    <div class="page2-sig">
-        <div>DATE: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-        <div><strong>SIGN OF THE TRAVELLER</strong></div>
-    </div>
+<div class="traveller-sig">
+    <div>DATE: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+    <div><strong>SIGN OF THE TRAVELLER</strong></div>
 </div>
 
 </body>

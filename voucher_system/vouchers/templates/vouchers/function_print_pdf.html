@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Function Prospectus – {{ function.function_number }}</title>
+<style>
+@page { margin: 0.4in; size: A4; }
+body { font-family: Arial, sans-serif; font-size: 12px; color: #000; margin: 0; padding: 0; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+td, th { padding: 6px 8px; border: 1px solid #000; vertical-align: middle; font-size: 12px; }
+.no-border td { border: none; padding: 2px 4px; }
+.center { text-align: center; }
+.right { text-align: right; }
+.bold { font-weight: bold; }
+.section-hd { background: #f0f0f0; font-weight: bold; text-align: center; font-size: 13px; }
+.page-title { font-size: 16px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 8px 0; }
+hr { border: none; border-top: 1px solid #000; margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<table class="no-border" style="margin-bottom:4px;">
+<tr>
+{% if logo_src %}
+<td style="width:15%; border:none; text-align:center; vertical-align:middle;">
+<img src="{{ logo_src }}" style="max-height:70px; max-width:100px;">
+</td>
+{% endif %}
+<td style="border:none; vertical-align:middle;">
+{% if company %}
+<div style="font-size:15px; font-weight:bold;">{{ company.name }}</div>
+{% if company.address %}<div style="font-size:10px; color:#333;">{{ company.address }}</div>{% endif %}
+<div style="font-size:10px; color:#333;">
+{% if company.phone %}Phone: {{ company.phone }}{% endif %}
+{% if company.email %} &nbsp;|&nbsp; {{ company.email }}{% endif %}
+{% if company.gst_no %} &nbsp;|&nbsp; GST: {{ company.gst_no }}{% endif %}
+</div>
+{% endif %}
+</td>
+</tr>
+</table>
+
+<hr>
+<div class="page-title">Function Prospectus</div>
+<hr>
+
+<!-- Date / Time / Venue bar -->
+<table style="margin-bottom:8px;">
+<tr>
+<td class="bold center">Function Date: {{ function.function_date|date:"d M Y" }}</td>
+<td class="bold center">Time: {{ function.time_from|time:"h:i A" }} – {{ function.time_to|time:"h:i A" }}</td>
+<td class="bold center">Venue: {{ function.location }}</td>
+</tr>
+</table>
+
+<!-- Booking details -->
+<table>
+<tr>
+<th style="width:22%;">Function No.</th>
+<td style="width:28%;">{{ function.function_number }}</td>
+<th style="width:22%;">No. of Pax</th>
+<td>{{ function.no_of_pax }}</td>
+</tr>
+<tr>
+<th>Function Name</th>
+<td colspan="3">{{ function.function_name }}</td>
+</tr>
+<tr>
+<th>Booked By</th>
+<td colspan="3">{{ function.booked_by }}</td>
+</tr>
+<tr>
+<th>Contact</th>
+<td colspan="3">{% if function.contact_numbers %}{{ function.contact_numbers.0 }}{% endif %}</td>
+</tr>
+{% if function.address %}
+<tr>
+<th>Address</th>
+<td colspan="3">{{ function.address }}</td>
+</tr>
+{% endif %}
+</table>
+
+<!-- Charges -->
+<table>
+<tr><td colspan="2" class="section-hd">Charges</td></tr>
+<tr><th>Rate Per Pax</th><td class="right">&#8377;{{ function.rate_per_pax|floatformat:2 }}</td></tr>
+{% if function.hall_rent %}
+<tr><th>Hall Rent</th><td class="right">&#8377;{{ function.hall_rent|floatformat:2 }}</td></tr>
+{% endif %}
+{% if function.extra_charges %}
+{% for charge in function.extra_charges %}
+<tr><td>{{ charge.description }}</td><td class="right">&#8377;{{ charge.rate|floatformat:2 }}</td></tr>
+{% endfor %}
+{% endif %}
+</table>
+
+<!-- Menu -->
+{% if function.menu_items %}
+<table>
+<tr><td colspan="2" class="section-hd">Menu</td></tr>
+{% if function.menu_items.welcome_drink %}
+<tr><th style="width:25%;">Welcome Drink</th><td>{{ function.menu_items.welcome_drink }}</td></tr>
+{% endif %}
+{% if function.menu_items.starters %}
+<tr><th>Starters</th><td>{{ function.menu_items.starters }}</td></tr>
+{% endif %}
+{% if function.menu_items.main_course %}
+<tr><th>Main Course</th><td>{{ function.menu_items.main_course }}</td></tr>
+{% endif %}
+{% if function.menu_items.desserts %}
+<tr><th>Desserts</th><td>{{ function.menu_items.desserts }}</td></tr>
+{% endif %}
+</table>
+{% endif %}
+
+<!-- Special instructions -->
+{% if function.special_instructions %}
+<table>
+<tr><td class="section-hd">Special Instructions</td></tr>
+<tr><td>{{ function.special_instructions }}</td></tr>
+</table>
+{% endif %}
+
+<!-- Payment summary -->
+<table>
+<tr>
+<td class="bold center">
+Total<br/>
+<span style="font-size:14px;">&#8377;{{ function.total_amount|floatformat:2 }}</span>
+</td>
+<td class="bold center">
+Advance Paid<br/>
+<span style="font-size:14px;">&#8377;{{ function.advance_amount|default:"0.00"|floatformat:2 }}</span>
+</td>
+<td class="bold center">
+Balance Due<br/>
+<span style="font-size:14px;">&#8377;{{ function.due_amount|default:function.total_amount|floatformat:2 }}</span>
+</td>
+</tr>
+</table>
+
+<!-- Signatures -->
+<table class="no-border" style="margin-top:20px;">
+<tr>
+<td style="border:none; width:50%;">
+<div><strong>Guest:</strong> {{ function.booked_by }}</div>
+<div style="margin-top:30px; border-top:1px solid #000; padding-top:4px; font-size:10px;">(Guest Signature)</div>
+</td>
+<td style="border:none; width:50%; text-align:right;">
+<div style="margin-top:30px; border-top:1px solid #000; padding-top:4px; font-size:10px;">(Authorised Signature)</div>
+</td>
+</tr>
+</table>
+
+</body>
+</html>

@@ -461,6 +461,15 @@ class HolidayConfirmAPI(APIView):
 
         booking.status = 'CONFIRMED'
         booking.save()  # full save so balance_amount recalculates
+
+        import threading
+        from .whatsapp_notification import send_holiday_orderform_whatsapp
+        threading.Thread(
+            target=send_holiday_orderform_whatsapp,
+            args=(booking,),
+            daemon=True
+        ).start()
+
         return Response({'success': True, 'message': f'Booking {booking.booking_number} confirmed!'})
 
 
@@ -1123,6 +1132,29 @@ class BankApproverToggleAPI(APIView):
             return Response({'success': True, 'is_active': approver.is_active, 'message': f'Approver {state}.'})
         except HolidayBankApprover.DoesNotExist:
             return Response({'error': 'Approver not found'}, status=404)
+
+
+class HolidayResendWhatsAppAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            booking = HolidayBooking.objects.get(pk=pk, company_id=active_company_id)
+        except HolidayBooking.DoesNotExist:
+            return Response({'error': 'Booking not found'}, status=404)
+
+        if booking.status not in ('CONFIRMED', 'COMPLETED'):
+            return Response({'error': 'Only confirmed bookings can be sent'}, status=400)
+
+        try:
+            from .whatsapp_notification import send_holiday_orderform_whatsapp
+            result = send_holiday_orderform_whatsapp(booking)
+            if result.get('success'):
+                return Response({'success': True, 'message': 'WhatsApp sent successfully!'})
+            return Response({'error': result.get('error', 'Send failed')}, status=500)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 
 class HolidayPrintView(LoginRequiredMixin, DetailView):
