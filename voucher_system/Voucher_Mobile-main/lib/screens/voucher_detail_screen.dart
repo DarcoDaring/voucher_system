@@ -70,15 +70,16 @@ class _VoucherDetailScreenState extends State<VoucherDetailScreen> {
         action: action,
         rejectionReason: rejectionReason,
       );
-      await _load(); // refresh detail
+      if (action == 'APPROVED') {
+        if (mounted) Navigator.of(context).pop(true);
+        return;
+      }
+      await _load(); // refresh detail for rejection
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Voucher ${action.toLowerCase()} successfully!',
-            ),
-            backgroundColor:
-                action == 'APPROVED' ? Colors.green : Colors.red,
+          const SnackBar(
+            content: Text('Voucher rejected successfully!'),
+            backgroundColor: Colors.red,
           ),
         );
       }

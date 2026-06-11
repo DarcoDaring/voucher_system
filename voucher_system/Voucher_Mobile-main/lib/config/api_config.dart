@@ -5,7 +5,7 @@ class ApiConfig {
   // Local development:   'http://10.0.2.2:8000'  (Android emulator)
   //                      'http://127.0.0.1:8000'  (iOS simulator)
   // Production AWS:      'https://your-domain.com'
-  static const String baseUrl ='https://voucher.thenorthpark.com';// 'http://127.0.0.1:8080';
+  static const String baseUrl = 'https://voucher.thenorthpark.com';// 'http://127.0.0.1:8080';//
  
   // Mobile API endpoints
   static const String loginEndpoint         = '$baseUrl/api/mobile/login/';

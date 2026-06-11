@@ -5,7 +5,8 @@
       "Bash(dir d:/PaymentVoucher/)",
       "Bash(../venv/Scripts/python -c ' *)",
       "PowerShell(pip install requests)",
-      "PowerShell(C:\\\\Users\\\\abinb\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\\\python.exe -m pip install requests)"
+      "PowerShell(C:\\\\Users\\\\abinb\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\\\python.exe -m pip install requests)",
+      "Bash(powershell -Command \"\\(Get-Item 'd:\\\\PaymentVoucher\\\\voucher_system\\\\debug.log'\\).LastWriteTime\")"
     ]
   }
 }

@@ -313,7 +313,8 @@ class _VoucherListScreenState extends State<VoucherListScreen>
                               itemBuilder: (_, i) => _VoucherCard(
                                 voucher: _vouchers[i],
                                 onTap: () async {
-                                  await Navigator.push(
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  final approved = await Navigator.push<bool>(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => VoucherDetailScreen(
@@ -322,6 +323,14 @@ class _VoucherListScreenState extends State<VoucherListScreen>
                                     ),
                                   );
                                   _load();
+                                  if (approved == true) {
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Voucher approved successfully!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
                                 },
                               ),
                             ),

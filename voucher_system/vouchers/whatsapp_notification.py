@@ -176,15 +176,33 @@ def _notify_level_users(voucher, level, voucher_url, formatted_amount):
             logger.warning(f"[WhatsApp] {user.username}: invalid mobile '{mobile}', skipping")
             continue
 
-        message = _build_approval_message(
-            voucher=voucher,
-            total_amount=formatted_amount,
-            approver_name=user.username,
-            voucher_url=voucher_url,
-            level_order=level.order,
-            designation_name=level.designation.name,
-        )
-        result = send_whatsapp_message(clean_mobile, message)
+        if not WHATSAPP_LIVE_MODE:
+            message = _build_approval_message(
+                voucher=voucher,
+                total_amount=formatted_amount,
+                approver_name=user.username,
+                voucher_url=voucher_url,
+                level_order=level.order,
+                designation_name=level.designation.name,
+            )
+            result = _log_test_message(clean_mobile, message)
+        else:
+            from datetime import datetime as _dt
+            vdate = voucher.voucher_date
+            voucher_date_str = vdate.strftime('%d %b %Y') if hasattr(vdate, 'strftime') else _dt.strptime(vdate, "%Y-%m-%d").strftime('%d %b %Y')
+            result = _send_whatsapp_template(clean_mobile, "voucher_approval_request", {
+                "approver_name": user.username,
+                "voucher_number": voucher.voucher_number,
+                "voucher_date": voucher_date_str,
+                "pay_to": f"{voucher.get_name_title_display()} {voucher.pay_to}",
+                "amount": formatted_amount,
+                "payment_type": voucher.get_payment_type_display(),
+                "company_name": voucher.company.name,
+                "created_by": voucher.created_by.username,
+                "approval_link": voucher_url,
+                "designation": level.designation.name,
+                "level_order": str(level.order),
+            })
         result['user'] = user.username
         result['mobile'] = clean_mobile
         results.append(result)
@@ -285,7 +303,8 @@ def _build_approval_message(voucher, total_amount, approver_name, voucher_url, l
         f"• Created By : {created_by}\n\n"
         f"🔗 *View & Approve:*\n"
         f"{voucher_url}\n\n"
-        f"_You are receiving this as {designation_name} (Level {level_order} approver)_"
+        f"_You are receiving this as {designation_name} (Level {level_order} approver)_\n\n"
+        f"Thank you."
     )
     
     return message
@@ -356,7 +375,7 @@ def _logo_as_base64(company) -> str:
         return ''
 
 
-def _generate_pdf(template_name: str, context: dict, company=None) -> bytes:
+def _generate_pdf(template_name: str, context: dict, company=None, page_ranges: str = '') -> bytes:
     """
     Render a Django template to PDF bytes using Playwright (headless Chromium).
     Produces the exact same output as clicking Print in the browser.
@@ -389,7 +408,10 @@ def _generate_pdf(template_name: str, context: dict, company=None) -> bytes:
         page    = browser.new_page()
         # wait_until='networkidle' lets Bootstrap CDN finish loading
         page.set_content(html, wait_until='networkidle')
-        pdf_bytes = page.pdf(format='A4', print_background=True)
+        pdf_kwargs = {'format': 'A4', 'print_background': True}
+        if page_ranges:
+            pdf_kwargs['page_ranges'] = page_ranges
+        pdf_bytes = page.pdf(**pdf_kwargs)
         browser.close()
 
     return pdf_bytes
@@ -428,6 +450,78 @@ def _upload_whatsapp_media(pdf_bytes: bytes, filename: str) -> str:
     except Exception as e:
         logger.error(f"WhatsApp media upload exception: {e}", exc_info=True)
         return ''
+
+
+def _send_whatsapp_template(phone_number: str, template_name: str, body_params: dict) -> dict:
+    """Send a text-only template message via Meta Cloud API."""
+    phone_number_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
+    access_token    = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
+    url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": "en"},
+            "components": [{
+                "type": "body",
+                "parameters": [
+                    {"type": "text", "parameter_name": k, "text": str(v)}
+                    for k, v in body_params.items()
+                ]
+            }]
+        }
+    }
+    try:
+        resp = requests.post(url, headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}, json=payload, timeout=15)
+        data = resp.json()
+        if resp.ok:
+            return {"success": True, "message_id": data.get("messages", [{}])[0].get("id", "")}
+        logger.error(f"WhatsApp template send failed: {data}")
+        return {"success": False, "error": str(data)}
+    except Exception as e:
+        logger.error(f"WhatsApp template send exception: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+
+def _send_whatsapp_template_with_document(phone_number: str, template_name: str, media_id: str, filename: str, body_params: dict) -> dict:
+    """Send a template message with document header via Meta Cloud API."""
+    phone_number_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
+    access_token    = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
+    url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": "en"},
+            "components": [
+                {
+                    "type": "header",
+                    "parameters": [{"type": "document", "document": {"id": media_id, "filename": filename}}]
+                },
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "parameter_name": k, "text": str(v)}
+                        for k, v in body_params.items()
+                    ]
+                }
+            ]
+        }
+    }
+    try:
+        resp = requests.post(url, headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}, json=payload, timeout=15)
+        data = resp.json()
+        if resp.ok:
+            return {"success": True, "message_id": data.get("messages", [{}])[0].get("id", "")}
+        logger.error(f"WhatsApp template+document send failed: {data}")
+        return {"success": False, "error": str(data)}
+    except Exception as e:
+        logger.error(f"WhatsApp template+document send exception: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
 
 
 def _send_whatsapp_document(phone_number: str, media_id: str, filename: str, caption: str = '') -> dict:
@@ -502,7 +596,7 @@ def send_function_prospect_whatsapp(function) -> dict:
             "company": company,
         }
 
-        pdf_bytes = _generate_pdf("vouchers/function_print.html", context, company=company)
+        pdf_bytes = _generate_pdf("vouchers/function_print.html", context, company=company, page_ranges='1')
         filename  = f"Function_Prospectus_{function.function_number}.pdf"
 
         if not WHATSAPP_LIVE_MODE:
@@ -521,18 +615,18 @@ def send_function_prospect_whatsapp(function) -> dict:
         contact_parts = []
         if company.phone: contact_parts.append(company.phone)
         if company.email: contact_parts.append(company.email)
-        contact_line = "\n\nFor booking related queries and enquiries contact: " + " | ".join(contact_parts) if contact_parts else ""
+        contact_info = " | ".join(contact_parts) if contact_parts else "N/A"
 
-        caption = (
-            f"*{function.function_name}*\n"
-            f"ID: {function.function_number}\n"
-            f"Date: {function.function_date.strftime('%d %b %Y')}\n"
-            f"Time: {function.time_from.strftime('%I:%M %p')} – {function.time_to.strftime('%I:%M %p')}\n"
-            f"Venue: {function.location}\n"
-            f"Booked By: {function.booked_by}"
-            f"{contact_line}"
-        )
-        return _send_whatsapp_document(phone, media_id, filename, caption)
+        return _send_whatsapp_template_with_document(phone, "function_prospect_pdf", media_id, filename, {
+            "function_name": function.function_name,
+            "function_number": function.function_number,
+            "function_date": function.function_date.strftime('%d %b %Y'),
+            "time_from": function.time_from.strftime('%I:%M %p'),
+            "time_to": function.time_to.strftime('%I:%M %p'),
+            "location": function.location,
+            "booked_by": function.booked_by,
+            "contact_info": contact_info,
+        })
 
     except Exception as e:
         logger.error(f"send_function_prospect_whatsapp error: {e}", exc_info=True)
@@ -587,19 +681,18 @@ def send_holiday_orderform_whatsapp(booking) -> dict:
         contact_parts = []
         if company.phone: contact_parts.append(company.phone)
         if company.email: contact_parts.append(company.email)
-        contact_line = "\n\nFor booking related queries and enquiries contact: " + " | ".join(contact_parts) if contact_parts else ""
+        contact_info = " | ".join(contact_parts) if contact_parts else "N/A"
 
-        caption = (
-            f"*{booking.purpose_of_booking}*\n"
-            f"ID: {booking.booking_number}\n"
-            f"Date: {booking.trip_date.strftime('%d %b %Y')}\n"
-            f"Time: {booking.departure_time.strftime('%I:%M %p')}\n"
-            f"From: {booking.departure_location}\n"
-            f"Destination: {booking.destination}\n"
-            f"Booked By: {booking.booked_by}"
-            f"{contact_line}"
-        )
-        return _send_whatsapp_document(phone, media_id, filename, caption)
+        return _send_whatsapp_template_with_document(phone, "holiday_order_form_pdf", media_id, filename, {
+            "purpose": booking.purpose_of_booking,
+            "booking_number": booking.booking_number,
+            "trip_date": booking.trip_date.strftime('%d %b %Y'),
+            "departure_time": booking.departure_time.strftime('%I:%M %p'),
+            "departure_location": booking.departure_location,
+            "destination": booking.destination,
+            "booked_by": booking.booked_by,
+            "contact_info": contact_info,
+        })
 
     except Exception as e:
         logger.error(f"send_holiday_orderform_whatsapp error: {e}", exc_info=True)

@@ -1250,8 +1250,10 @@ globalThis.hSelectDate = function(dateStr) {
     } else {
         const today = localDateStr(new Date());
         if (dateStr < today) return;
-        document.getElementById('h_trip_date').value = dateStr;
-        document.getElementById('h_trip_date').min   = today;
+        document.getElementById('h_trip_date').value  = dateStr;
+        document.getElementById('h_trip_date').min    = today;
+        document.getElementById('h_return_date').min  = dateStr;
+        document.getElementById('h_return_date').value = dateStr;
         showSection('order-form');
     }
 };
@@ -1327,8 +1329,10 @@ function showHolidayList(dateStr) {
             bootstrap.Modal.getInstance(document.getElementById('holidayListModal'))?.hide();
             setTimeout(() => {
                 const today = localDateStr(new Date());
-                document.getElementById('h_trip_date').value = dateStr;
-                document.getElementById('h_trip_date').min   = today;
+                document.getElementById('h_trip_date').value  = dateStr;
+                document.getElementById('h_trip_date').min    = today;
+                document.getElementById('h_return_date').min  = dateStr;
+                document.getElementById('h_return_date').value = dateStr;
                 showSection('order-form');
             }, 350);
         };
@@ -1374,8 +1378,13 @@ function initOrderForm() {
     // Auto-fill return date with journey date if return date is empty
     if (tripDateInput && returnDateInput) {
         function syncReturnDate() {
-            if (tripDateInput.value && !returnDateInput.value) {
-                returnDateInput.value = tripDateInput.value;
+            if (tripDateInput.value) {
+                returnDateInput.min = tripDateInput.value;
+                if (returnDateInput.value && returnDateInput.value < tripDateInput.value) {
+                    returnDateInput.value = tripDateInput.value;
+                } else if (!returnDateInput.value) {
+                    returnDateInput.value = tripDateInput.value;
+                }
             }
         }
         tripDateInput.addEventListener('change', syncReturnDate);
