@@ -285,6 +285,7 @@ class TripSettlement {
   final int? bankId;
   final String? bankStatus;
   final String? bankDocUrl;
+  final String extraRent;
   final String commissionPercentage;
   final String commissionAmount;
   final String netRent;
@@ -307,6 +308,7 @@ class TripSettlement {
     this.bankId,
     this.bankStatus,
     this.bankDocUrl,
+    required this.extraRent,
     required this.commissionPercentage,
     required this.commissionAmount,
     required this.netRent,
@@ -330,6 +332,7 @@ class TripSettlement {
         bankId: j['bank_id'],
         bankStatus: j['bank_status'],
         bankDocUrl: j['bank_doc_url'],
+        extraRent: j['extra_rent'] ?? '0',
         commissionPercentage: j['commission_percentage'] ?? '0',
         commissionAmount: j['commission_amount'] ?? '0',
         netRent: j['net_rent'] ?? '0',
@@ -350,6 +353,7 @@ class TripSettlement {
 
   factory TripSettlement.empty() => const TripSettlement(
         exists: false, bankIsApproved: false,
+        extraRent: '0',
         commissionPercentage: '0', commissionAmount: '0',
         netRent: '0', battaPercentage: '0', battaAmount: '0',
         dieselCharge: '0', cleaningCharge: '0', greaseCharge: '0',

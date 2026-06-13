@@ -805,6 +805,7 @@ class TripSettlementGetAPI(APIView):
             return Response({
                 'exists': True,
                 'bank_is_approved': bank_is_approved,
+                'extra_rent': str(s.extra_rent),
                 'commission_percentage': str(s.commission_percentage),
                 'commission_amount': str(s.commission_amount),
                 'net_rent': str(s.net_rent),
@@ -848,11 +849,12 @@ class TripSettlementSaveAPI(APIView):
         files = request.FILES
 
         commission_pct  = Decimal(data.get('commission_percentage', '0') or '0')
+        extra_rent      = Decimal(data.get('extra_rent', '0') or '0')
         diesel_charge   = Decimal(data.get('diesel_charge', '0') or '0')
         cleaning_charge = Decimal(data.get('cleaning_charge', '0') or '0')
         grease_charge   = Decimal(data.get('grease_charge', '0') or '0')
 
-        total_amount     = Decimal(booking.total_amount or 0)
+        total_amount     = Decimal(booking.total_amount or 0) + extra_rent
         commission_amt   = (total_amount * commission_pct / Decimal('100')).quantize(Decimal('0.01'))
         net_rent         = total_amount - commission_amt
 
@@ -880,6 +882,7 @@ class TripSettlementSaveAPI(APIView):
         except TripSettlement.DoesNotExist:
             settlement = TripSettlement(booking=booking, created_by=request.user)
 
+        settlement.extra_rent            = extra_rent
         settlement.commission_percentage = commission_pct
         settlement.commission_amount     = commission_amt
         settlement.net_rent              = net_rent

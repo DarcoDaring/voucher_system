@@ -189,6 +189,16 @@
                         <label for="sdm_balance_amount" class="form-label fw-semibold">Balance Amount (₹)</label>
                         <input type="text" class="form-control bg-light fw-bold text-danger" id="sdm_balance_amount" disabled>
                     </div>
+                    <div class="col-md-6">
+                        <label for="s_extra_rent" class="form-label fw-semibold">Extra Rent (₹)</label>
+                        <input type="number" class="form-control s-field" id="s_extra_rent"
+                               min="0" step="0.01" placeholder="0.00" oninput="calcSettlement()">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sdm_adjusted_total" class="form-label fw-semibold">Adjusted Total Amount (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-primary" id="sdm_adjusted_total" disabled value="0.00">
+                        <small class="text-muted">Total Amount + Extra Rent</small>
+                    </div>
 
                     <!-- ── SETTLEMENT SECTION ── -->
                     <div class="col-12 mt-2">
@@ -548,6 +558,7 @@ function cancelEditMode() {
 
 // ── fill settlement data from API response ─────────────────────
 function fillSettlementData(data) {
+    document.getElementById('s_extra_rent').value       = data.extra_rent || '';
     document.getElementById('s_commission_pct').value  = data.commission_percentage;
     document.getElementById('s_diesel_charge').value   = data.diesel_charge;
     document.getElementById('s_cleaning_charge').value = data.cleaning_charge;
@@ -578,6 +589,8 @@ function fillSettlementData(data) {
 
 // ── settlement calculations ────────────────────────────────────
 function resetSettlement() {
+    document.getElementById('s_extra_rent').value      = '';
+    document.getElementById('sdm_adjusted_total').value = '0.00';
     document.getElementById('s_commission_pct').value  = '';
     document.getElementById('s_commission_amt').value  = '0.00';
     document.getElementById('s_net_rent').value        = '0.00';
@@ -598,9 +611,13 @@ function resetSettlement() {
 
 function calcSettlement() {
     const totalAmount   = Number.parseFloat(document.getElementById('sdm_total_amount').value) || 0;
+    const extraRent     = Number.parseFloat(document.getElementById('s_extra_rent').value) || 0;
+    const adjustedTotal = +(totalAmount + extraRent).toFixed(2);
+    document.getElementById('sdm_adjusted_total').value = adjustedTotal.toFixed(2);
+
     const commissionPct = Number.parseFloat(document.getElementById('s_commission_pct').value) || 0;
-    const commissionAmt = +(totalAmount * commissionPct / 100).toFixed(2);
-    const netRent       = +(totalAmount - commissionAmt).toFixed(2);
+    const commissionAmt = +(adjustedTotal * commissionPct / 100).toFixed(2);
+    const netRent       = +(adjustedTotal - commissionAmt).toFixed(2);
 
     const battaPct = Number.parseFloat(document.getElementById('s_batta_pct').value) || 0;
     const battaAmt = +(netRent * battaPct / 100).toFixed(2);
@@ -674,6 +691,7 @@ function saveSettlement() {
     saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
 
     const fd = new FormData();
+    fd.append('extra_rent',            document.getElementById('s_extra_rent').value || '0');
     fd.append('commission_percentage', document.getElementById('s_commission_pct').value || '0');
     fd.append('batta_percentage',      document.getElementById('s_batta_pct').value || '0');
     fd.append('diesel_charge',         document.getElementById('s_diesel_charge').value || '0');

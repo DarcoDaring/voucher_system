@@ -694,6 +694,8 @@
                     <div class="col-md-4"><label for="sdm_total_amount" class="form-label fw-semibold">Total Amount (₹)</label><input type="text" class="form-control bg-light fw-bold text-success" id="sdm_total_amount" disabled></div>
                     <div class="col-md-6"><label for="sdm_advance_amount" class="form-label fw-semibold">Advance Amount (₹)</label><input type="number" class="form-control" id="sdm_advance_amount" disabled></div>
                     <div class="col-md-6"><label for="sdm_balance_amount" class="form-label fw-semibold">Balance Amount (₹)</label><input type="text" class="form-control bg-light fw-bold text-danger" id="sdm_balance_amount" disabled></div>
+                    <div class="col-md-6"><label for="s_extra_rent" class="form-label fw-semibold">Extra Rent (₹)</label><input type="number" class="form-control s-field" id="s_extra_rent" min="0" step="0.01" placeholder="0.00" oninput="calcSettlement()"></div>
+                    <div class="col-md-6"><label for="sdm_adjusted_total" class="form-label fw-semibold">Adjusted Total Amount (₹)</label><input type="text" class="form-control bg-light fw-bold text-primary" id="sdm_adjusted_total" disabled value="0.00"><small class="text-muted">Total Amount + Extra Rent</small></div>
 
                     <!-- SETTLEMENT SECTION -->
                     <div class="col-12 mt-2"><hr><h5 class="fw-bold text-success mb-4"><i class="bi bi-calculator me-2"></i>Settlement</h5></div>
@@ -1702,6 +1704,7 @@ function cancelEditMode() {
     setSettlementMode('view', settlementBackupData);
 }
 function fillSettlementData(data) {
+    document.getElementById('s_extra_rent').value      = data.extra_rent || '';
     document.getElementById('s_commission_pct').value  = data.commission_percentage;
     document.getElementById('s_diesel_charge').value   = data.diesel_charge;
     document.getElementById('s_cleaning_charge').value = data.cleaning_charge;
@@ -1717,6 +1720,8 @@ function fillSettlementData(data) {
     calcSettlement();
 }
 function resetSettlement() {
+    document.getElementById('s_extra_rent').value       = '';
+    document.getElementById('sdm_adjusted_total').value = '0.00';
     document.getElementById('s_commission_pct').value  = '';
     document.getElementById('s_commission_amt').value  = '0.00';
     document.getElementById('s_net_rent').value        = '0.00';
@@ -1735,10 +1740,13 @@ function resetSettlement() {
     customChargeIndex = 0;
 }
 function calcSettlement() {
-    const totalAmt = Number.parseFloat(document.getElementById('sdm_total_amount').value) || 0;
+    const totalAmt     = Number.parseFloat(document.getElementById('sdm_total_amount').value) || 0;
+    const extraRent    = Number.parseFloat(document.getElementById('s_extra_rent').value) || 0;
+    const adjustedTotal = +(totalAmt + extraRent).toFixed(2);
+    document.getElementById('sdm_adjusted_total').value = adjustedTotal.toFixed(2);
     const commPct  = Number.parseFloat(document.getElementById('s_commission_pct').value) || 0;
-    const commAmt  = +(totalAmt * commPct / 100).toFixed(2);
-    const netRent  = +(totalAmt - commAmt).toFixed(2);
+    const commAmt  = +(adjustedTotal * commPct / 100).toFixed(2);
+    const netRent  = +(adjustedTotal - commAmt).toFixed(2);
     const battaPct = Number.parseFloat(document.getElementById('s_batta_pct').value) || 0;
     const battaAmt = +(netRent * battaPct / 100).toFixed(2);
     const diesel   = Number.parseFloat(document.getElementById('s_diesel_charge').value)   || 0;
@@ -1809,6 +1817,7 @@ function saveSettlement() {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
     const fd = new FormData();
+    fd.append('extra_rent',            document.getElementById('s_extra_rent').value || '0');
     fd.append('commission_percentage', document.getElementById('s_commission_pct').value || '0');
     fd.append('batta_percentage',      document.getElementById('s_batta_pct').value || '0');
     fd.append('diesel_charge',         document.getElementById('s_diesel_charge').value || '0');
@@ -2416,6 +2425,8 @@ function showStatList(type) {
         let rows = bookings.map((b, i) => {
             const statusBadge = b.status === 'CONFIRMED'
                 ? '<span class="badge bg-success">Confirmed</span>'
+                : b.status === 'COMPLETED'
+                ? '<span class="badge bg-info text-dark">Completed</span>'
                 : '<span class="badge bg-warning text-dark">Enquiry</span>';
             return `<tr>
                 <td class="text-muted small">${i + 1}</td>

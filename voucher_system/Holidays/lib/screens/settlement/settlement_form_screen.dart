@@ -20,6 +20,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
   bool _saving = false;
   String? _error;
 
+  final _extraRent = TextEditingController();
   final _commPct = TextEditingController();
   final _battaPct = TextEditingController();
   final _diesel = TextEditingController();
@@ -27,7 +28,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
   final _grease = TextEditingController();
 
   // Computed display values
-  double _commAmt = 0, _netRent = 0, _battaAmt = 0, _netBalance = 0;
+  double _commAmt = 0, _netRent = 0, _battaAmt = 0, _netBalance = 0, _adjustedTotal = 0;
 
   // File paths for uploads
   String? _dieselBillPath;
@@ -41,14 +42,14 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
   void initState() {
     super.initState();
     _load();
-    for (final c in [_commPct, _battaPct, _diesel, _cleaning, _grease]) {
+    for (final c in [_extraRent, _commPct, _battaPct, _diesel, _cleaning, _grease]) {
       c.addListener(_recalculate);
     }
   }
 
   @override
   void dispose() {
-    for (final c in [_commPct, _battaPct, _diesel, _cleaning, _grease]) {
+    for (final c in [_extraRent, _commPct, _battaPct, _diesel, _cleaning, _grease]) {
       c.removeListener(_recalculate);
       c.dispose();
     }
@@ -64,6 +65,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
         _settlement = s;
         _loading = false;
         if (s.exists) {
+          _extraRent.text = s.extraRent;
           _commPct.text = s.commissionPercentage;
           _battaPct.text = s.battaPercentage;
           _diesel.text = s.dieselCharge;
@@ -87,6 +89,8 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
 
   void _recalculate() {
     final total = double.tryParse(widget.booking.totalAmount) ?? 0;
+    final extraRent = double.tryParse(_extraRent.text) ?? 0;
+    final adjustedTotal = total + extraRent;
     final commPct = double.tryParse(_commPct.text) ?? 0;
     final battaPct = double.tryParse(_battaPct.text) ?? 0;
     final diesel = double.tryParse(_diesel.text) ?? 0;
@@ -94,12 +98,13 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
     final grease = double.tryParse(_grease.text) ?? 0;
     final customTotal = _customCharges.fold(0.0, (sum, c) => sum + (double.tryParse(c.amount) ?? 0));
 
-    final commAmt = (total * commPct / 100);
-    final netRent = total - commAmt;
+    final commAmt = (adjustedTotal * commPct / 100);
+    final netRent = adjustedTotal - commAmt;
     final battaAmt = (netRent * battaPct / 100);
     final netBalance = netRent - battaAmt - diesel - cleaning - grease - customTotal;
 
     if (mounted) setState(() {
+      _adjustedTotal = adjustedTotal;
       _commAmt = commAmt;
       _netRent = netRent;
       _battaAmt = battaAmt;
@@ -178,6 +183,7 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
     setState(() { _saving = true; _error = null; });
     try {
       final fields = <String, String>{
+        'extra_rent': _extraRent.text.isEmpty ? '0' : _extraRent.text,
         'commission_percentage': _commPct.text,
         'batta_percentage': _battaPct.text,
         'diesel_charge': _diesel.text,
@@ -231,6 +237,10 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
                 _summaryCard(),
                 // Net balance display
                 _balanceCard(),
+                // Extra Rent
+                _card('Extra Rent', [
+                  _extraRentField(),
+                ]),
                 // Commission
                 _card('Commission', [
                   _calcRow('Commission %', _commPct, '₹${_commAmt.toStringAsFixed(2)}', 'commission_amount'),
@@ -322,6 +332,25 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
         ...children,
       ]),
     ),
+  );
+
+  Widget _extraRentField() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextFormField(
+        controller: _extraRent,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'Extra Rent (₹)', prefixText: '₹ '),
+        onTap: () => _extraRent.selection = TextSelection(baseOffset: 0, extentOffset: _extraRent.text.length),
+      ),
+      const SizedBox(height: 8),
+      Row(children: [
+        Text('Adjusted Total', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+        const Spacer(),
+        Text('₹${_adjustedTotal.toStringAsFixed(2)}',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: _teal, fontSize: 15)),
+      ]),
+    ],
   );
 
   Widget _calcRow(String label, TextEditingController ctrl, String computed, String key) => Padding(

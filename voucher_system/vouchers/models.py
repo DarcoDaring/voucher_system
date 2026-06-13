@@ -808,6 +808,7 @@ class TripSettlement(models.Model):
     net_rent = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     batta_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     batta_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    extra_rent = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     diesel_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     diesel_bill = models.FileField(upload_to='settlement/diesel/', null=True, blank=True)
     cleaning_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
