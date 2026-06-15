@@ -161,6 +161,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_tripDate == null) { _showError('Please select trip date'); return; }
     if (_departureTime == null) { _showError('Please select departure time'); return; }
+    if (_returnDate == null) { _showError('Please select return date'); return; }
+    if (_returnTime == null) { _showError('Please select return time'); return; }
 
     setState(() { _saving = true; _error = null; });
     try {
@@ -210,6 +212,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
+  String _to12h(String time24) {
+    final parts = time24.split(':');
+    final h = int.parse(parts[0]);
+    final m = parts[1];
+    final period = h >= 12 ? 'PM' : 'AM';
+    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return '${h12.toString().padLeft(2, '0')}:$m $period';
+  }
+
   @override
   void dispose() {
     for (final c in [_bookedBy, _contact, _contact2, _departure, _destination, _purpose,
@@ -245,44 +256,46 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     _section('Trip Details', [
                       _field('From (Departure) *', _departure, hint: 'Departure location'),
                       _field('To (Destination) *', _destination, hint: 'Destination'),
-                      _field('Purpose', _purpose, hint: 'Purpose of booking'),
+                      _field('Purpose *', _purpose, hint: 'Purpose of booking'),
                       _field('Passengers *', _passengers, hint: '1', type: TextInputType.number),
                       Row(children: [
                         Expanded(child: _dateTile('Trip Date *', _tripDate, () => _pickDate(true))),
                         const SizedBox(width: 12),
-                        Expanded(child: _dateTile('Return Date', _returnDate, () => _pickDate(false))),
+                        Expanded(child: _dateTile('Return Date *', _returnDate, () => _pickDate(false))),
                       ]),
                       Row(children: [
-                        Expanded(child: _dateTile('Departure Time *', _departureTime, () => _pickTime(true), isTime: true)),
+                        Expanded(child: _dateTile('Departure Time *', _departureTime != null ? _to12h(_departureTime!) : null, () => _pickTime(true), isTime: true)),
                         const SizedBox(width: 12),
-                        Expanded(child: _dateTile('Return Time', _returnTime, () => _pickTime(false), isTime: true)),
+                        Expanded(child: _dateTile('Return Time *', _returnTime != null ? _to12h(_returnTime!) : null, () => _pickTime(false), isTime: true)),
                       ]),
                     ]),
                     _section('Vehicle & Payment', [
                       _dropdown<Vehicle>(
-                        label: 'Vehicle',
+                        label: 'Vehicle *',
                         value: _selectedVehicle,
                         items: _vehicles,
                         itemLabel: (v) => '${v.name} (${v.registrationNumber})',
                         onChanged: (v) => setState(() => _selectedVehicle = v),
+                        isRequired: true,
                       ),
                       _acSelector(),
                       _dropdown<String>(
-                        label: 'Payment Type',
+                        label: 'Payment Type *',
                         value: _selectedPaymentType,
                         items: _paymentTypes.map((p) => p.name).toList(),
                         itemLabel: (s) => s,
                         onChanged: (s) => setState(() => _selectedPaymentType = s),
+                        isRequired: true,
                       ),
                     ]),
                     _section('Pricing', [
                       _field('Total Rent *', _totalRent, hint: '0.00', type: TextInputType.number),
-                      _field('Service Charge', _serviceCharge, hint: '0.00', type: TextInputType.number),
-                      _field('Advance Amount', _advance, hint: '0.00', type: TextInputType.number),
+                      _field('Service Charge *', _serviceCharge, hint: '0.00', type: TextInputType.number),
+                      _field('Advance Amount *', _advance, hint: '0.00', type: TextInputType.number),
                       _field('Max KM *', _maxKm, hint: 'Maximum kilometers', type: TextInputType.number),
                       _field('Extra KM Charge *', _extraKmCharge, hint: 'Per KM rate', type: TextInputType.number),
                     ]),
-                    _section('Other', [
+                    _section('Special Instruction', [
                       _field('Special Instructions', _instructions, hint: 'Any special notes', maxLines: 3),
                     ]),
                     const SizedBox(height: 80),
@@ -386,10 +399,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     ),
   );
 
-  Widget _dropdown<T>({required String label, required T? value, required List<T> items, required String Function(T) itemLabel, required void Function(T?) onChanged}) {
+  Widget _dropdown<T>({required String label, required T? value, required List<T> items, required String Function(T) itemLabel, required void Function(T?) onChanged, bool isRequired = false}) {
     return DropdownButtonFormField<T>(
       value: value,
       decoration: InputDecoration(labelText: label),
+      validator: isRequired ? (v) => v == null ? 'Required' : null : null,
       isExpanded: true,
       items: [
         DropdownMenuItem<T>(value: null, child: Text('-- None --', style: TextStyle(color: Colors.grey.shade500))),

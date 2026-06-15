@@ -197,7 +197,7 @@
                     <div class="col-md-6">
                         <label for="sdm_adjusted_total" class="form-label fw-semibold">Adjusted Total Amount (₹)</label>
                         <input type="text" class="form-control bg-light fw-bold text-primary" id="sdm_adjusted_total" disabled value="0.00">
-                        <small class="text-muted">Total Amount + Extra Rent</small>
+                        
                     </div>
 
                     <!-- ── SETTLEMENT SECTION ── -->
@@ -209,35 +209,35 @@
                     </div>
 
                     <!-- Commission -->
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="s_commission_pct" class="form-label fw-semibold">Commission %</label>
                         <input type="number" class="form-control s-field" id="s_commission_pct"
                                min="0" max="100" step="0.01" placeholder="0.00" oninput="calcSettlement()">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="s_commission_amt" class="form-label fw-semibold">Commission Amount (₹)</label>
                         <input type="text" class="form-control bg-light fw-bold text-danger" id="s_commission_amt" readonly value="0.00">
                     </div>
-                    <div class="col-md-4">
-                        <label for="s_net_rent" class="form-label fw-semibold">Net Rent (₹)</label>
-                        <input type="text" class="form-control bg-light fw-bold text-success" id="s_net_rent" readonly value="0.00">
-                        <small class="text-muted">Total Amount − Commission</small>
-                    </div>
 
                     <!-- Batta -->
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="s_batta_pct" class="form-label fw-semibold">Batta %
                             <span class="text-muted small">(from vehicle)</span>
                         </label>
                         <input type="number" class="form-control bg-light" id="s_batta_pct"
                                min="0" max="100" step="0.01" placeholder="0.00" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="s_batta_amt" class="form-label fw-semibold">Batta Amount (₹)</label>
                         <input type="text" class="form-control bg-light fw-bold text-warning" id="s_batta_amt" readonly value="0.00">
-                        <small class="text-muted">Net Rent × Batta %</small>
                     </div>
-                    <div class="col-md-4"></div>
+
+                    <!-- Net Rent -->
+                    <div class="col-md-6">
+                        <label for="s_net_rent" class="form-label fw-semibold">Net Rent (₹)</label>
+                        <input type="text" class="form-control bg-light fw-bold text-success" id="s_net_rent" readonly value="0.00">
+                    </div>
+                    <div class="col-md-6"></div>
 
                     <!-- Diesel -->
                     <div class="col-md-4">
@@ -617,10 +617,11 @@ function calcSettlement() {
 
     const commissionPct = Number.parseFloat(document.getElementById('s_commission_pct').value) || 0;
     const commissionAmt = +(adjustedTotal * commissionPct / 100).toFixed(2);
-    const netRent       = +(adjustedTotal - commissionAmt).toFixed(2);
 
     const battaPct = Number.parseFloat(document.getElementById('s_batta_pct').value) || 0;
-    const battaAmt = +(netRent * battaPct / 100).toFixed(2);
+    const battaAmt  = +(adjustedTotal * battaPct / 100).toFixed(2);
+
+    const netRent   = +(adjustedTotal - commissionAmt - battaAmt).toFixed(2);
 
     const diesel   = Number.parseFloat(document.getElementById('s_diesel_charge').value)   || 0;
     const cleaning = Number.parseFloat(document.getElementById('s_cleaning_charge').value) || 0;
@@ -631,7 +632,7 @@ function calcSettlement() {
         customTotal += Number.parseFloat(inp.value) || 0;
     });
 
-    const netBalance = +(netRent - battaAmt - diesel - cleaning - grease - customTotal).toFixed(2);
+    const netBalance = +(netRent - diesel - cleaning - grease - customTotal).toFixed(2);
 
     document.getElementById('s_commission_amt').value    = commissionAmt.toFixed(2);
     document.getElementById('s_net_rent').value          = netRent.toFixed(2);

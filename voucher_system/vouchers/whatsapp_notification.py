@@ -684,13 +684,13 @@ def send_holiday_orderform_whatsapp(booking) -> dict:
         contact_info = " | ".join(contact_parts) if contact_parts else "N/A"
 
         return _send_whatsapp_template_with_document(phone, "holiday_order_form_pdf", media_id, filename, {
-            "purpose": booking.purpose_of_booking,
-            "booking_number": booking.booking_number,
-            "trip_date": booking.trip_date.strftime('%d %b %Y'),
-            "departure_time": booking.departure_time.strftime('%I:%M %p'),
-            "departure_location": booking.departure_location,
-            "destination": booking.destination,
-            "booked_by": booking.booked_by,
+            "purpose": booking.purpose_of_booking or "N/A",
+            "booking_number": booking.booking_number or "N/A",
+            "trip_date": booking.trip_date.strftime('%d %b %Y') if booking.trip_date else "N/A",
+            "departure_time": booking.departure_time.strftime('%I:%M %p') if booking.departure_time else "N/A",
+            "departure_location": booking.departure_location or "N/A",
+            "destination": booking.destination or "N/A",
+            "booked_by": booking.booked_by or "N/A",
             "contact_info": contact_info,
         })
 

@@ -99,9 +99,9 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
     final customTotal = _customCharges.fold(0.0, (sum, c) => sum + (double.tryParse(c.amount) ?? 0));
 
     final commAmt = (adjustedTotal * commPct / 100);
-    final netRent = adjustedTotal - commAmt;
-    final battaAmt = (netRent * battaPct / 100);
-    final netBalance = netRent - battaAmt - diesel - cleaning - grease - customTotal;
+    final battaAmt = (adjustedTotal * battaPct / 100);
+    final netRent = adjustedTotal - commAmt - battaAmt;
+    final netBalance = netRent - diesel - cleaning - grease - customTotal;
 
     if (mounted) setState(() {
       _adjustedTotal = adjustedTotal;

@@ -856,11 +856,12 @@ class TripSettlementSaveAPI(APIView):
 
         total_amount     = Decimal(booking.total_amount or 0) + extra_rent
         commission_amt   = (total_amount * commission_pct / Decimal('100')).quantize(Decimal('0.01'))
-        net_rent         = total_amount - commission_amt
 
-        # batta from vehicle
+        # batta from vehicle — calculated on adjusted total, same as commission
         batta_pct = Decimal(data.get('batta_percentage', '0') or '0')
-        batta_amt = (net_rent * batta_pct / Decimal('100')).quantize(Decimal('0.01'))
+        batta_amt = (total_amount * batta_pct / Decimal('100')).quantize(Decimal('0.01'))
+
+        net_rent         = total_amount - commission_amt - batta_amt
 
         # custom charges
         custom_count = int(data.get('custom_count', 0) or 0)
@@ -874,7 +875,7 @@ class TripSettlementSaveAPI(APIView):
                 custom_total += amount
                 custom_rows.append((i, name, amount, file))
 
-        net_balance = net_rent - batta_amt - diesel_charge - cleaning_charge - grease_charge - custom_total
+        net_balance = net_rent - diesel_charge - cleaning_charge - grease_charge - custom_total
 
         # get or create settlement
         try:
