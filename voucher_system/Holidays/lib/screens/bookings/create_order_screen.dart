@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 
@@ -343,11 +344,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _field(String label, TextEditingController ctrl, {String? hint, TextInputType type = TextInputType.text, int? maxLen, int maxLines = 1, bool required = false}) {
     final isNumeric = type == TextInputType.number ||
         type == const TextInputType.numberWithOptions(decimal: true);
+    final isText = type == TextInputType.text;
     return TextFormField(
       controller: ctrl,
       keyboardType: type,
       maxLength: maxLen,
       maxLines: maxLines,
+      inputFormatters: isText ? [_UpperCaseFormatter()] : null,
       decoration: InputDecoration(labelText: label, hintText: hint, counterText: ''),
       onTap: isNumeric
           ? () => ctrl.selection = TextSelection(baseOffset: 0, extentOffset: ctrl.text.length)
@@ -411,5 +414,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       ],
       onChanged: onChanged,
     );
+  }
+}
+
+class _UpperCaseFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }

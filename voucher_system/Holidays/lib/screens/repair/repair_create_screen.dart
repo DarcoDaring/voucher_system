@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../models/models.dart';
@@ -243,6 +244,7 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
                 TextField(
                   controller: _notesCtrl,
                   maxLines: 2,
+                  inputFormatters: [_UpperCaseFormatter()],
                   decoration: const InputDecoration(labelText: 'Notes (optional)'),
                 ),
               ]),
@@ -367,12 +369,13 @@ class _RepairCreateScreenState extends State<RepairCreateScreen> {
       TextField(
         controller: item.nameCtrl,
         decoration: const InputDecoration(labelText: 'Item Name *', isDense: true),
-        textCapitalization: TextCapitalization.words,
+        inputFormatters: [_UpperCaseFormatter()],
       ),
       const SizedBox(height: 8),
       TextField(
         controller: item.descCtrl,
         decoration: const InputDecoration(labelText: 'Description', isDense: true),
+        inputFormatters: [_UpperCaseFormatter()],
       ),
       const SizedBox(height: 8),
       TextField(
@@ -432,5 +435,12 @@ class _ItemRow {
     nameCtrl.dispose();
     descCtrl.dispose();
     amountCtrl.dispose();
+  }
+}
+
+class _UpperCaseFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
