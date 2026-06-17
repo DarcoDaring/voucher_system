@@ -695,7 +695,7 @@
                     <div class="col-md-6"><label for="sdm_advance_amount" class="form-label fw-semibold">Advance Amount (₹)</label><input type="number" class="form-control" id="sdm_advance_amount" disabled></div>
                     <div class="col-md-6"><label for="sdm_balance_amount" class="form-label fw-semibold">Balance Amount (₹)</label><input type="text" class="form-control bg-light fw-bold text-danger" id="sdm_balance_amount" disabled></div>
                     <div class="col-md-6"><label for="s_extra_rent" class="form-label fw-semibold">Extra Rent (₹)</label><input type="number" class="form-control s-field" id="s_extra_rent" min="0" step="0.01" placeholder="0.00" oninput="calcSettlement()"></div>
-                    <div class="col-md-6"><label for="sdm_adjusted_total" class="form-label fw-semibold">Adjusted Total Amount (₹)</label><input type="text" class="form-control bg-light fw-bold text-primary" id="sdm_adjusted_total" disabled value="0.00"><small class="text-muted">Total Amount + Extra Rent</small></div>
+                    <div class="col-md-6"><label for="sdm_adjusted_total" class="form-label fw-semibold">Adjusted Total Amount (₹)</label><input type="text" class="form-control bg-light fw-bold text-primary" id="sdm_adjusted_total" disabled value="0.00"><small class="text-muted">Total Rent + Extra Rent</small></div>
 
                     <!-- SETTLEMENT SECTION -->
                     <div class="col-12 mt-2"><hr><h5 class="fw-bold text-success mb-4"><i class="bi bi-calculator me-2"></i>Settlement</h5></div>
@@ -1739,7 +1739,7 @@ function resetSettlement() {
     customChargeIndex = 0;
 }
 function calcSettlement() {
-    const totalAmt     = Number.parseFloat(document.getElementById('sdm_total_amount').value) || 0;
+    const totalAmt     = Number.parseFloat(document.getElementById('sdm_total_rent').value) || 0;
     const extraRent    = Number.parseFloat(document.getElementById('s_extra_rent').value) || 0;
     const adjustedTotal = +(totalAmt + extraRent).toFixed(2);
     document.getElementById('sdm_adjusted_total').value = adjustedTotal.toFixed(2);

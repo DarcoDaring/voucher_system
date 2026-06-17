@@ -534,6 +534,9 @@ class MobileHolidayCompletedListAPI(APIView):
             'booked_vehicle': str(b.booked_vehicle) if b.booked_vehicle else None,
             'booked_vehicle_id': b.booked_vehicle_id,
             'booked_vehicle_batta': str(b.booked_vehicle.batta_percentage) if b.booked_vehicle and b.booked_vehicle.batta_percentage else '0',
+            'total_rent': str(b.total_rent or 0),
+            'service_charge': str(b.service_charge or 0),
+            'advance_amount': str(b.advance_amount or 0),
             'total_amount': str(b.total_amount or 0),
             'balance_amount': str(b.balance_amount or 0),
             'has_settlement': b.id in settlement_map,
@@ -591,6 +594,7 @@ class MobileSettlementGetAPI(APIView):
                 'bank_id': bank_id,
                 'bank_status': bank_status,
                 'bank_doc_url': bank_doc_url,
+                'extra_rent': str(s.extra_rent or 0),
                 'commission_percentage': str(s.commission_percentage),
                 'commission_amount': str(s.commission_amount),
                 'net_rent': str(s.net_rent),
@@ -647,11 +651,12 @@ class MobileSettlementSaveAPI(APIView):
         cleaning_charge = Decimal(str(data.get('cleaning_charge', '0') or '0'))
         grease_charge = Decimal(str(data.get('grease_charge', '0') or '0'))
         batta_pct = Decimal(str(data.get('batta_percentage', '0') or '0'))
+        extra_rent = Decimal(str(data.get('extra_rent', '0') or '0'))
 
-        total_amount = Decimal(str(booking.total_amount or 0))
+        total_amount = Decimal(str(booking.total_rent or 0)) + extra_rent
         commission_amt = (total_amount * commission_pct / Decimal('100')).quantize(Decimal('0.01'))
-        net_rent = total_amount - commission_amt
-        batta_amt = (net_rent * batta_pct / Decimal('100')).quantize(Decimal('0.01'))
+        batta_amt = (total_amount * batta_pct / Decimal('100')).quantize(Decimal('0.01'))
+        net_rent = total_amount - commission_amt - batta_amt
 
         custom_count = int(data.get('custom_count', 0) or 0)
         custom_total = Decimal('0')
@@ -671,6 +676,7 @@ class MobileSettlementSaveAPI(APIView):
         except TripSettlement.DoesNotExist:
             settlement = TripSettlement(booking=booking, created_by=request.user)
 
+        settlement.extra_rent = extra_rent
         settlement.commission_percentage = commission_pct
         settlement.commission_amount = commission_amt
         settlement.net_rent = net_rent

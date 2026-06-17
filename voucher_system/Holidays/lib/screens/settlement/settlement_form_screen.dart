@@ -61,34 +61,45 @@ class _SettlementFormScreenState extends State<SettlementFormScreen> {
     try {
       final s = await ApiService.instance.getSettlement(widget.booking.id);
       if (!mounted) return;
+
+      // Update non-controller state first
       setState(() {
         _settlement = s;
         _loading = false;
         if (s.exists) {
-          _extraRent.text = s.extraRent;
-          _commPct.text = s.commissionPercentage;
-          _battaPct.text = s.battaPercentage;
-          _diesel.text = s.dieselCharge;
-          _cleaning.text = s.cleaningCharge;
-          _grease.text = s.greaseCharge;
-          _customCharges.addAll(s.customCharges);
-          _customFilePaths.addAll(List.filled(s.customCharges.length, null));
-        } else {
-          _battaPct.text = widget.booking.bookedVehicleBatta;
-          _commPct.text = '0';
-          _diesel.text = '0';
-          _cleaning.text = '0';
-          _grease.text = '0';
+          _customCharges
+            ..clear()
+            ..addAll(s.customCharges);
+          _customFilePaths
+            ..clear()
+            ..addAll(List.filled(s.customCharges.length, null));
         }
-        _recalculate();
       });
+
+      // Set controller values outside setState — listeners + recalculate below handle the rebuild
+      if (s.exists) {
+        _extraRent.text = s.extraRent;
+        _commPct.text   = s.commissionPercentage;
+        _battaPct.text  = s.battaPercentage;
+        _diesel.text    = s.dieselCharge;
+        _cleaning.text  = s.cleaningCharge;
+        _grease.text    = s.greaseCharge;
+      } else {
+        _extraRent.text = '';
+        _battaPct.text  = widget.booking.bookedVehicleBatta;
+        _commPct.text   = '0';
+        _diesel.text    = '0';
+        _cleaning.text  = '0';
+        _grease.text    = '0';
+      }
+      _recalculate();
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     }
   }
 
   void _recalculate() {
-    final total = double.tryParse(widget.booking.totalAmount) ?? 0;
+    final total = double.tryParse(widget.booking.totalRent) ?? 0;
     final extraRent = double.tryParse(_extraRent.text) ?? 0;
     final adjustedTotal = total + extraRent;
     final commPct = double.tryParse(_commPct.text) ?? 0;

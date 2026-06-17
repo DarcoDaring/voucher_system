@@ -854,10 +854,10 @@ class TripSettlementSaveAPI(APIView):
         cleaning_charge = Decimal(data.get('cleaning_charge', '0') or '0')
         grease_charge   = Decimal(data.get('grease_charge', '0') or '0')
 
-        total_amount     = Decimal(booking.total_amount or 0) + extra_rent
+        total_amount     = Decimal(booking.total_rent or 0) + extra_rent
         commission_amt   = (total_amount * commission_pct / Decimal('100')).quantize(Decimal('0.01'))
 
-        # batta from vehicle — calculated on adjusted total, same as commission
+        # batta from vehicle — calculated on total_rent + extra_rent (service charge excluded)
         batta_pct = Decimal(data.get('batta_percentage', '0') or '0')
         batta_amt = (total_amount * batta_pct / Decimal('100')).quantize(Decimal('0.01'))
 
