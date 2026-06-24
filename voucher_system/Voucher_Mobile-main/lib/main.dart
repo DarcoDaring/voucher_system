@@ -2,10 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'services/api_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/company_select_screen.dart';
 import 'screens/voucher_detail_screen.dart';
+
+final FlutterLocalNotificationsPlugin notificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 /// Global navigator key — lets deep link handler navigate from outside the tree.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -26,6 +30,11 @@ int? _parseVoucherId(Uri? uri) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await notificationsPlugin.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+  );
   runApp(const VoucherApp());
 }
 

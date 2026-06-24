@@ -1,10 +1,16 @@
 // lib/screens/voucher_list_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:app_badge_plus/app_badge_plus.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../main.dart' show notificationsPlugin;
 import '../models/models.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'voucher_detail_screen.dart';
+
+const _kNotifId = 1001;
+const _kNotifChannel = 'voucher_approvals';
 
 class VoucherListScreen extends StatefulWidget {
   const VoucherListScreen({super.key});
@@ -30,7 +36,45 @@ class _VoucherListScreenState extends State<VoucherListScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _requestNotificationPermission();
     _load();
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    await notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+  }
+
+  Future<void> _updateBadge(int count) async {
+    try {
+      if (count > 0) {
+        await notificationsPlugin.show(
+          _kNotifId,
+          'Vouchers awaiting your approval',
+          'You have $count voucher${count == 1 ? '' : 's'} waiting for your approval',
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              _kNotifChannel,
+              'Voucher Approvals',
+              channelDescription: 'Pending voucher approvals awaiting your action',
+              importance: Importance.low,
+              priority: Priority.low,
+              number: count,
+              playSound: false,
+              enableVibration: false,
+              icon: '@mipmap/ic_launcher',
+            ),
+          ),
+        );
+      } else {
+        await notificationsPlugin.cancel(_kNotifId);
+      }
+      AppBadgePlus.updateBadge(count);
+    } catch (_) {
+      // Notification/badge update failed silently — permission may be denied
+    }
   }
 
   @override
@@ -56,6 +100,38 @@ class _VoucherListScreenState extends State<VoucherListScreen>
         (_) => false,
       );
     }
+  }
+
+  Future<int> _fetchTotalPendingCount() async {
+    final user = ApiService.instance.currentUser;
+    if (user == null) return 0;
+    final currentUsername = user.username;
+
+    final companies = user.companies.isNotEmpty
+        ? user.companies
+        : (ApiService.instance.activeCompany != null
+            ? [ApiService.instance.activeCompany!]
+            : <Company>[]);
+
+    if (companies.isEmpty) return 0;
+
+    final counts = await Future.wait(
+      companies.map((company) async {
+        try {
+          final vouchers = await ApiService.instance.getVouchers(
+            status: 'PENDING',
+            companyId: company.id,
+          );
+          return vouchers
+              .where((v) => _needsMyApproval(v, currentUsername))
+              .length;
+        } catch (_) {
+          return 0;
+        }
+      }),
+    );
+
+    return counts.fold<int>(0, (sum, c) => sum + c);
   }
 
   // ── CHANGE 3: Returns true when this PENDING voucher is waiting on [currentUsername] ──
@@ -85,6 +161,9 @@ class _VoucherListScreenState extends State<VoucherListScreen>
         return 0; // preserve server order for equal items
       });
 
+      final totalPending = await _fetchTotalPendingCount();
+      await _updateBadge(totalPending);
+
       if (mounted) setState(() { _vouchers = list; _loading = false; });
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
@@ -99,6 +178,7 @@ class _VoucherListScreenState extends State<VoucherListScreen>
   }
 
   Future<void> _logout() async {
+    await _updateBadge(0);
     await ApiService.instance.logout();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(

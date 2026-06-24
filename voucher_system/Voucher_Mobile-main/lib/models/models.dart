@@ -22,6 +22,14 @@ class Company {
         role: j['role'],
         designation: j['designation'],
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'logo_url': logoUrl,
+        'role': role,
+        'designation': designation,
+      };
 }
 
 class AuthUser {

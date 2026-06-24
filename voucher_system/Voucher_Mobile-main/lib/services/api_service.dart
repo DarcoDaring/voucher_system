@@ -29,6 +29,7 @@ class ApiService {
   static const _keyUsername   = 'username';
   static const _keyFullName   = 'full_name';
   static const _keySuperuser  = 'is_superuser';
+  static const _keyCompanies  = 'companies_json';
   static const _keyLastActive     = 'last_active';
   static const _keySavedUsername  = 'saved_username';
   static const _keySavedPassword  = 'saved_password';
@@ -69,14 +70,19 @@ class ApiService {
     final username   = prefs.getString(_keyUsername) ?? '';
     final fullName   = prefs.getString(_keyFullName) ?? username;
     final superuser  = prefs.getBool(_keySuperuser) ?? false;
+    final companiesJson = prefs.getString(_keyCompanies);
+    final companies = companiesJson != null
+        ? (jsonDecode(companiesJson) as List)
+            .map((c) => Company.fromJson(c as Map<String, dynamic>))
+            .toList()
+        : <Company>[];
 
-    // Rebuild a minimal AuthUser (companies loaded fresh on login)
     _currentUser = AuthUser(
       token: _token!,
       username: username,
       fullName: fullName,
       isSuperuser: superuser,
-      companies: [],
+      companies: companies,
     );
     return true;
   }
@@ -104,6 +110,10 @@ class ApiService {
     await prefs.setString(_keyUsername, user.username);
     await prefs.setString(_keyFullName, user.fullName);
     await prefs.setBool(_keySuperuser, user.isSuperuser);
+    await prefs.setString(
+      _keyCompanies,
+      jsonEncode(user.companies.map((c) => c.toJson()).toList()),
+    );
     await _updateLastActive();
 
     return user;
@@ -119,6 +129,7 @@ class ApiService {
     await prefs.remove(_keyUsername);
     await prefs.remove(_keyFullName);
     await prefs.remove(_keySuperuser);
+    await prefs.remove(_keyCompanies);
     await prefs.remove(_keyLastActive);
   }
 
@@ -175,9 +186,9 @@ class ApiService {
   }
 
   // ── VOUCHERS ──────────────────────────────────────────────────
-  Future<List<VoucherSummary>> getVouchers({String? status}) async {
-    final companyId = _activeCompany!.id;
-    var url = '${ApiConfig.voucherListEndpoint}?company_id=$companyId';
+  Future<List<VoucherSummary>> getVouchers({String? status, int? companyId}) async {
+    final id = companyId ?? _activeCompany!.id;
+    var url = '${ApiConfig.voucherListEndpoint}?company_id=$id';
     if (status != null && status.isNotEmpty) url += '&status=$status';
 
     final data = await _get(url);
