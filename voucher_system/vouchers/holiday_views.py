@@ -5,7 +5,7 @@ from django.contrib import messages
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import HolidayBooking, Company, UserPermission, Vehicle, PaymentType, TripSettlement, TripSettlementCharge, BankSettlement, HolidayBankApprover, RepairMaintenance, RepairItem, RepairBankSettlement
+from .models import HolidayBooking, Company, UserPermission, Vehicle, PaymentType, TripSettlement, TripSettlementCharge, BankSettlement, HolidayBankApprover, RepairMaintenance, RepairItem, RepairBankSettlement, HolidayManager
 from .views import check_user_permission
 from decimal import Decimal
 
@@ -1161,6 +1161,8 @@ class HolidayResendWhatsAppAPI(APIView):
             return Response({'error': str(e)}, status=500)
 
 
+
+
 class HolidayPrintView(LoginRequiredMixin, DetailView):
     model = HolidayBooking
     template_name = 'vouchers/holiday_print.html'
@@ -1903,3 +1905,61 @@ class RepairReportAPI(APIView):
                 'notes':           r.notes or '',
             })
         return Response({'entries': entries})
+
+
+# ─── MANAGER MASTER ───────────────────────────────────────────────────────────
+
+class HolidayManagerListAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'managers': []})
+        managers = HolidayManager.objects.filter(company=company)
+        return Response({'managers': [
+            {'id': m.id, 'name': m.name, 'mobile': m.mobile}
+            for m in managers
+        ]})
+
+
+class HolidayManagerAddAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found.'}, status=400)
+        name   = (request.data.get('name') or '').strip().upper()
+        mobile = (request.data.get('mobile') or '').strip()
+        if not name:
+            return Response({'error': 'Name is required.'}, status=400)
+        if not mobile.isdigit() or len(mobile) != 10:
+            return Response({'error': 'Mobile must be exactly 10 digits.'}, status=400)
+        if HolidayManager.objects.filter(company=company, mobile=mobile).exists():
+            return Response({'error': 'A manager with this mobile number already exists.'}, status=400)
+        m = HolidayManager.objects.create(
+            company=company, name=name, mobile=mobile, created_by=request.user
+        )
+        return Response({'id': m.id, 'name': m.name, 'mobile': m.mobile})
+
+
+class HolidayManagerDeleteAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        active_company_id = request.session.get('active_company_id')
+        try:
+            company = Company.objects.get(id=active_company_id)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found.'}, status=400)
+        try:
+            m = HolidayManager.objects.get(pk=pk, company=company)
+            m.delete()
+            return Response({'success': True})
+        except HolidayManager.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)

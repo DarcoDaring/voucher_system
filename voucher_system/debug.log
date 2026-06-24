@@ -369,3 +369,11 @@ Traceback (most recent call last):
   File "D:\PaymentVoucher\venv\Lib\site-packages\requests\adapters.py", line 729, in send
     raise ConnectionError(e, request=request)
 requests.exceptions.ConnectionError: HTTPSConnectionPool(host='graph.facebook.com', port=443): Max retries exceeded with url: /v18.0/1201789883020583/media (Caused by NameResolutionError("HTTPSConnection(host='graph.facebook.com', port=443): Failed to resolve 'graph.facebook.com' ([Errno 11001] getaddrinfo failed)"))
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)
+[WhatsApp] Manager copy sent to ABIN (+919446017520)

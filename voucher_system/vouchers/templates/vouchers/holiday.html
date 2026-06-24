@@ -27,6 +27,11 @@
                         <i class="bi bi-plus-circle me-2"></i>Order Form
                     </button>
                 </li>
+                <li class="nav-item mb-1">
+                    <button class="hol-nav-btn" data-sec="manager-master" onclick="showSection('manager-master')">
+                        <i class="bi bi-person-badge me-2"></i>Manager Master
+                    </button>
+                </li>
                 {% endif %}
                 <li class="nav-item mb-1">
                     <button class="hol-nav-btn" data-sec="trip-settlement" onclick="showSection('trip-settlement')">
@@ -110,48 +115,20 @@
                                 <input type="date" class="form-control" id="h_return_date" required>
                             </div>
                             <div class="col-sm-6">
-                                <label for="h_dep_hour" class="form-label fw-semibold small text-muted mb-1">Departure Time <span class="text-danger">*</span></label>
-                                <input type="hidden" id="h_departure_time">
-                                <div class="hol-time-picker">
-                                    <select class="form-select" id="h_dep_hour" required onchange="syncTime('dep')">
-                                        <option value="">HH</option>
-                                        <option>1</option><option>2</option><option>3</option><option>4</option>
-                                        <option>5</option><option>6</option><option>7</option><option>8</option>
-                                        <option>9</option><option>10</option><option>11</option><option>12</option>
-                                    </select>
-                                    <span class="hol-time-sep">:</span>
-                                    <select class="form-select" id="h_dep_min" required onchange="syncTime('dep')">
-                                        <option value="">MM</option>
-                                        <option>00</option><option>05</option><option>10</option><option>15</option>
-                                        <option>20</option><option>25</option><option>30</option><option>35</option>
-                                        <option>40</option><option>45</option><option>50</option><option>55</option>
-                                    </select>
-                                    <select class="form-select hol-ampm-sel" id="h_dep_ampm" required onchange="syncTime('dep')">
-                                        <option value="">—</option><option>AM</option><option>PM</option>
-                                    </select>
+                                <label class="form-label fw-semibold small text-muted mb-1">Departure Time <span class="text-danger">*</span></label>
+                                <div class="fn-time-btn" onclick="openClockPicker('h_departure_time')" tabindex="0">
+                                    <i class="bi bi-clock me-2 text-muted"></i>
+                                    <span id="h_departure_time_display">Select time</span>
                                 </div>
+                                <input type="hidden" id="h_departure_time">
                             </div>
                             <div class="col-sm-6">
-                                <label for="h_ret_hour" class="form-label fw-semibold small text-muted mb-1">Return Time <span class="text-danger">*</span></label>
-                                <input type="hidden" id="h_return_time">
-                                <div class="hol-time-picker">
-                                    <select class="form-select" id="h_ret_hour" required onchange="syncTime('ret')">
-                                        <option value="">HH</option>
-                                        <option>1</option><option>2</option><option>3</option><option>4</option>
-                                        <option>5</option><option>6</option><option>7</option><option>8</option>
-                                        <option>9</option><option>10</option><option>11</option><option>12</option>
-                                    </select>
-                                    <span class="hol-time-sep">:</span>
-                                    <select class="form-select" id="h_ret_min" required onchange="syncTime('ret')">
-                                        <option value="">MM</option>
-                                        <option>00</option><option>05</option><option>10</option><option>15</option>
-                                        <option>20</option><option>25</option><option>30</option><option>35</option>
-                                        <option>40</option><option>45</option><option>50</option><option>55</option>
-                                    </select>
-                                    <select class="form-select hol-ampm-sel" id="h_ret_ampm" required onchange="syncTime('ret')">
-                                        <option value="">—</option><option>AM</option><option>PM</option>
-                                    </select>
+                                <label class="form-label fw-semibold small text-muted mb-1">Return Time <span class="text-danger">*</span></label>
+                                <div class="fn-time-btn" onclick="openClockPicker('h_return_time')" tabindex="0">
+                                    <i class="bi bi-clock me-2 text-muted"></i>
+                                    <span id="h_return_time_display">Select time</span>
                                 </div>
+                                <input type="hidden" id="h_return_time">
                             </div>
                             <div class="col-12">
                                 <label for="h_departure_location" class="form-label fw-semibold small text-muted mb-1">Starting Point <span class="text-danger">*</span></label>
@@ -281,6 +258,60 @@
                     </button>
                 </div>
             </form>
+        </div>
+
+        <!-- ▸ MANAGER MASTER ───────────────────────────────── -->
+        <div id="section-manager-master" class="hol-section p-4">
+            <div class="d-flex align-items-center mb-4 gap-3">
+                <button class="btn btn-outline-secondary btn-sm" onclick="showSection('calendar')">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <h4 class="fw-bold mb-0 text-info"><i class="bi bi-person-badge me-2"></i>Manager Master</h4>
+            </div>
+
+            <div id="mmAlert" class="alert d-none mb-3"></div>
+
+            <div class="row g-4" style="max-width:860px;">
+                <!-- Add form -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-info bg-opacity-10 border-0">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2 text-info"></i>Add Manager</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="mb-3">
+                                <label for="mm_name" class="form-label fw-semibold small text-muted mb-1">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="mm_name" maxlength="200"
+                                       placeholder="MANAGER NAME" oninput="this.value=this.value.toUpperCase();">
+                            </div>
+                            <div class="mb-3">
+                                <label for="mm_mobile" class="form-label fw-semibold small text-muted mb-1">Mobile Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="mm_mobile" maxlength="10"
+                                       placeholder="10-digit number"
+                                       oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)">
+                            </div>
+                            <button class="btn btn-info fw-semibold w-100" onclick="addManager()">
+                                <i class="bi bi-plus-lg me-1"></i>Add Manager
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List -->
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-info bg-opacity-10 border-0 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-people me-2 text-info"></i>Managers List</h6>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="loadManagers()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                        <div class="card-body p-0" id="mmListContainer">
+                            <div class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ▸ TRIP SETTLEMENT ──────────────────────────────── -->
@@ -1048,32 +1079,6 @@ function computeLanes() {
 }
 
 // ─── TIME PICKER ──────────────────────────────────────────────
-function syncTime(which) {
-    const p = which === 'dep' ? 'h_dep' : 'h_ret';
-    const hiddenId = which === 'dep' ? 'h_departure_time' : 'h_return_time';
-    const hour = document.getElementById(p + '_hour').value;
-    const min  = document.getElementById(p + '_min').value;
-    const ampm = document.getElementById(p + '_ampm').value;
-    if (!hour || !min || !ampm) { document.getElementById(hiddenId).value = ''; return; }
-    let h24 = parseInt(hour, 10);
-    if (ampm === 'AM' && h24 === 12) h24 = 0;
-    if (ampm === 'PM' && h24 !== 12) h24 += 12;
-    document.getElementById(hiddenId).value = `${String(h24).padStart(2, '0')}:${min}`;
-}
-// Populate a time picker from a HH:MM (24h) string
-function setTimePicker(which, hhmm) {
-    if (!hhmm) return;
-    const p = which === 'dep' ? 'h_dep' : 'h_ret';
-    const [hStr, mStr] = hhmm.split(':');
-    let h = parseInt(hStr, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    if (h === 0) h = 12;
-    else if (h > 12) h -= 12;
-    document.getElementById(p + '_hour').value = String(h);
-    document.getElementById(p + '_min').value  = mStr;
-    document.getElementById(p + '_ampm').value = ampm;
-    syncTime(which);
-}
 
 // ─── SECTION SWITCHING ────────────────────────────────────────
 let currentSection = 'calendar';
@@ -1105,6 +1110,81 @@ function showSection(name) {
         }
         loadReportSummary();
     }
+    else if (name === 'manager-master') { loadManagers(); }
+}
+
+// ─── MANAGER MASTER ───────────────────────────────────────────
+function mmShowAlert(msg, type) {
+    const el = document.getElementById('mmAlert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    if (type === 'success') setTimeout(() => el.classList.add('d-none'), 3000);
+}
+
+function loadManagers() {
+    const wrap = document.getElementById('mmListContainer');
+    wrap.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div></div>';
+    fetch('/api/holidays/managers/', { headers: { 'X-CSRFToken': getCSRF() } })
+    .then(r => r.json())
+    .then(data => {
+        const managers = data.managers || [];
+        if (!managers.length) {
+            wrap.innerHTML = '<p class="text-muted text-center py-4 mb-0">No managers added yet.</p>';
+            return;
+        }
+        let html = '<table class="table table-hover mb-0"><thead><tr><th>#</th><th>Name</th><th>Mobile</th><th></th></tr></thead><tbody>';
+        managers.forEach((m, i) => {
+            html += `<tr>
+                <td class="text-muted small align-middle">${i+1}</td>
+                <td class="fw-semibold align-middle">${esc(m.name)}</td>
+                <td class="align-middle">${esc(m.mobile)}</td>
+                <td class="align-middle text-end">
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteManager(${m.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        wrap.innerHTML = html;
+    })
+    .catch(() => { wrap.innerHTML = '<p class="text-danger text-center py-3 mb-0">Failed to load managers.</p>'; });
+}
+
+function addManager() {
+    const name   = (document.getElementById('mm_name').value || '').trim();
+    const mobile = (document.getElementById('mm_mobile').value || '').trim();
+    if (!name)   { mmShowAlert('Name is required.', 'danger'); return; }
+    if (!/^\d{10}$/.test(mobile)) { mmShowAlert('Mobile must be exactly 10 digits.', 'danger'); return; }
+    fetch('/api/holidays/managers/add/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+        body: JSON.stringify({ name, mobile })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { mmShowAlert(data.error, 'danger'); return; }
+        document.getElementById('mm_name').value   = '';
+        document.getElementById('mm_mobile').value = '';
+        mmShowAlert('Manager added successfully.', 'success');
+        loadManagers();
+    })
+    .catch(() => mmShowAlert('Failed to add manager.', 'danger'));
+}
+
+function deleteManager(id) {
+    if (!confirm('Delete this manager?')) return;
+    fetch(`/api/holidays/managers/${id}/delete/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCSRF() }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { mmShowAlert(data.error, 'danger'); return; }
+        mmShowAlert('Manager deleted.', 'success');
+        loadManagers();
+    })
+    .catch(() => mmShowAlert('Failed to delete manager.', 'danger'));
 }
 
 // ─── CALENDAR STATE ───────────────────────────────────────────
@@ -1405,13 +1485,11 @@ function initOrderForm() {
         if (!document.getElementById('h_departure_time').value) {
             errorDiv.textContent = 'Please select the Time of Journey.';
             errorDiv.classList.remove('d-none');
-            document.getElementById('h_dep_hour').focus();
             return;
         }
         if (!document.getElementById('h_return_time').value) {
             errorDiv.textContent = 'Please select the Time of Return.';
             errorDiv.classList.remove('d-none');
-            document.getElementById('h_ret_hour').focus();
             return;
         }
         const cNum = document.getElementById('h_contact_number').value;
@@ -1470,7 +1548,9 @@ function initOrderForm() {
                 successDiv.classList.remove('d-none');
                 form.reset();
                 document.getElementById('h_departure_time').value = '';
+                document.getElementById('h_departure_time_display').textContent = 'Select time';
                 document.getElementById('h_return_time').value    = '';
+                document.getElementById('h_return_time_display').textContent = 'Select time';
                 document.getElementById('h_total_amount_display').textContent = '0.00';
                 document.getElementById('h_balance_amount_display').value      = '0.00';
                 loadHolidayBookedDates();
@@ -2966,6 +3046,102 @@ function submitRepairToBank() {
         }
     })
     .catch(() => alert('Network error.'));
+}
+</script>
+
+<!-- CLOCK PICKER -->
+<div id="cpBackdrop" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;width:300px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+    <div style="background:#1a73e8;padding:20px 24px 16px;">
+      <div style="color:rgba(255,255,255,.75);font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Select Time</div>
+      <div style="display:flex;align-items:baseline;gap:2px;">
+        <span id="cpModeHour" style="font-size:48px;font-weight:300;color:#fff;cursor:pointer;line-height:1;" onclick="_cpSwitchMode('hour')">12</span>
+        <span style="font-size:48px;font-weight:300;color:rgba(255,255,255,.7);line-height:1;">:</span>
+        <span id="cpModeMin" style="font-size:48px;font-weight:300;color:rgba(255,255,255,.7);cursor:pointer;line-height:1;" onclick="_cpSwitchMode('min')">00</span>
+        <div style="display:flex;flex-direction:column;margin-left:8px;gap:2px;">
+          <button id="cpAmBtn" onclick="cpSetAmPm('AM')" style="background:rgba(255,255,255,.25);border:none;border-radius:4px;color:#fff;font-size:13px;padding:2px 8px;cursor:pointer;">AM</button>
+          <button id="cpPmBtn" onclick="cpSetAmPm('PM')" style="background:transparent;border:none;border-radius:4px;color:rgba(255,255,255,.7);font-size:13px;padding:2px 8px;cursor:pointer;">PM</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;padding:16px 0 8px;">
+      <div id="cpClockFace" style="position:relative;width:216px;height:216px;border-radius:50%;background:#f5f5f5;"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:8px 16px 16px;">
+      <button onclick="closeClockPicker()" style="background:none;border:none;color:#1a73e8;font-weight:600;padding:8px 16px;cursor:pointer;border-radius:6px;">CANCEL</button>
+      <button onclick="confirmClockPicker()" style="background:#1a73e8;border:none;color:#fff;font-weight:600;padding:8px 16px;cursor:pointer;border-radius:6px;">OK</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.fn-time-btn{display:flex;align-items:center;padding:10px 14px;border:1.5px solid #dee2e6;border-radius:8px;cursor:pointer;background:#fff;transition:border-color .2s;}
+.fn-time-btn:hover{border-color:#1a73e8;}
+</style>
+
+<script>
+var _cpTarget=null,_cpMode='hour',_cpH=12,_cpM=0,_cpAmPm='AM';
+function openClockPicker(targetId){
+    _cpTarget=targetId;_cpMode='hour';
+    var val=document.getElementById(targetId).value;
+    if(val){
+        var p=val.split(':');var h=parseInt(p[0]);var m=parseInt(p[1]);
+        _cpAmPm=h>=12?'PM':'AM';h=h%12||12;_cpH=h;_cpM=m;
+    } else {_cpH=12;_cpM=0;_cpAmPm='AM';}
+    var bd=document.getElementById('cpBackdrop');bd.style.display='flex';
+    _cpRender();
+}
+function closeClockPicker(){document.getElementById('cpBackdrop').style.display='none';}
+function confirmClockPicker(){
+    var h24=_cpAmPm==='PM'?(_cpH===12?12:_cpH+12):(_cpH===12?0:_cpH);
+    var val=String(h24).padStart(2,'0')+':'+String(_cpM).padStart(2,'0');
+    setClockDisplay(_cpTarget,val);
+    closeClockPicker();
+}
+function cpSetAmPm(v){
+    _cpAmPm=v;
+    document.getElementById('cpAmBtn').style.background=v==='AM'?'rgba(255,255,255,.25)':'transparent';
+    document.getElementById('cpAmBtn').style.color=v==='AM'?'#fff':'rgba(255,255,255,.7)';
+    document.getElementById('cpPmBtn').style.background=v==='PM'?'rgba(255,255,255,.25)':'transparent';
+    document.getElementById('cpPmBtn').style.color=v==='PM'?'#fff':'rgba(255,255,255,.7)';
+}
+function _cpSwitchMode(m){_cpMode=m;_cpRender();}
+function _cpRender(){
+    var isHour=_cpMode==='hour';
+    var hTxt=String(_cpH).padStart(2,'0');
+    var mTxt=String(_cpM).padStart(2,'0');
+    document.getElementById('cpModeHour').textContent=hTxt;
+    document.getElementById('cpModeHour').style.color=isHour?'#fff':'rgba(255,255,255,.7)';
+    document.getElementById('cpModeMin').textContent=mTxt;
+    document.getElementById('cpModeMin').style.color=isHour?'rgba(255,255,255,.7)':'#fff';
+    var face=document.getElementById('cpClockFace');
+    face.innerHTML='';
+    var cx=108,cy=108,r=80;
+    for(var i=0;i<12;i++){
+        var val=isHour?(i===0?12:i):(i*5);
+        var angle=(i/12)*2*Math.PI - Math.PI/2;
+        var x=cx+r*Math.cos(angle);
+        var y=cy+r*Math.sin(angle);
+        var active=isHour?(_cpH===val):(_cpM===val);
+        var el=document.createElement('div');
+        el.textContent=isHour?val:String(val).padStart(2,'0');
+        el.style.cssText='position:absolute;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transform:translate(-50%,-50%);left:'+x+'px;top:'+y+'px;'+(active?'background:#1a73e8;color:#fff;':'color:#333;');
+        (function(v){el.onclick=function(){if(isHour){_cpH=v;_cpMode='min';}else{_cpM=v;}_cpRender();};})(val);
+        face.appendChild(el);
+    }
+    var dot=document.createElement('div');
+    dot.style.cssText='position:absolute;width:8px;height:8px;background:#1a73e8;border-radius:50%;left:'+cx+'px;top:'+cy+'px;transform:translate(-50%,-50%);';
+    face.appendChild(dot);
+}
+function setClockDisplay(inputId,hhmm){
+    var inp=document.getElementById(inputId);
+    var disp=document.getElementById(inputId+'_display');
+    if(!inp||!disp)return;
+    if(!hhmm){inp.value='';disp.textContent='Select time';return;}
+    inp.value=hhmm;
+    var p=hhmm.split(':');var h=parseInt(p[0]);var m=parseInt(p[1]);
+    var ampm=h>=12?'PM':'AM';var h12=h%12||12;
+    disp.textContent=h12+':'+String(m).padStart(2,'0')+' '+ampm;
 }
 </script>
 

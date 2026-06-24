@@ -410,10 +410,24 @@ document.addEventListener('DOMContentLoaded', function () {
         index++;
     };
 
+    // --- Renumber rows after removal so indices stay sequential ---
+    function renumberRows() {
+        Array.from(tbody.children).forEach((row, i) => {
+            const descInput = row.querySelector('input[name*="[description]"]');
+            const amtInput  = row.querySelector('input[name*="[amount]"]');
+            const fileInput = row.querySelector('input[type="file"]');
+            if (descInput) descInput.name = `particulars[${i}][description]`;
+            if (amtInput)  amtInput.name  = `particulars[${i}][amount]`;
+            if (fileInput) fileInput.name  = `particular_attachment_${i}`;
+        });
+        index = tbody.children.length;
+    }
+
     // --- Remove row ---
     tbody.onclick = e => {
         if (e.target.classList.contains('remove-row') && tbody.children.length > 1) {
             e.target.closest('tr').remove();
+            renumberRows();
             calcGrandTotal();
         }
     };

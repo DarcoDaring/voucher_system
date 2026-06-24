@@ -685,6 +685,41 @@ class FunctionBooking(models.Model):
 
 
 # =============================================
+# EXTERNAL API KEY (for third-party / local-network apps)
+# =============================================
+
+class ExternalApiKey(models.Model):
+    """
+    A company-scoped API key for external / local-network applications.
+    No user login required — the key itself identifies the company.
+    Create keys via Django admin and share with the consuming app.
+    """
+    name = models.CharField(max_length=100, help_text="Label for this key, e.g. 'Kitchen Display System'")
+    key = models.CharField(max_length=64, unique=True, blank=True)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='api_keys',
+        help_text="Only data belonging to this company will be returned"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            import secrets
+            self.key = secrets.token_hex(32)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} ({self.company.name})"
+
+    class Meta:
+        verbose_name = "External API Key"
+        verbose_name_plural = "External API Keys"
+
+
+# =============================================
 # VEHICLE MASTER
 # =============================================
 
@@ -948,6 +983,21 @@ class HolidayBankApprover(models.Model):
 
     def __str__(self):
         return f"{self.user.username} – {self.company.name}"
+
+
+class HolidayManager(models.Model):
+    company    = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='holiday_managers')
+    name       = models.CharField(max_length=200)
+    mobile     = models.CharField(max_length=10)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='holiday_managers_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'mobile')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} – {self.mobile}"
 
 
 class WhatsAppConfig(models.Model):

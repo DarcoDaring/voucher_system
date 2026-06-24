@@ -571,7 +571,7 @@ def _send_whatsapp_document(phone_number: str, media_id: str, filename: str, cap
 def send_function_prospect_whatsapp(function) -> dict:
     """
     Generate the function prospectus PDF and send it via WhatsApp
-    to the first contact number on the booking.
+    to the first contact number on the booking, and to all managers.
     Called after FunctionConfirmAPI saves the booking.
     """
     from .models import WhatsAppConfig
@@ -598,26 +598,14 @@ def send_function_prospect_whatsapp(function) -> dict:
 
         pdf_bytes = _generate_pdf("vouchers/function_print.html", context, company=company, page_ranges='1')
         filename  = f"Function_Prospectus_{function.function_number}.pdf"
-
-        if not WHATSAPP_LIVE_MODE:
-            print(f"\n{'='*60}")
-            print(f"[WhatsApp PDF TEST] Function Prospectus")
-            print(f"  To      : +{phone}")
-            print(f"  File    : {filename}")
-            print(f"  PDF size: {len(pdf_bytes)} bytes")
-            print(f"{'='*60}\n")
-            return {"success": True, "mode": "TEST", "phone": phone, "filename": filename}
-
-        media_id = _upload_whatsapp_media(pdf_bytes, filename)
-        if not media_id:
-            return {"success": False, "error": "Media upload failed"}
+        manager_phones = _get_manager_phones(company)
 
         contact_parts = []
         if company.phone: contact_parts.append(company.phone)
         if company.email: contact_parts.append(company.email)
         contact_info = " | ".join(contact_parts) if contact_parts else "N/A"
 
-        return _send_whatsapp_template_with_document(phone, "function_prospect_pdf", media_id, filename, {
+        template_params = {
             "function_name": function.function_name,
             "function_number": function.function_number,
             "function_date": function.function_date.strftime('%d %b %Y'),
@@ -626,7 +614,38 @@ def send_function_prospect_whatsapp(function) -> dict:
             "location": function.location,
             "booked_by": function.booked_by,
             "contact_info": contact_info,
-        })
+        }
+
+        if not WHATSAPP_LIVE_MODE:
+            customer_msg = (
+                f"[Function Prospectus]\n"
+                f"Function : {function.function_number}\n"
+                f"Name     : {function.function_name}\n"
+                f"Date     : {template_params['function_date']}\n"
+                f"Location : {function.location}\n"
+                f"File     : {filename} ({len(pdf_bytes)} bytes)"
+            )
+            _log_test_message(phone, customer_msg)
+            for name, mp in manager_phones:
+                _log_test_message(mp, f"[Manager Copy – {name}]\n{customer_msg}")
+            return {"success": True, "mode": "TEST", "phone": phone, "filename": filename}
+
+        media_id = _upload_whatsapp_media(pdf_bytes, filename)
+        if not media_id:
+            return {"success": False, "error": "Media upload failed"}
+
+        # Send to customer
+        result = _send_whatsapp_template_with_document(phone, "function_prospect_pdf", media_id, filename, template_params)
+
+        # Send same template+PDF to every manager
+        for name, mp in manager_phones:
+            try:
+                _send_whatsapp_template_with_document(mp, "function_prospect_pdf", media_id, filename, template_params)
+                logger.info(f"[WhatsApp] Manager copy sent to {name} (+{mp})")
+            except Exception as me:
+                logger.error(f"[WhatsApp] Manager copy failed for {name} (+{mp}): {me}")
+
+        return result
 
     except Exception as e:
         logger.error(f"send_function_prospect_whatsapp error: {e}", exc_info=True)
@@ -637,10 +656,21 @@ def send_function_prospect_whatsapp(function) -> dict:
 # HOLIDAY ORDER FORM – WHATSAPP PDF SEND
 # =============================================
 
+def _get_manager_phones(company) -> list:
+    """Return a list of cleaned phone numbers for all HolidayManagers of the company."""
+    from .models import HolidayManager
+    phones = []
+    for m in HolidayManager.objects.filter(company=company):
+        p = _clean_phone_number(m.mobile)
+        if p:
+            phones.append((m.name, p))
+    return phones
+
+
 def send_holiday_orderform_whatsapp(booking) -> dict:
     """
     Generate the holiday order form PDF and send it via WhatsApp
-    to the primary contact number on the booking.
+    to the primary contact number on the booking, and to all managers.
     Called after HolidayConfirmAPI saves the booking.
     """
     from .models import WhatsAppConfig
@@ -664,26 +694,14 @@ def send_holiday_orderform_whatsapp(booking) -> dict:
 
         pdf_bytes = _generate_pdf("vouchers/holiday_print.html", context, company=company)
         filename  = f"Order_Form_{booking.booking_number}.pdf"
-
-        if not WHATSAPP_LIVE_MODE:
-            print(f"\n{'='*60}")
-            print(f"[WhatsApp PDF TEST] Holiday Order Form")
-            print(f"  To      : +{phone}")
-            print(f"  File    : {filename}")
-            print(f"  PDF size: {len(pdf_bytes)} bytes")
-            print(f"{'='*60}\n")
-            return {"success": True, "mode": "TEST", "phone": phone, "filename": filename}
-
-        media_id = _upload_whatsapp_media(pdf_bytes, filename)
-        if not media_id:
-            return {"success": False, "error": "Media upload failed"}
+        manager_phones = _get_manager_phones(company)
 
         contact_parts = []
         if company.phone: contact_parts.append(company.phone)
         if company.email: contact_parts.append(company.email)
         contact_info = " | ".join(contact_parts) if contact_parts else "N/A"
 
-        return _send_whatsapp_template_with_document(phone, "holiday_order_form_pdf", media_id, filename, {
+        template_params = {
             "purpose": booking.purpose_of_booking or "N/A",
             "booking_number": booking.booking_number or "N/A",
             "trip_date": booking.trip_date.strftime('%d %b %Y') if booking.trip_date else "N/A",
@@ -692,10 +710,101 @@ def send_holiday_orderform_whatsapp(booking) -> dict:
             "destination": booking.destination or "N/A",
             "booked_by": booking.booked_by or "N/A",
             "contact_info": contact_info,
-        })
+        }
+
+        if not WHATSAPP_LIVE_MODE:
+            customer_msg = (
+                f"[Holiday Order Form]\n"
+                f"Booking : {booking.booking_number}\n"
+                f"Customer: {booking.booked_by}\n"
+                f"Trip    : {template_params['trip_date']}\n"
+                f"Places  : {booking.destination}\n"
+                f"File    : {filename} ({len(pdf_bytes)} bytes)"
+            )
+            _log_test_message(phone, customer_msg)
+            for name, mp in manager_phones:
+                _log_test_message(mp, f"[Manager Copy – {name}]\n{customer_msg}")
+            return {"success": True, "mode": "TEST", "phone": phone, "filename": filename}
+
+        media_id = _upload_whatsapp_media(pdf_bytes, filename)
+        if not media_id:
+            return {"success": False, "error": "Media upload failed"}
+
+        # Send to customer
+        result = _send_whatsapp_template_with_document(phone, "holiday_order_form_pdf", media_id, filename, template_params)
+
+        # Send same template+PDF to every manager
+        for name, mp in manager_phones:
+            try:
+                _send_whatsapp_template_with_document(mp, "holiday_order_form_pdf", media_id, filename, template_params)
+                logger.info(f"[WhatsApp] Manager copy sent to {name} (+{mp})")
+            except Exception as me:
+                logger.error(f"[WhatsApp] Manager copy failed for {name} (+{mp}): {me}")
+
+        return result
 
     except Exception as e:
         logger.error(f"send_holiday_orderform_whatsapp error: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+
+def send_holiday_orderform_whatsapp_managers(booking) -> dict:
+    """
+    Send the holiday order form PDF only to all managers (used for Resend to Managers).
+    """
+    from .models import WhatsAppConfig
+    if not WhatsAppConfig.get_config().holiday_enabled:
+        return {"success": False, "error": "Holiday WhatsApp notifications are disabled"}
+    try:
+        from .holiday_views import number_to_words
+        company = booking.company
+        manager_phones = _get_manager_phones(company)
+        if not manager_phones:
+            return {"success": False, "error": "No managers found for this company."}
+
+        context = {
+            "booking": booking,
+            "company": company,
+            "balance_in_words": number_to_words(booking.balance_amount or 0),
+        }
+        pdf_bytes = _generate_pdf("vouchers/holiday_print.html", context, company=company)
+        filename  = f"Order_Form_{booking.booking_number}.pdf"
+
+        if not WHATSAPP_LIVE_MODE:
+            print(f"\n{'='*60}")
+            print(f"[WhatsApp PDF TEST] Holiday Order Form – Managers Resend")
+            print(f"  File     : {filename}")
+            print(f"  PDF size : {len(pdf_bytes)} bytes")
+            for name, mp in manager_phones:
+                print(f"  To       : +{mp}  [{name}]")
+            print(f"{'='*60}\n")
+            return {"success": True, "mode": "TEST", "managers_notified": len(manager_phones)}
+
+        media_id = _upload_whatsapp_media(pdf_bytes, filename)
+        if not media_id:
+            return {"success": False, "error": "Media upload failed"}
+
+        caption = f"Holiday Booking – {booking.booking_number}"
+        sent, failed = 0, 0
+        for name, mp in manager_phones:
+            try:
+                r = _send_whatsapp_document(mp, media_id, filename, caption=caption)
+                if r.get('success'):
+                    sent += 1
+                    logger.info(f"[WhatsApp] Manager resend sent to {name} (+{mp})")
+                else:
+                    failed += 1
+                    logger.error(f"[WhatsApp] Manager resend failed for {name}: {r.get('error')}")
+            except Exception as me:
+                failed += 1
+                logger.error(f"[WhatsApp] Manager resend exception for {name} (+{mp}): {me}")
+
+        if sent == 0:
+            return {"success": False, "error": f"All {failed} sends failed."}
+        return {"success": True, "managers_notified": sent, "failed": failed}
+
+    except Exception as e:
+        logger.error(f"send_holiday_orderform_whatsapp_managers error: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 

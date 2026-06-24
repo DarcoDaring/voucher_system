@@ -45,6 +45,7 @@ from vouchers.holiday_views import (
     HolidayQuickListAPI,
     TripSettlementDeleteAPI, BankSettlementDeleteAPI,
     HolidayReportSummaryAPI,
+    HolidayManagerListAPI, HolidayManagerAddAPI, HolidayManagerDeleteAPI,
 )
 from vouchers.mobile_api import (
     MobileLoginAPI, MobileVoucherListAPI,
@@ -248,6 +249,9 @@ urlpatterns = [
     path('api/holidays/<int:pk>/settlement/delete/',   TripSettlementDeleteAPI.as_view(),   name='trip_settlement_delete'),
     path('api/holidays/bank/settlement/<int:pk>/delete/', BankSettlementDeleteAPI.as_view(), name='bank_settlement_delete'),
     path('api/holidays/report/summary/',                 HolidayReportSummaryAPI.as_view(), name='holiday_report_summary'),
+    path('api/holidays/managers/',                       HolidayManagerListAPI.as_view(),  name='holiday_manager_list'),
+    path('api/holidays/managers/add/',                   HolidayManagerAddAPI.as_view(),   name='holiday_manager_add'),
+    path('api/holidays/managers/<int:pk>/delete/',       HolidayManagerDeleteAPI.as_view(), name='holiday_manager_delete'),
 
     # ── MOBILE APP (token-based) ────────────────────────────────────
     path('api/mobile/login/',                    MobileLoginAPI.as_view(),           name='mobile_login'),

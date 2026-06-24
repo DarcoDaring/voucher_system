@@ -23,7 +23,12 @@
                     <i class="bi bi-plus-circle me-2"></i> Create Function
                 </a>
             </li>
-            
+            <li class="nav-item mb-2">
+                <a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#managerMasterModal" onclick="loadFuncManagers()">
+                    <i class="bi bi-person-badge me-2"></i> Manager Master
+                </a>
+            </li>
+
         </ul>
         
         <hr class="my-4">
@@ -101,8 +106,11 @@
                             <label class="form-label fw-semibold">
                                 Time From <span class="text-danger">*</span>
                             </label>
-                            <input type="time" class="form-control" id="time_from" 
-                                   name="time_from" required>
+                            <div class="fn-time-btn" id="time_from_btn" onclick="fnOpenClock('time_from')" tabindex="0">
+                                <i class="bi bi-clock me-2 text-muted"></i>
+                                <span id="time_from_display">Select time</span>
+                            </div>
+                            <input type="hidden" id="time_from" name="time_from">
                         </div>
 
                         <!-- Time To -->
@@ -110,8 +118,11 @@
                             <label class="form-label fw-semibold">
                                 Time To <span class="text-danger">*</span>
                             </label>
-                            <input type="time" class="form-control" id="time_to" 
-                                   name="time_to" required>
+                            <div class="fn-time-btn" id="time_to_btn" onclick="fnOpenClock('time_to')" tabindex="0">
+                                <i class="bi bi-clock me-2 text-muted"></i>
+                                <span id="time_to_display">Select time</span>
+                            </div>
+                            <input type="hidden" id="time_to" name="time_to">
                         </div>
 
                         <!-- Function Name & Booked By -->
@@ -2783,6 +2794,290 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+// ─── CLOCK PICKER ─────────────────────────────────────────────
+let _fnClockTarget = null;   // 'time_from' or 'time_to'
+let _fnClockMode   = 'hour'; // 'hour' | 'minute'
+let _fnClockH = 12, _fnClockM = 0, _fnClockAmPm = 'AM';
+
+function fnOpenClock(targetId) {
+    _fnClockTarget = targetId;
+    _fnClockMode   = 'hour';
+    // pre-fill from existing hidden value
+    const existing = document.getElementById(targetId).value;
+    if (existing) {
+        const [hStr, mStr] = existing.split(':');
+        let h = parseInt(hStr, 10);
+        _fnClockM    = parseInt(mStr, 10);
+        _fnClockAmPm = h >= 12 ? 'PM' : 'AM';
+        if (h === 0) h = 12;
+        else if (h > 12) h -= 12;
+        _fnClockH = h;
+    } else {
+        _fnClockH = 12; _fnClockM = 0; _fnClockAmPm = 'AM';
+    }
+    _fnRenderClock();
+    document.getElementById('fnClockBackdrop').style.display = 'flex';
+}
+
+function fnCloseClock() {
+    document.getElementById('fnClockBackdrop').style.display = 'none';
+}
+
+function fnConfirmClock() {
+    let h24 = _fnClockH;
+    if (_fnClockAmPm === 'AM' && h24 === 12) h24 = 0;
+    if (_fnClockAmPm === 'PM' && h24 !== 12) h24 += 12;
+    const val = `${String(h24).padStart(2,'0')}:${String(_fnClockM).padStart(2,'0')}`;
+    document.getElementById(_fnClockTarget).value = val;
+    const label = `${String(_fnClockH).padStart(2,'0')}:${String(_fnClockM).padStart(2,'0')} ${_fnClockAmPm}`;
+    document.getElementById(_fnClockTarget + '_display').textContent = label;
+    document.getElementById(_fnClockTarget + '_btn').classList.add('fn-time-filled');
+    fnCloseClock();
+}
+
+function fnSetAmPm(v) {
+    _fnClockAmPm = v;
+    _fnRenderClock();
+}
+
+function _fnRenderClock() {
+    // Header display — update hour/minute spans used as large time display
+    const hourSpan = document.getElementById('fnClockModeHour');
+    const minSpan  = document.getElementById('fnClockModeMin');
+    hourSpan.textContent = String(_fnClockH).padStart(2,'0');
+    minSpan.textContent  = String(_fnClockM).padStart(2,'0');
+    document.getElementById('fnClockAmBtn').className = 'fn-ampm-btn' + (_fnClockAmPm === 'AM' ? ' active' : '');
+    document.getElementById('fnClockPmBtn').className = 'fn-ampm-btn' + (_fnClockAmPm === 'PM' ? ' active' : '');
+    hourSpan.className = 'fn-mode-tab' + (_fnClockMode === 'hour'   ? ' active' : '');
+    minSpan.className  = 'fn-mode-tab' + (_fnClockMode === 'minute' ? ' active' : '');
+
+    const face  = document.getElementById('fnClockFace');
+    const cx = 108, cy = 108, r = 80;
+    face.innerHTML = '';
+
+    // Centre dot
+    const dot = document.createElement('div');
+    dot.className = 'fn-clock-dot';
+    face.appendChild(dot);
+
+    if (_fnClockMode === 'hour') {
+        for (let h = 1; h <= 12; h++) {
+            const angle = (h / 12) * 2 * Math.PI - Math.PI / 2;
+            const x = cx + r * Math.cos(angle) - 18;
+            const y = cy + r * Math.sin(angle) - 18;
+            const el = document.createElement('div');
+            el.className = 'fn-clock-num' + (h === _fnClockH ? ' selected' : '');
+            el.style.left = x + 'px';
+            el.style.top  = y + 'px';
+            el.textContent = h;
+            el.onclick = () => { _fnClockH = h; _fnClockMode = 'minute'; _fnRenderClock(); };
+            face.appendChild(el);
+        }
+    } else {
+        const minutes = [0,5,10,15,20,25,30,35,40,45,50,55];
+        minutes.forEach((m, i) => {
+            const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
+            const x = cx + r * Math.cos(angle) - 18;
+            const y = cy + r * Math.sin(angle) - 18;
+            const el = document.createElement('div');
+            el.className = 'fn-clock-num' + (m === _fnClockM ? ' selected' : '');
+            el.style.left = x + 'px';
+            el.style.top  = y + 'px';
+            el.textContent = String(m).padStart(2,'0');
+            el.onclick = () => { _fnClockM = m; _fnRenderClock(); };
+            face.appendChild(el);
+        });
+    }
+}
+
+// ─── MANAGER MASTER ───────────────────────────────────────────
+function fmShowAlert(msg, type) {
+    const el = document.getElementById('fmAlert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    if (type === 'success') setTimeout(() => el.classList.add('d-none'), 3000);
+}
+
+function loadFuncManagers() {
+    const wrap = document.getElementById('fmListContainer');
+    wrap.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div></div>';
+    fetch('/api/holidays/managers/', { headers: { 'X-CSRFToken': getCsrfToken()} })
+    .then(r => r.json())
+    .then(data => {
+        const managers = data.managers || [];
+        if (!managers.length) {
+            wrap.innerHTML = '<p class="text-muted text-center py-4 mb-0">No managers added yet.</p>';
+            return;
+        }
+        let html = '<table class="table table-hover mb-0"><thead><tr><th>#</th><th>Name</th><th>Mobile</th><th></th></tr></thead><tbody>';
+        managers.forEach((m, i) => {
+            html += `<tr>
+                <td class="text-muted small align-middle">${i+1}</td>
+                <td class="fw-semibold align-middle">${m.name}</td>
+                <td class="align-middle">${m.mobile}</td>
+                <td class="align-middle text-end">
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteFuncManager(${m.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        wrap.innerHTML = html;
+    })
+    .catch(() => { wrap.innerHTML = '<p class="text-danger text-center py-3 mb-0">Failed to load managers.</p>'; });
+}
+
+function addFuncManager() {
+    const name   = (document.getElementById('fm_name').value || '').trim();
+    const mobile = (document.getElementById('fm_mobile').value || '').trim();
+    if (!name)   { fmShowAlert('Name is required.', 'danger'); return; }
+    if (!/^\d{10}$/.test(mobile)) { fmShowAlert('Mobile must be exactly 10 digits.', 'danger'); return; }
+    fetch('/api/holidays/managers/add/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+        body: JSON.stringify({ name, mobile })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { fmShowAlert(data.error, 'danger'); return; }
+        document.getElementById('fm_name').value   = '';
+        document.getElementById('fm_mobile').value = '';
+        fmShowAlert('Manager added successfully.', 'success');
+        loadFuncManagers();
+    })
+    .catch(() => fmShowAlert('Failed to add manager.', 'danger'));
+}
+
+function deleteFuncManager(id) {
+    if (!confirm('Delete this manager?')) return;
+    fetch(`/api/holidays/managers/${id}/delete/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCsrfToken()}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { fmShowAlert(data.error, 'danger'); return; }
+        fmShowAlert('Manager deleted.', 'success');
+        loadFuncManagers();
+    })
+    .catch(() => fmShowAlert('Failed to delete manager.', 'danger'));
+}
+
 </script>
+
+<!-- Manager Master Modal -->
+<div class="modal fade" id="managerMasterModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary bg-opacity-10 border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>Manager Master</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="fmAlert" class="alert d-none mb-3"></div>
+                <div class="row g-4">
+                    <!-- Add form -->
+                    <div class="col-md-5">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-primary bg-opacity-10 border-0">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>Add Manager</h6>
+                            </div>
+                            <div class="card-body p-3">
+                                <div class="mb-3">
+                                    <label for="fm_name" class="form-label fw-semibold small text-muted mb-1">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="fm_name" maxlength="200"
+                                           placeholder="MANAGER NAME" oninput="this.value=this.value.toUpperCase();">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fm_mobile" class="form-label fw-semibold small text-muted mb-1">Mobile Number <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="fm_mobile" maxlength="10"
+                                           placeholder="10-digit number"
+                                           oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)">
+                                </div>
+                                <button class="btn btn-primary fw-semibold w-100" onclick="addFuncManager()">
+                                    <i class="bi bi-plus-lg me-1"></i>Add Manager
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- List -->
+                    <div class="col-md-7">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-primary bg-opacity-10 border-0 d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-people me-2 text-primary"></i>Managers List</h6>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="loadFuncManagers()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                            <div class="card-body p-0" id="fmListContainer">
+                                <p class="text-muted text-center py-4 mb-0">Click refresh to load.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clock Picker -->
+<div id="fnClockBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.25);overflow:hidden;width:280px;">
+        <div style="background:#1976d2;padding:16px 20px;color:#fff;">
+            <div style="font-size:.75rem;opacity:.8;margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">Select Time</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:baseline;gap:2px;">
+                    <span id="fnClockModeHour" class="fn-mode-tab active" onclick="_fnClockMode='hour';_fnRenderClock()" style="font-size:2.4rem;font-weight:700;cursor:pointer;padding:0 2px;"></span>
+                    <span style="font-size:2rem;font-weight:300;opacity:.8;">:</span>
+                    <span id="fnClockModeMin"  class="fn-mode-tab"        onclick="_fnClockMode='minute';_fnRenderClock()" style="font-size:2.4rem;font-weight:700;cursor:pointer;padding:0 2px;"></span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <button id="fnClockAmBtn" class="fn-ampm-btn" onclick="fnSetAmPm('AM')">AM</button>
+                    <button id="fnClockPmBtn" class="fn-ampm-btn" onclick="fnSetAmPm('PM')">PM</button>
+                </div>
+            </div>
+        </div>
+        <div style="padding:12px 0 4px;display:flex;justify-content:center;">
+            <div id="fnClockFace" style="width:216px;height:216px;border-radius:50%;background:#f5f5f5;position:relative;"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding:8px 16px 14px;gap:8px;">
+            <button onclick="fnCloseClock()" style="background:none;border:none;color:#1976d2;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;">CANCEL</button>
+            <button onclick="fnConfirmClock()" style="background:#1976d2;border:none;color:#fff;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;">OK</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.fn-time-btn {
+    display:flex;align-items:center;border:1px solid #ced4da;border-radius:6px;
+    padding:7px 12px;cursor:pointer;background:#fff;color:#6c757d;
+    transition:border-color .2s,box-shadow .2s;min-height:38px;
+}
+.fn-time-btn:hover { border-color:#86b7fe;box-shadow:0 0 0 3px rgba(13,110,253,.1); }
+.fn-time-btn.fn-time-filled { color:#212529; }
+.fn-ampm-btn {
+    background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);
+    color:#fff;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:4px;cursor:pointer;line-height:1.5;
+}
+.fn-ampm-btn.active { background:rgba(255,255,255,.35);border-color:#fff; }
+.fn-mode-tab { opacity:.55;transition:opacity .15s; }
+.fn-mode-tab.active { opacity:1;border-bottom:2px solid rgba(255,255,255,.7); }
+.fn-clock-num {
+    position:absolute;width:36px;height:36px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:.88rem;font-weight:600;color:#333;
+    transition:background .15s,color .15s;
+}
+.fn-clock-num:hover   { background:#e3f2fd;color:#1976d2; }
+.fn-clock-num.selected { background:#1976d2;color:#fff; }
+.fn-clock-dot {
+    position:absolute;width:6px;height:6px;border-radius:50%;
+    background:#1976d2;top:50%;left:50%;transform:translate(-50%,-50%);
+}
+</style>
 
 {% endblock %}

@@ -128,6 +128,9 @@ input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
       <div class="hd-subtitle"><i class="bi bi-pin-map me-1"></i>{{ booking.destination }}</div>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <a href="{% url 'holiday' %}" class="hd-btn btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+      </a>
       {% if is_pending and can_edit %}
       <button class="hd-btn btn btn-success fw-bold" onclick="confirmThisBooking()">
         <i class="bi bi-check-circle me-1"></i>Confirm Booking
@@ -436,47 +439,19 @@ input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
                                     <input type="date" class="form-control" id="e_return_date" required value="{{ booking.return_date|date:'Y-m-d'|default:'' }}">
                                 </div>
                                 <div class="col-sm-6">
-                                    <label for="e_dep_hour" class="form-label fw-semibold small text-muted mb-1">Departure Time <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold small text-muted mb-1">Departure Time <span class="text-danger">*</span></label>
                                     <input type="hidden" id="e_departure_time" value="{{ booking.departure_time|time:'H:i' }}">
-                                    <div class="hol-time-picker">
-                                        <select class="form-select" id="e_dep_hour" required onchange="syncEditTime('dep')">
-                                            <option value="">HH</option>
-                                            <option>1</option><option>2</option><option>3</option><option>4</option>
-                                            <option>5</option><option>6</option><option>7</option><option>8</option>
-                                            <option>9</option><option>10</option><option>11</option><option>12</option>
-                                        </select>
-                                        <span class="hol-time-sep">:</span>
-                                        <select class="form-select" id="e_dep_min" required onchange="syncEditTime('dep')">
-                                            <option value="">MM</option>
-                                            <option>00</option><option>05</option><option>10</option><option>15</option>
-                                            <option>20</option><option>25</option><option>30</option><option>35</option>
-                                            <option>40</option><option>45</option><option>50</option><option>55</option>
-                                        </select>
-                                        <select class="form-select hol-ampm-sel" id="e_dep_ampm" required onchange="syncEditTime('dep')">
-                                            <option value="">—</option><option>AM</option><option>PM</option>
-                                        </select>
+                                    <div class="fn-time-btn" onclick="openClockPicker('e_departure_time')" tabindex="0">
+                                        <i class="bi bi-clock me-2 text-muted"></i>
+                                        <span id="e_departure_time_display">Select time</span>
                                     </div>
                                 </div>
                                 <div class="col-sm-6">
-                                    <label for="e_ret_hour" class="form-label fw-semibold small text-muted mb-1">Return Time <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold small text-muted mb-1">Return Time <span class="text-danger">*</span></label>
                                     <input type="hidden" id="e_return_time" value="{{ booking.return_time|time:'H:i'|default:'' }}">
-                                    <div class="hol-time-picker">
-                                        <select class="form-select" id="e_ret_hour" required onchange="syncEditTime('ret')">
-                                            <option value="">HH</option>
-                                            <option>1</option><option>2</option><option>3</option><option>4</option>
-                                            <option>5</option><option>6</option><option>7</option><option>8</option>
-                                            <option>9</option><option>10</option><option>11</option><option>12</option>
-                                        </select>
-                                        <span class="hol-time-sep">:</span>
-                                        <select class="form-select" id="e_ret_min" required onchange="syncEditTime('ret')">
-                                            <option value="">MM</option>
-                                            <option>00</option><option>05</option><option>10</option><option>15</option>
-                                            <option>20</option><option>25</option><option>30</option><option>35</option>
-                                            <option>40</option><option>45</option><option>50</option><option>55</option>
-                                        </select>
-                                        <select class="form-select hol-ampm-sel" id="e_ret_ampm" required onchange="syncEditTime('ret')">
-                                            <option value="">—</option><option>AM</option><option>PM</option>
-                                        </select>
+                                    <div class="fn-time-btn" onclick="openClockPicker('e_return_time')" tabindex="0">
+                                        <i class="bi bi-clock me-2 text-muted"></i>
+                                        <span id="e_return_time_display">Select time</span>
                                     </div>
                                 </div>
                                 <div class="col-12">
@@ -628,30 +603,6 @@ function calcEditTotal() {
     document.getElementById('e_balance_amount_display').value     = Math.max(0, total - advance).toFixed(2);
 }
 
-function syncEditTime(which) {
-    const p = which === 'dep' ? 'e_dep' : 'e_ret';
-    const hiddenId = which === 'dep' ? 'e_departure_time' : 'e_return_time';
-    const hour = document.getElementById(p + '_hour').value;
-    const min  = document.getElementById(p + '_min').value;
-    const ampm = document.getElementById(p + '_ampm').value;
-    if (!hour || !min || !ampm) { document.getElementById(hiddenId).value = ''; return; }
-    let h24 = parseInt(hour, 10);
-    if (ampm === 'AM' && h24 === 12) h24 = 0;
-    if (ampm === 'PM' && h24 !== 12) h24 += 12;
-    document.getElementById(hiddenId).value = `${String(h24).padStart(2,'0')}:${min}`;
-}
-function setEditTimePicker(which, hhmm) {
-    if (!hhmm) return;
-    const p = which === 'dep' ? 'e_dep' : 'e_ret';
-    const [hStr, mStr] = hhmm.split(':');
-    let h = parseInt(hStr, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    if (h === 0) h = 12; else if (h > 12) h -= 12;
-    document.getElementById(p + '_hour').value  = String(h);
-    document.getElementById(p + '_min').value   = mStr;
-    document.getElementById(p + '_ampm').value  = ampm;
-    syncEditTime(which);
-}
 
 function loadEditVehicles() {
     fetch('/api/vehicles/', { headers: { 'X-CSRFToken': globalThis.csrfToken || '' } })
@@ -698,8 +649,8 @@ function loadEditPaymentTypes() {
 function openEditModal() {
     loadEditVehicles();
     loadEditPaymentTypes();
-    setEditTimePicker('dep', document.getElementById('e_departure_time').value);
-    setEditTimePicker('ret', document.getElementById('e_return_time').value);
+    setClockDisplay('e_departure_time', document.getElementById('e_departure_time').value);
+    setClockDisplay('e_return_time', document.getElementById('e_return_time').value);
     const eTripDate   = document.getElementById('e_trip_date');
     const eReturnDate = document.getElementById('e_return_date');
     function syncEditReturnDate() {
@@ -775,13 +726,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!document.getElementById('e_departure_time').value) {
                 errorDiv.textContent = 'Please select the Departure Time.';
                 errorDiv.classList.remove('d-none');
-                document.getElementById('e_dep_hour').focus();
                 return;
             }
             if (!document.getElementById('e_return_time').value) {
                 errorDiv.textContent = 'Please select the Return Time.';
                 errorDiv.classList.remove('d-none');
-                document.getElementById('e_ret_hour').focus();
                 return;
             }
             const eCNum = document.getElementById('e_contact_number').value;
@@ -883,6 +832,103 @@ function resendWhatsapp() {
         btn.innerHTML = '<i class="bi bi-whatsapp me-1"></i>Resend WhatsApp';
         btn.disabled = false;
     });
+}
+
+</script>
+
+<!-- CLOCK PICKER -->
+<div id="cpBackdrop" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;width:300px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+    <div style="background:#ffc107;padding:20px 24px 16px;">
+      <div style="color:rgba(0,0,0,.55);font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Select Time</div>
+      <div style="display:flex;align-items:baseline;gap:2px;">
+        <span id="cpModeHour" style="font-size:48px;font-weight:300;color:#212529;cursor:pointer;line-height:1;" onclick="_cpSwitchMode('hour')">12</span>
+        <span style="font-size:48px;font-weight:300;color:rgba(0,0,0,.4);line-height:1;">:</span>
+        <span id="cpModeMin" style="font-size:48px;font-weight:300;color:rgba(0,0,0,.4);cursor:pointer;line-height:1;" onclick="_cpSwitchMode('min')">00</span>
+        <div style="display:flex;flex-direction:column;margin-left:8px;gap:2px;">
+          <button id="cpAmBtn" onclick="cpSetAmPm('AM')" style="background:rgba(0,0,0,.15);border:none;border-radius:4px;color:#212529;font-size:13px;font-weight:600;padding:2px 8px;cursor:pointer;">AM</button>
+          <button id="cpPmBtn" onclick="cpSetAmPm('PM')" style="background:transparent;border:none;border-radius:4px;color:rgba(0,0,0,.45);font-size:13px;font-weight:600;padding:2px 8px;cursor:pointer;">PM</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;padding:16px 0 8px;">
+      <div id="cpClockFace" style="position:relative;width:216px;height:216px;border-radius:50%;background:#f5f5f5;"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:8px 16px 16px;">
+      <button onclick="closeClockPicker()" style="background:none;border:none;color:#333;font-weight:600;padding:8px 16px;cursor:pointer;border-radius:6px;">CANCEL</button>
+      <button onclick="confirmClockPicker()" style="background:#ffc107;border:none;color:#212529;font-weight:700;padding:8px 16px;cursor:pointer;border-radius:6px;">OK</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.fn-time-btn{display:flex;align-items:center;padding:10px 14px;border:1.5px solid #dee2e6;border-radius:8px;cursor:pointer;background:#fff;transition:border-color .2s;}
+.fn-time-btn:hover{border-color:#ffc107;}
+</style>
+
+<script>
+var _cpTarget=null,_cpMode='hour',_cpH=12,_cpM=0,_cpAmPm='AM';
+function openClockPicker(targetId){
+    _cpTarget=targetId;_cpMode='hour';
+    var val=document.getElementById(targetId).value;
+    if(val){
+        var p=val.split(':');var h=parseInt(p[0]);var m=parseInt(p[1]);
+        _cpAmPm=h>=12?'PM':'AM';h=h%12||12;_cpH=h;_cpM=m;
+    } else {_cpH=12;_cpM=0;_cpAmPm='AM';}
+    var bd=document.getElementById('cpBackdrop');bd.style.display='flex';
+    _cpRender();
+}
+function closeClockPicker(){document.getElementById('cpBackdrop').style.display='none';}
+function confirmClockPicker(){
+    var h24=_cpAmPm==='PM'?(_cpH===12?12:_cpH+12):(_cpH===12?0:_cpH);
+    var val=String(h24).padStart(2,'0')+':'+String(_cpM).padStart(2,'0');
+    setClockDisplay(_cpTarget,val);
+    closeClockPicker();
+}
+function cpSetAmPm(v){
+    _cpAmPm=v;
+    document.getElementById('cpAmBtn').style.background=v==='AM'?'rgba(0,0,0,.15)':'transparent';
+    document.getElementById('cpAmBtn').style.color=v==='AM'?'#212529':'rgba(0,0,0,.45)';
+    document.getElementById('cpPmBtn').style.background=v==='PM'?'rgba(0,0,0,.15)':'transparent';
+    document.getElementById('cpPmBtn').style.color=v==='PM'?'#212529':'rgba(0,0,0,.45)';
+}
+function _cpSwitchMode(m){_cpMode=m;_cpRender();}
+function _cpRender(){
+    var isHour=_cpMode==='hour';
+    var hTxt=String(_cpH).padStart(2,'0');
+    var mTxt=String(_cpM).padStart(2,'0');
+    document.getElementById('cpModeHour').textContent=hTxt;
+    document.getElementById('cpModeHour').style.color=isHour?'#212529':'rgba(0,0,0,.4)';
+    document.getElementById('cpModeMin').textContent=mTxt;
+    document.getElementById('cpModeMin').style.color=isHour?'rgba(0,0,0,.4)':'#212529';
+    var face=document.getElementById('cpClockFace');
+    face.innerHTML='';
+    var cx=108,cy=108,r=80;
+    for(var i=0;i<12;i++){
+        var val=isHour?(i===0?12:i):(i*5);
+        var angle=(i/12)*2*Math.PI - Math.PI/2;
+        var x=cx+r*Math.cos(angle);
+        var y=cy+r*Math.sin(angle);
+        var active=isHour?(_cpH===val):(_cpM===val);
+        var el=document.createElement('div');
+        el.textContent=isHour?val:String(val).padStart(2,'0');
+        el.style.cssText='position:absolute;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transform:translate(-50%,-50%);left:'+x+'px;top:'+y+'px;'+(active?'background:#ffc107;color:#212529;font-weight:700;':'color:#333;');
+        (function(v){el.onclick=function(){if(isHour){_cpH=v;_cpMode='min';}else{_cpM=v;}_cpRender();};})(val);
+        face.appendChild(el);
+    }
+    var dot=document.createElement('div');
+    dot.style.cssText='position:absolute;width:8px;height:8px;background:#ffc107;border-radius:50%;left:'+cx+'px;top:'+cy+'px;transform:translate(-50%,-50%);';
+    face.appendChild(dot);
+}
+function setClockDisplay(inputId,hhmm){
+    var inp=document.getElementById(inputId);
+    var disp=document.getElementById(inputId+'_display');
+    if(!inp||!disp)return;
+    if(!hhmm){inp.value='';disp.textContent='Select time';return;}
+    inp.value=hhmm;
+    var p=hhmm.split(':');var h=parseInt(p[0]);var m=parseInt(p[1]);
+    var ampm=h>=12?'PM':'AM';var h12=h%12||12;
+    disp.textContent=h12+':'+String(m).padStart(2,'0')+' '+ampm;
 }
 </script>
 
